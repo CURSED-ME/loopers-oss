@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://loopers-azure.vercel.app/og.png" alt="Loopers" width="800"/>
+  <img src="./docs/logo.svg" alt="Loopers" width="800"/>
 </p>
 
 # Loopers – Pre-call AI billing circuit breaker
@@ -7,17 +7,17 @@
 > **Break the loop before it breaks your budget.**
 
 <p align="left">
-  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License" />
-  <img src="https://img.shields.io/badge/go-%3E%3D1.26.1-blue.svg" alt="Go Version" />
-  <img src="https://img.shields.io/badge/providers-6%20Supported-orange.svg" alt="Providers" />
-  <a href="https://securityscorecards.dev/viewer/?uri=github.com/loopers-oss/loopers"><img src="https://api.securityscorecards.dev/projects/github.com/loopers-oss/loopers/badge" alt="OpenSSF Scorecard" /></a>
+  <img src="https://img.shields.io/badge/license-MIT-black.svg?style=for-the-badge" alt="License" />
+  <img src="https://img.shields.io/badge/go-%3E%3D1.26.1-black.svg?style=for-the-badge" alt="Go Version" />
+  <img src="https://img.shields.io/badge/providers-6%20Supported-black.svg?style=for-the-badge" alt="Providers" />
+  <a href="https://securityscorecards.dev/viewer/?uri=github.com/CURSED-ME/loopers-oss"><img src="https://api.securityscorecards.dev/projects/github.com/CURSED-ME/loopers-oss/badge?style=for-the-badge" alt="OpenSSF Scorecard" /></a>
 </p>
 
 Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It intercepts requests to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
 
 ---
 
-## ⚡ Why Loopers?
+## Why Loopers?
 
 If an autonomous agent gets stuck in a loop or an API key is compromised, it can burn thousands of dollars in minutes. Loopers is not an alert or a dashboard—it's a **kill-switch**:
 
@@ -28,7 +28,7 @@ If an autonomous agent gets stuck in a loop or an API key is compromised, it can
 
 ---
 
-## 🥊 Competitor Analysis
+## Competitor Analysis
 
 Loopers is engineered specifically as a high-performance infrastructure-level circuit breaker, prioritizing absolute security and correctness over simple observability.
 
@@ -42,20 +42,20 @@ Loopers is engineered specifically as a high-performance infrastructure-level ci
 
 ---
 
-## 🛡️ Supported Providers
+## Supported Providers
 
 | Provider | Model Names | Streaming | Non-Streaming | Budget Enforcement | Token Counting |
 |---|---|---|---|---|---|
-| **OpenAI** | `gpt-4o`, `gpt-4o-mini`, etc. | ✅ | ✅ | ✅ | ✅ (tiktoken) |
-| **Anthropic** | `claude-3-5-sonnet`, etc. | ✅ | ✅ | ✅ | ✅ (countTokens API) |
-| **Google Gemini** | `gemini-2.5-flash`, etc. | ✅ | ✅ | ✅ | ✅ (countTokens API) |
-| **AWS Bedrock** | Claude/Llama on Bedrock | ✅ | ✅ | ✅ | ✅ (Model Tokenizer) |
-| **Azure OpenAI** | GPT models on Azure | ✅ | ✅ | ✅ | ✅ (tiktoken) |
-| **Mistral AI** | `mistral-large`, etc. | ✅ | ✅ | ✅ | ✅ (tiktoken) |
+| **OpenAI** | `gpt-4o`, `gpt-4o-mini`, etc. | Supported | Supported | Supported | Supported (tiktoken) |
+| **Anthropic** | `claude-3-5-sonnet`, etc. | Supported | Supported | Supported | Supported (countTokens API) |
+| **Google Gemini** | `gemini-2.5-flash`, etc. | Supported | Supported | Supported | Supported (countTokens API) |
+| **AWS Bedrock** | Claude/Llama on Bedrock | Supported | Supported | Supported | Supported (Model Tokenizer) |
+| **Azure OpenAI** | GPT models on Azure | Supported | Supported | Supported | Supported (tiktoken) |
+| **Mistral AI** | `mistral-large`, etc. | Supported | Supported | Supported | Supported (tiktoken) |
 
 ---
 
-## 🚀 Quickstart (Under 2 Minutes)
+## Quickstart (Under 2 Minutes)
 
 ### Step 1: Initialize Configuration
 Run the onboarding wizard to automatically generate `loopers.yaml` and `docker-compose.yml`:
@@ -98,7 +98,7 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 
 ---
 
-## 📦 Client SDKs
+## Client SDKs
 
 Integrate Loopers easily into your code using our client wrappers:
 
@@ -140,7 +140,7 @@ For full details, see the [Python SDK documentation](./sdk/python/README.md) and
 
 ---
 
-## 🏛️ Architecture
+## Architecture
 
 ```mermaid
 sequenceDiagram
@@ -171,6 +171,6 @@ sequenceDiagram
 
 ---
 
-## 📄 License
+## License
 
 MIT License. See [LICENSE](LICENSE) for details.
