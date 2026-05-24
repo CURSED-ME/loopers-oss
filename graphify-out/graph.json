@@ -2558,9 +2558,9 @@
       "source_file": "cmd\\loopers\\commands.go",
       "source_location": "L32",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "cmd_loopers_commands_go",
-      "target": "loopers_commands_getredisclient",
-      "confidence_score": 1.0
+      "target": "loopers_commands_getredisclient"
     },
     {
       "relation": "contains",
@@ -2568,9 +2568,9 @@
       "source_file": "cmd\\loopers\\commands.go",
       "source_location": "L422",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "cmd_loopers_commands_go",
-      "target": "loopers_commands_init",
-      "confidence_score": 1.0
+      "target": "loopers_commands_init"
     },
     {
       "relation": "calls",
@@ -2588,9 +2588,9 @@
       "source_file": "cmd\\loopers\\main.go",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "cmd_loopers_main_go",
-      "target": "loopers_main_init",
-      "confidence_score": 1.0
+      "target": "loopers_main_init"
     },
     {
       "relation": "contains",
@@ -2598,9 +2598,9 @@
       "source_file": "cmd\\loopers\\main.go",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "cmd_loopers_main_go",
-      "target": "loopers_main_initconfig",
-      "confidence_score": 1.0
+      "target": "loopers_main_initconfig"
     },
     {
       "relation": "contains",
@@ -2608,9 +2608,9 @@
       "source_file": "cmd\\loopers\\main.go",
       "source_location": "L54",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "cmd_loopers_main_go",
-      "target": "loopers_main_main",
-      "confidence_score": 1.0
+      "target": "loopers_main_main"
     },
     {
       "relation": "calls",
@@ -2628,9 +2628,9 @@
       "source_file": "cmd\\pricing-validator\\main.go",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "cmd_pricing_validator_main_go",
-      "target": "pricing_validator_modelprice",
-      "confidence_score": 1.0
+      "target": "pricing_validator_modelprice"
     },
     {
       "relation": "contains",
@@ -2638,9 +2638,9 @@
       "source_file": "cmd\\pricing-validator\\main.go",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "cmd_pricing_validator_main_go",
-      "target": "pricing_validator_providerconfig",
-      "confidence_score": 1.0
+      "target": "pricing_validator_providerconfig"
     },
     {
       "relation": "contains",
@@ -2648,9 +2648,9 @@
       "source_file": "cmd\\pricing-validator\\main.go",
       "source_location": "L21",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "cmd_pricing_validator_main_go",
-      "target": "pricing_validator_pricingconfig",
-      "confidence_score": 1.0
+      "target": "pricing_validator_pricingconfig"
     },
     {
       "relation": "contains",
@@ -2658,9 +2658,9 @@
       "source_file": "cmd\\pricing-validator\\main.go",
       "source_location": "L25",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "cmd_pricing_validator_main_go",
-      "target": "pricing_validator_main_main",
-      "confidence_score": 1.0
+      "target": "pricing_validator_main_main"
     },
     {
       "relation": "contains",
@@ -2668,9 +2668,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_alerting_alerter_go",
-      "target": "alerting_thresholdconfig",
-      "confidence_score": 1.0
+      "target": "alerting_thresholdconfig"
     },
     {
       "relation": "contains",
@@ -2678,9 +2678,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_alerting_alerter_go",
-      "target": "alerting_alertingconfig",
-      "confidence_score": 1.0
+      "target": "alerting_alertingconfig"
     },
     {
       "relation": "contains",
@@ -2688,9 +2688,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L25",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_alerting_alerter_go",
-      "target": "alerting_alertevent",
-      "confidence_score": 1.0
+      "target": "alerting_alertevent"
     },
     {
       "relation": "contains",
@@ -2698,9 +2698,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_alerting_alerter_go",
-      "target": "alerting_thresholdalert",
-      "confidence_score": 1.0
+      "target": "alerting_thresholdalert"
     },
     {
       "relation": "contains",
@@ -2708,9 +2708,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L44",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_alerting_alerter_go",
-      "target": "alerting_budgetexceededalert",
-      "confidence_score": 1.0
+      "target": "alerting_budgetexceededalert"
     },
     {
       "relation": "contains",
@@ -2718,9 +2718,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L59",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_alerting_alerter_go",
-      "target": "alerting_alerter",
-      "confidence_score": 1.0
+      "target": "alerting_alerter"
     },
     {
       "relation": "contains",
@@ -2728,9 +2728,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L66",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_alerting_alerter_go",
-      "target": "alerting_alerter_newalerter",
-      "confidence_score": 1.0
+      "target": "alerting_alerter_newalerter"
     },
     {
       "relation": "method",
@@ -2738,9 +2738,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L42",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alerting_thresholdalert",
-      "target": "alerting_thresholdalert_eventtype",
-      "confidence_score": 1.0
+      "target": "alerting_thresholdalert_eventtype"
     },
     {
       "relation": "method",
@@ -2748,9 +2748,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L57",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alerting_budgetexceededalert",
-      "target": "alerting_budgetexceededalert_eventtype",
-      "confidence_score": 1.0
+      "target": "alerting_budgetexceededalert_eventtype"
     },
     {
       "relation": "method",
@@ -2758,9 +2758,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L79",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alerting_alerter",
-      "target": "alerting_alerter_triggerblockalert",
-      "confidence_score": 1.0
+      "target": "alerting_alerter_triggerblockalert"
     },
     {
       "relation": "method",
@@ -2768,9 +2768,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L102",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alerting_alerter",
-      "target": "alerting_alerter_triggerthresholdalerts",
-      "confidence_score": 1.0
+      "target": "alerting_alerter_triggerthresholdalerts"
     },
     {
       "relation": "method",
@@ -2778,9 +2778,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L152",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alerting_alerter",
-      "target": "alerting_alerter_getdedupkey",
-      "confidence_score": 1.0
+      "target": "alerting_alerter_getdedupkey"
     },
     {
       "relation": "method",
@@ -2788,9 +2788,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L170",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alerting_alerter",
-      "target": "alerting_alerter_getdedupttl",
-      "confidence_score": 1.0
+      "target": "alerting_alerter_getdedupttl"
     },
     {
       "relation": "method",
@@ -2798,9 +2798,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L197",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alerting_alerter",
-      "target": "alerting_alerter_worker",
-      "confidence_score": 1.0
+      "target": "alerting_alerter_worker"
     },
     {
       "relation": "method",
@@ -2808,9 +2808,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L218",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alerting_alerter",
-      "target": "alerting_alerter_close",
-      "confidence_score": 1.0
+      "target": "alerting_alerter_close"
     },
     {
       "relation": "calls",
@@ -2818,9 +2818,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L74",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alerting_alerter_newalerter",
-      "target": "alerting_alerter_worker",
-      "confidence_score": 1.0
+      "target": "alerting_alerter_worker"
     },
     {
       "relation": "calls",
@@ -2858,9 +2858,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L118",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alerting_alerter_triggerthresholdalerts",
-      "target": "alerting_alerter_getdedupkey",
-      "confidence_score": 1.0
+      "target": "alerting_alerter_getdedupkey"
     },
     {
       "relation": "calls",
@@ -2868,9 +2868,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L119",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alerting_alerter_triggerthresholdalerts",
-      "target": "alerting_alerter_getdedupttl",
-      "confidence_score": 1.0
+      "target": "alerting_alerter_getdedupttl"
     },
     {
       "relation": "calls",
@@ -2878,9 +2878,9 @@
       "source_file": "internal\\alerting\\alerter.go",
       "source_location": "L210",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alerting_alerter_worker",
-      "target": "alerting_alerter_close",
-      "confidence_score": 1.0
+      "target": "alerting_alerter_close"
     },
     {
       "relation": "contains",
@@ -2888,9 +2888,9 @@
       "source_file": "internal\\alerting\\alerter_test.go",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_alerting_alerter_test_go",
-      "target": "alerting_alerter_test_testalerterdelivery",
-      "confidence_score": 1.0
+      "target": "alerting_alerter_test_testalerterdelivery"
     },
     {
       "relation": "contains",
@@ -2898,9 +2898,9 @@
       "source_file": "internal\\alerting\\alerter_test.go",
       "source_location": "L73",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_alerting_alerter_test_go",
-      "target": "alerting_alerter_test_testalerterthresholdcheck",
-      "confidence_score": 1.0
+      "target": "alerting_alerter_test_testalerterthresholdcheck"
     },
     {
       "relation": "calls",
@@ -2928,9 +2928,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_budget_engine_go",
-      "target": "budget_budgetexceedederror",
-      "confidence_score": 1.0
+      "target": "budget_budgetexceedederror"
     },
     {
       "relation": "contains",
@@ -2938,9 +2938,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L24",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_budget_engine_go",
-      "target": "budget_windowinfo",
-      "confidence_score": 1.0
+      "target": "budget_windowinfo"
     },
     {
       "relation": "contains",
@@ -2948,9 +2948,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L30",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_budget_engine_go",
-      "target": "budget_engine_getwindowconfigs",
-      "confidence_score": 1.0
+      "target": "budget_engine_getwindowconfigs"
     },
     {
       "relation": "contains",
@@ -2958,9 +2958,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L169",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_budget_engine_go",
-      "target": "budget_windowstatus",
-      "confidence_score": 1.0
+      "target": "budget_windowstatus"
     },
     {
       "relation": "method",
@@ -2968,9 +2968,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_budgetexceedederror",
-      "target": "budget_budgetexceedederror_error",
-      "confidence_score": 1.0
+      "target": "budget_budgetexceedederror_error"
     },
     {
       "relation": "calls",
@@ -2978,9 +2978,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L98",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_client_checkandreserve",
-      "target": "budget_engine_getwindowconfigs",
-      "confidence_score": 1.0
+      "target": "budget_engine_getwindowconfigs"
     },
     {
       "relation": "calls",
@@ -2988,9 +2988,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L150",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_client_reconcile",
-      "target": "budget_engine_getwindowconfigs",
-      "confidence_score": 1.0
+      "target": "budget_engine_getwindowconfigs"
     },
     {
       "relation": "calls",
@@ -2998,9 +2998,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L178",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_client_getbudgetstatus",
-      "target": "budget_engine_getwindowconfigs",
-      "confidence_score": 1.0
+      "target": "budget_engine_getwindowconfigs"
     },
     {
       "relation": "method",
@@ -3008,9 +3008,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L95",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_client",
-      "target": "budget_client_checkandreserve",
-      "confidence_score": 1.0
+      "target": "budget_client_checkandreserve"
     },
     {
       "relation": "method",
@@ -3018,9 +3018,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L116",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_client",
-      "target": "budget_client_checkandreservewindow",
-      "confidence_score": 1.0
+      "target": "budget_client_checkandreservewindow"
     },
     {
       "relation": "method",
@@ -3028,9 +3028,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L148",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_client",
-      "target": "budget_client_reconcile",
-      "confidence_score": 1.0
+      "target": "budget_client_reconcile"
     },
     {
       "relation": "method",
@@ -3038,9 +3038,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L163",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_client",
-      "target": "budget_client_reconcilewindow",
-      "confidence_score": 1.0
+      "target": "budget_client_reconcilewindow"
     },
     {
       "relation": "method",
@@ -3048,9 +3048,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L175",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_client",
-      "target": "budget_client_getbudgetstatus",
-      "confidence_score": 1.0
+      "target": "budget_client_getbudgetstatus"
     },
     {
       "relation": "method",
@@ -3058,9 +3058,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L209",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_client",
-      "target": "budget_client_checkandreservesession",
-      "confidence_score": 1.0
+      "target": "budget_client_checkandreservesession"
     },
     {
       "relation": "contains",
@@ -3068,9 +3068,9 @@
       "source_file": "internal\\budget\\redis.go",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_budget_redis_go",
-      "target": "budget_client",
-      "confidence_score": 1.0
+      "target": "budget_client"
     },
     {
       "relation": "method",
@@ -3078,9 +3078,9 @@
       "source_file": "internal\\budget\\redis.go",
       "source_location": "L42",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_client",
-      "target": "budget_client_ping",
-      "confidence_score": 1.0
+      "target": "budget_client_ping"
     },
     {
       "relation": "method",
@@ -3088,9 +3088,9 @@
       "source_file": "internal\\budget\\redis.go",
       "source_location": "L47",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_client",
-      "target": "budget_client_close",
-      "confidence_score": 1.0
+      "target": "budget_client_close"
     },
     {
       "relation": "method",
@@ -3098,9 +3098,9 @@
       "source_file": "internal\\budget\\redis.go",
       "source_location": "L52",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_client",
-      "target": "budget_client_getunderlyingclient",
-      "confidence_score": 1.0
+      "target": "budget_client_getunderlyingclient"
     },
     {
       "relation": "calls",
@@ -3108,9 +3108,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L102",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_client_checkandreserve",
-      "target": "budget_client_checkandreservewindow",
-      "confidence_score": 1.0
+      "target": "budget_client_checkandreservewindow"
     },
     {
       "relation": "calls",
@@ -3118,9 +3118,9 @@
       "source_file": "internal\\budget\\engine.go",
       "source_location": "L154",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_client_reconcile",
-      "target": "budget_client_reconcilewindow",
-      "confidence_score": 1.0
+      "target": "budget_client_reconcilewindow"
     },
     {
       "relation": "contains",
@@ -3128,9 +3128,9 @@
       "source_file": "internal\\budget\\engine_test.go",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_budget_engine_test_go",
-      "target": "budget_engine_test_testbudgetracecondition",
-      "confidence_score": 1.0
+      "target": "budget_engine_test_testbudgetracecondition"
     },
     {
       "relation": "contains",
@@ -3138,9 +3138,9 @@
       "source_file": "internal\\budget\\engine_test.go",
       "source_location": "L79",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_budget_engine_test_go",
-      "target": "budget_engine_test_testbudgetwindowexpansion",
-      "confidence_score": 1.0
+      "target": "budget_engine_test_testbudgetwindowexpansion"
     },
     {
       "relation": "contains",
@@ -3148,9 +3148,9 @@
       "source_file": "internal\\budget\\engine_test.go",
       "source_location": "L148",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_budget_engine_test_go",
-      "target": "budget_engine_test_testsessionenforcement",
-      "confidence_score": 1.0
+      "target": "budget_engine_test_testsessionenforcement"
     },
     {
       "relation": "calls",
@@ -3188,9 +3188,9 @@
       "source_file": "internal\\budget\\lua.go",
       "source_location": "L24",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_budget_lua_go",
-      "target": "budget_lua_init",
-      "confidence_score": 1.0
+      "target": "budget_lua_init"
     },
     {
       "relation": "contains",
@@ -3198,9 +3198,9 @@
       "source_file": "internal\\budget\\redis.go",
       "source_location": "L17",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_budget_redis_go",
-      "target": "budget_redis_newclient",
-      "confidence_score": 1.0
+      "target": "budget_redis_newclient"
     },
     {
       "relation": "calls",
@@ -3208,9 +3208,9 @@
       "source_file": "internal\\budget\\redis.go",
       "source_location": "L34",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "budget_redis_newclient",
-      "target": "budget_client_ping",
-      "confidence_score": 1.0
+      "target": "budget_client_ping"
     },
     {
       "relation": "calls",
@@ -3238,9 +3238,9 @@
       "source_file": "internal\\keyring\\extractor.go",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_keyring_extractor_go",
-      "target": "keyring_keymetadata",
-      "confidence_score": 1.0
+      "target": "keyring_keymetadata"
     },
     {
       "relation": "contains",
@@ -3248,9 +3248,9 @@
       "source_file": "internal\\keyring\\extractor.go",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_keyring_extractor_go",
-      "target": "keyring_extractor_getkeymetadata",
-      "confidence_score": 1.0
+      "target": "keyring_extractor_getkeymetadata"
     },
     {
       "relation": "calls",
@@ -3278,9 +3278,9 @@
       "source_file": "internal\\keyring\\hasher.go",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_keyring_hasher_go",
-      "target": "keyring_hasher_generaterawkey",
-      "confidence_score": 1.0
+      "target": "keyring_hasher_generaterawkey"
     },
     {
       "relation": "contains",
@@ -3288,9 +3288,9 @@
       "source_file": "internal\\keyring\\hasher.go",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_keyring_hasher_go",
-      "target": "keyring_hasher_hashkey",
-      "confidence_score": 1.0
+      "target": "keyring_hasher_hashkey"
     },
     {
       "relation": "calls",
@@ -3338,9 +3338,9 @@
       "source_file": "internal\\keyring\\validator.go",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_keyring_validator_go",
-      "target": "keyring_validator_validatelooperskey",
-      "confidence_score": 1.0
+      "target": "keyring_validator_validatelooperskey"
     },
     {
       "relation": "contains",
@@ -3348,9 +3348,9 @@
       "source_file": "internal\\keyring\\validator.go",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_keyring_validator_go",
-      "target": "keyring_validator_validateproviderkey",
-      "confidence_score": 1.0
+      "target": "keyring_validator_validateproviderkey"
     },
     {
       "relation": "calls",
@@ -3378,9 +3378,9 @@
       "source_file": "internal\\logging\\logger.go",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_logging_logger_go",
-      "target": "logging_logger_initlogger",
-      "confidence_score": 1.0
+      "target": "logging_logger_initlogger"
     },
     {
       "relation": "calls",
@@ -3398,9 +3398,9 @@
       "source_file": "internal\\logging\\redact.go",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_logging_redact_go",
-      "target": "logging_redactwriter",
-      "confidence_score": 1.0
+      "target": "logging_redactwriter"
     },
     {
       "relation": "contains",
@@ -3408,9 +3408,9 @@
       "source_file": "internal\\logging\\redact.go",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_logging_redact_go",
-      "target": "logging_redact_newredactwriter",
-      "confidence_score": 1.0
+      "target": "logging_redact_newredactwriter"
     },
     {
       "relation": "method",
@@ -3418,9 +3418,9 @@
       "source_file": "internal\\logging\\redact.go",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "logging_redactwriter",
-      "target": "logging_redactwriter_write",
-      "confidence_score": 1.0
+      "target": "logging_redactwriter_write"
     },
     {
       "relation": "contains",
@@ -3428,9 +3428,9 @@
       "source_file": "internal\\pricing\\calculator.go",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_pricing_calculator_go",
-      "target": "pricing_calculator_estimatecost",
-      "confidence_score": 1.0
+      "target": "pricing_calculator_estimatecost"
     },
     {
       "relation": "contains",
@@ -3438,9 +3438,9 @@
       "source_file": "internal\\pricing\\calculator.go",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_pricing_calculator_go",
-      "target": "pricing_calculator_actualcost",
-      "confidence_score": 1.0
+      "target": "pricing_calculator_actualcost"
     },
     {
       "relation": "calls",
@@ -3458,9 +3458,9 @@
       "source_file": "internal\\pricing\\loader.go",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_pricing_loader_go",
-      "target": "pricing_modelprice",
-      "confidence_score": 1.0
+      "target": "pricing_modelprice"
     },
     {
       "relation": "contains",
@@ -3468,9 +3468,9 @@
       "source_file": "internal\\pricing\\loader.go",
       "source_location": "L17",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_pricing_loader_go",
-      "target": "pricing_providerconfig",
-      "confidence_score": 1.0
+      "target": "pricing_providerconfig"
     },
     {
       "relation": "contains",
@@ -3478,9 +3478,9 @@
       "source_file": "internal\\pricing\\loader.go",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_pricing_loader_go",
-      "target": "pricing_config",
-      "confidence_score": 1.0
+      "target": "pricing_config"
     },
     {
       "relation": "contains",
@@ -3488,9 +3488,9 @@
       "source_file": "internal\\pricing\\loader.go",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_pricing_loader_go",
-      "target": "pricing_store",
-      "confidence_score": 1.0
+      "target": "pricing_store"
     },
     {
       "relation": "contains",
@@ -3498,9 +3498,9 @@
       "source_file": "internal\\pricing\\loader.go",
       "source_location": "L34",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_pricing_loader_go",
-      "target": "pricing_loader_loadstore",
-      "confidence_score": 1.0
+      "target": "pricing_loader_loadstore"
     },
     {
       "relation": "method",
@@ -3508,9 +3508,9 @@
       "source_file": "internal\\pricing\\loader.go",
       "source_location": "L51",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pricing_store",
-      "target": "pricing_store_getmodelprice",
-      "confidence_score": 1.0
+      "target": "pricing_store_getmodelprice"
     },
     {
       "relation": "calls",
@@ -3538,9 +3538,9 @@
       "source_file": "internal\\provider\\provider.go",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_provider_go",
-      "target": "provider_provider",
-      "confidence_score": 1.0
+      "target": "provider_provider"
     },
     {
       "relation": "contains",
@@ -3548,9 +3548,9 @@
       "source_file": "internal\\provider\\registry.go",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_registry_go",
-      "target": "provider_registry",
-      "confidence_score": 1.0
+      "target": "provider_registry"
     },
     {
       "relation": "contains",
@@ -3558,9 +3558,9 @@
       "source_file": "internal\\provider\\registry.go",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_registry_go",
-      "target": "provider_registry_newregistry",
-      "confidence_score": 1.0
+      "target": "provider_registry_newregistry"
     },
     {
       "relation": "method",
@@ -3568,9 +3568,9 @@
       "source_file": "internal\\provider\\registry.go",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "provider_registry",
-      "target": "provider_registry_register",
-      "confidence_score": 1.0
+      "target": "provider_registry_register"
     },
     {
       "relation": "method",
@@ -3578,9 +3578,9 @@
       "source_file": "internal\\provider\\registry.go",
       "source_location": "L37",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "provider_registry",
-      "target": "provider_registry_get",
-      "confidence_score": 1.0
+      "target": "provider_registry_get"
     },
     {
       "relation": "method",
@@ -3588,9 +3588,9 @@
       "source_file": "internal\\provider\\registry.go",
       "source_location": "L49",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "provider_registry",
-      "target": "provider_registry_all",
-      "confidence_score": 1.0
+      "target": "provider_registry_all"
     },
     {
       "relation": "calls",
@@ -3608,9 +3608,9 @@
       "source_file": "internal\\provider\\anthropic\\provider.go",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_anthropic_provider_go",
-      "target": "anthropic_anthropicprovider",
-      "confidence_score": 1.0
+      "target": "anthropic_anthropicprovider"
     },
     {
       "relation": "contains",
@@ -3618,9 +3618,9 @@
       "source_file": "internal\\provider\\anthropic\\provider.go",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_anthropic_provider_go",
-      "target": "anthropic_provider_newanthropicprovider",
-      "confidence_score": 1.0
+      "target": "anthropic_provider_newanthropicprovider"
     },
     {
       "relation": "method",
@@ -3628,9 +3628,9 @@
       "source_file": "internal\\provider\\anthropic\\provider.go",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "anthropic_anthropicprovider",
-      "target": "anthropic_anthropicprovider_name",
-      "confidence_score": 1.0
+      "target": "anthropic_anthropicprovider_name"
     },
     {
       "relation": "method",
@@ -3638,9 +3638,9 @@
       "source_file": "internal\\provider\\anthropic\\provider.go",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "anthropic_anthropicprovider",
-      "target": "anthropic_anthropicprovider_baseurl",
-      "confidence_score": 1.0
+      "target": "anthropic_anthropicprovider_baseurl"
     },
     {
       "relation": "method",
@@ -3648,9 +3648,9 @@
       "source_file": "internal\\provider\\anthropic\\provider.go",
       "source_location": "L30",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "anthropic_anthropicprovider",
-      "target": "anthropic_anthropicprovider_injectauth",
-      "confidence_score": 1.0
+      "target": "anthropic_anthropicprovider_injectauth"
     },
     {
       "relation": "method",
@@ -3658,9 +3658,9 @@
       "source_file": "internal\\provider\\anthropic\\provider.go",
       "source_location": "L35",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "anthropic_anthropicprovider",
-      "target": "anthropic_anthropicprovider_rewritepath",
-      "confidence_score": 1.0
+      "target": "anthropic_anthropicprovider_rewritepath"
     },
     {
       "relation": "method",
@@ -3668,9 +3668,9 @@
       "source_file": "internal\\provider\\anthropic\\provider.go",
       "source_location": "L39",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "anthropic_anthropicprovider",
-      "target": "anthropic_anthropicprovider_parserequest",
-      "confidence_score": 1.0
+      "target": "anthropic_anthropicprovider_parserequest"
     },
     {
       "relation": "method",
@@ -3678,9 +3678,9 @@
       "source_file": "internal\\provider\\anthropic\\provider.go",
       "source_location": "L60",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "anthropic_anthropicprovider",
-      "target": "anthropic_anthropicprovider_countinputtokens",
-      "confidence_score": 1.0
+      "target": "anthropic_anthropicprovider_countinputtokens"
     },
     {
       "relation": "method",
@@ -3688,9 +3688,9 @@
       "source_file": "internal\\provider\\anthropic\\provider.go",
       "source_location": "L64",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "anthropic_anthropicprovider",
-      "target": "anthropic_anthropicprovider_parsestreamchunk",
-      "confidence_score": 1.0
+      "target": "anthropic_anthropicprovider_parsestreamchunk"
     },
     {
       "relation": "method",
@@ -3698,9 +3698,9 @@
       "source_file": "internal\\provider\\anthropic\\provider.go",
       "source_location": "L68",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "anthropic_anthropicprovider",
-      "target": "anthropic_anthropicprovider_parsenonstreamresponse",
-      "confidence_score": 1.0
+      "target": "anthropic_anthropicprovider_parsenonstreamresponse"
     },
     {
       "relation": "method",
@@ -3708,9 +3708,9 @@
       "source_file": "internal\\provider\\anthropic\\provider.go",
       "source_location": "L84",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "anthropic_anthropicprovider",
-      "target": "anthropic_anthropicprovider_formatbudgetexceededsse",
-      "confidence_score": 1.0
+      "target": "anthropic_anthropicprovider_formatbudgetexceededsse"
     },
     {
       "relation": "calls",
@@ -3768,9 +3768,9 @@
       "source_file": "internal\\provider\\anthropic\\stream.go",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_anthropic_stream_go",
-      "target": "anthropic_stream_parseanthropicframe",
-      "confidence_score": 1.0
+      "target": "anthropic_stream_parseanthropicframe"
     },
     {
       "relation": "contains",
@@ -3778,9 +3778,9 @@
       "source_file": "internal\\provider\\anthropic\\stream.go",
       "source_location": "L25",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_anthropic_stream_go",
-      "target": "anthropic_stream_parseanthropicstreamchunk",
-      "confidence_score": 1.0
+      "target": "anthropic_stream_parseanthropicstreamchunk"
     },
     {
       "relation": "contains",
@@ -3788,9 +3788,9 @@
       "source_file": "internal\\provider\\anthropic\\stream.go",
       "source_location": "L46",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_anthropic_stream_go",
-      "target": "anthropic_stream_formatanthropicbudgetexceededsse",
-      "confidence_score": 1.0
+      "target": "anthropic_stream_formatanthropicbudgetexceededsse"
     },
     {
       "relation": "calls",
@@ -3798,9 +3798,9 @@
       "source_file": "internal\\provider\\anthropic\\stream.go",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "anthropic_stream_parseanthropicstreamchunk",
-      "target": "anthropic_stream_parseanthropicframe",
-      "confidence_score": 1.0
+      "target": "anthropic_stream_parseanthropicframe"
     },
     {
       "relation": "contains",
@@ -3808,9 +3808,9 @@
       "source_file": "internal\\provider\\azure\\provider.go",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_azure_provider_go",
-      "target": "azure_azureprovider",
-      "confidence_score": 1.0
+      "target": "azure_azureprovider"
     },
     {
       "relation": "contains",
@@ -3818,9 +3818,9 @@
       "source_file": "internal\\provider\\azure\\provider.go",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_azure_provider_go",
-      "target": "azure_provider_newazureprovider",
-      "confidence_score": 1.0
+      "target": "azure_provider_newazureprovider"
     },
     {
       "relation": "method",
@@ -3828,9 +3828,9 @@
       "source_file": "internal\\provider\\azure\\provider.go",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "azure_azureprovider",
-      "target": "azure_azureprovider_name",
-      "confidence_score": 1.0
+      "target": "azure_azureprovider_name"
     },
     {
       "relation": "method",
@@ -3838,9 +3838,9 @@
       "source_file": "internal\\provider\\azure\\provider.go",
       "source_location": "L31",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "azure_azureprovider",
-      "target": "azure_azureprovider_baseurl",
-      "confidence_score": 1.0
+      "target": "azure_azureprovider_baseurl"
     },
     {
       "relation": "method",
@@ -3848,9 +3848,9 @@
       "source_file": "internal\\provider\\azure\\provider.go",
       "source_location": "L36",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "azure_azureprovider",
-      "target": "azure_azureprovider_injectauth",
-      "confidence_score": 1.0
+      "target": "azure_azureprovider_injectauth"
     },
     {
       "relation": "method",
@@ -3858,9 +3858,9 @@
       "source_file": "internal\\provider\\azure\\provider.go",
       "source_location": "L64",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "azure_azureprovider",
-      "target": "azure_azureprovider_rewritepath",
-      "confidence_score": 1.0
+      "target": "azure_azureprovider_rewritepath"
     },
     {
       "relation": "method",
@@ -3868,9 +3868,9 @@
       "source_file": "internal\\provider\\azure\\provider.go",
       "source_location": "L70",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "azure_azureprovider",
-      "target": "azure_azureprovider_parserequest",
-      "confidence_score": 1.0
+      "target": "azure_azureprovider_parserequest"
     },
     {
       "relation": "method",
@@ -3878,9 +3878,9 @@
       "source_file": "internal\\provider\\azure\\provider.go",
       "source_location": "L74",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "azure_azureprovider",
-      "target": "azure_azureprovider_countinputtokens",
-      "confidence_score": 1.0
+      "target": "azure_azureprovider_countinputtokens"
     },
     {
       "relation": "method",
@@ -3888,9 +3888,9 @@
       "source_file": "internal\\provider\\azure\\provider.go",
       "source_location": "L78",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "azure_azureprovider",
-      "target": "azure_azureprovider_parsestreamchunk",
-      "confidence_score": 1.0
+      "target": "azure_azureprovider_parsestreamchunk"
     },
     {
       "relation": "method",
@@ -3898,9 +3898,9 @@
       "source_file": "internal\\provider\\azure\\provider.go",
       "source_location": "L82",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "azure_azureprovider",
-      "target": "azure_azureprovider_parsenonstreamresponse",
-      "confidence_score": 1.0
+      "target": "azure_azureprovider_parsenonstreamresponse"
     },
     {
       "relation": "method",
@@ -3908,9 +3908,9 @@
       "source_file": "internal\\provider\\azure\\provider.go",
       "source_location": "L86",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "azure_azureprovider",
-      "target": "azure_azureprovider_formatbudgetexceededsse",
-      "confidence_score": 1.0
+      "target": "azure_azureprovider_formatbudgetexceededsse"
     },
     {
       "relation": "calls",
@@ -3948,9 +3948,9 @@
       "source_file": "internal\\provider\\azure\\provider_test.go",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_azure_provider_test_go",
-      "target": "azure_provider_test_testazureprovider",
-      "confidence_score": 1.0
+      "target": "azure_provider_test_testazureprovider"
     },
     {
       "relation": "contains",
@@ -3958,9 +3958,9 @@
       "source_file": "internal\\provider\\bedrock\\provider.go",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_bedrock_provider_go",
-      "target": "bedrock_bedrockprovider",
-      "confidence_score": 1.0
+      "target": "bedrock_bedrockprovider"
     },
     {
       "relation": "contains",
@@ -3968,9 +3968,9 @@
       "source_file": "internal\\provider\\bedrock\\provider.go",
       "source_location": "L25",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_bedrock_provider_go",
-      "target": "bedrock_provider_newbedrockprovider",
-      "confidence_score": 1.0
+      "target": "bedrock_provider_newbedrockprovider"
     },
     {
       "relation": "method",
@@ -3978,9 +3978,9 @@
       "source_file": "internal\\provider\\bedrock\\provider.go",
       "source_location": "L32",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "bedrock_bedrockprovider",
-      "target": "bedrock_bedrockprovider_name",
-      "confidence_score": 1.0
+      "target": "bedrock_bedrockprovider_name"
     },
     {
       "relation": "method",
@@ -3988,9 +3988,9 @@
       "source_file": "internal\\provider\\bedrock\\provider.go",
       "source_location": "L36",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "bedrock_bedrockprovider",
-      "target": "bedrock_bedrockprovider_baseurl",
-      "confidence_score": 1.0
+      "target": "bedrock_bedrockprovider_baseurl"
     },
     {
       "relation": "method",
@@ -3998,9 +3998,9 @@
       "source_file": "internal\\provider\\bedrock\\provider.go",
       "source_location": "L41",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "bedrock_bedrockprovider",
-      "target": "bedrock_bedrockprovider_injectauth",
-      "confidence_score": 1.0
+      "target": "bedrock_bedrockprovider_injectauth"
     },
     {
       "relation": "method",
@@ -4008,9 +4008,9 @@
       "source_file": "internal\\provider\\bedrock\\provider.go",
       "source_location": "L98",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "bedrock_bedrockprovider",
-      "target": "bedrock_bedrockprovider_rewritepath",
-      "confidence_score": 1.0
+      "target": "bedrock_bedrockprovider_rewritepath"
     },
     {
       "relation": "method",
@@ -4018,9 +4018,9 @@
       "source_file": "internal\\provider\\bedrock\\provider.go",
       "source_location": "L104",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "bedrock_bedrockprovider",
-      "target": "bedrock_bedrockprovider_parserequest",
-      "confidence_score": 1.0
+      "target": "bedrock_bedrockprovider_parserequest"
     },
     {
       "relation": "method",
@@ -4028,9 +4028,9 @@
       "source_file": "internal\\provider\\bedrock\\provider.go",
       "source_location": "L136",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "bedrock_bedrockprovider",
-      "target": "bedrock_bedrockprovider_countinputtokens",
-      "confidence_score": 1.0
+      "target": "bedrock_bedrockprovider_countinputtokens"
     },
     {
       "relation": "method",
@@ -4038,9 +4038,9 @@
       "source_file": "internal\\provider\\bedrock\\provider.go",
       "source_location": "L140",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "bedrock_bedrockprovider",
-      "target": "bedrock_bedrockprovider_parsestreamchunk",
-      "confidence_score": 1.0
+      "target": "bedrock_bedrockprovider_parsestreamchunk"
     },
     {
       "relation": "method",
@@ -4048,9 +4048,9 @@
       "source_file": "internal\\provider\\bedrock\\provider.go",
       "source_location": "L191",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "bedrock_bedrockprovider",
-      "target": "bedrock_bedrockprovider_parsenonstreamresponse",
-      "confidence_score": 1.0
+      "target": "bedrock_bedrockprovider_parsenonstreamresponse"
     },
     {
       "relation": "method",
@@ -4058,9 +4058,9 @@
       "source_file": "internal\\provider\\bedrock\\provider.go",
       "source_location": "L215",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "bedrock_bedrockprovider",
-      "target": "bedrock_bedrockprovider_formatbudgetexceededsse",
-      "confidence_score": 1.0
+      "target": "bedrock_bedrockprovider_formatbudgetexceededsse"
     },
     {
       "relation": "calls",
@@ -4138,9 +4138,9 @@
       "source_file": "internal\\provider\\bedrock\\provider_test.go",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_bedrock_provider_test_go",
-      "target": "bedrock_provider_test_testbedrockparserequest",
-      "confidence_score": 1.0
+      "target": "bedrock_provider_test_testbedrockparserequest"
     },
     {
       "relation": "contains",
@@ -4148,9 +4148,9 @@
       "source_file": "internal\\provider\\bedrock\\provider_test.go",
       "source_location": "L52",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_bedrock_provider_test_go",
-      "target": "bedrock_provider_test_testbedrockrewritepath",
-      "confidence_score": 1.0
+      "target": "bedrock_provider_test_testbedrockrewritepath"
     },
     {
       "relation": "contains",
@@ -4158,9 +4158,9 @@
       "source_file": "internal\\provider\\bedrock\\provider_test.go",
       "source_location": "L61",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_bedrock_provider_test_go",
-      "target": "bedrock_provider_test_testbedrockparsenonstreamresponse",
-      "confidence_score": 1.0
+      "target": "bedrock_provider_test_testbedrockparsenonstreamresponse"
     },
     {
       "relation": "contains",
@@ -4168,9 +4168,9 @@
       "source_file": "internal\\provider\\bedrock\\provider_test.go",
       "source_location": "L85",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_bedrock_provider_test_go",
-      "target": "bedrock_provider_test_testbedrockcountinputtokensfallback",
-      "confidence_score": 1.0
+      "target": "bedrock_provider_test_testbedrockcountinputtokensfallback"
     },
     {
       "relation": "contains",
@@ -4178,9 +4178,9 @@
       "source_file": "internal\\provider\\bedrock\\provider_test.go",
       "source_location": "L115",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_bedrock_provider_test_go",
-      "target": "bedrock_provider_test_testbedrockstreamchunkparsing",
-      "confidence_score": 1.0
+      "target": "bedrock_provider_test_testbedrockstreamchunkparsing"
     },
     {
       "relation": "contains",
@@ -4188,9 +4188,9 @@
       "source_file": "internal\\provider\\bedrock\\provider_test.go",
       "source_location": "L159",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_bedrock_provider_test_go",
-      "target": "bedrock_provider_test_testbedrockformatbudgetexceededframe",
-      "confidence_score": 1.0
+      "target": "bedrock_provider_test_testbedrockformatbudgetexceededframe"
     },
     {
       "relation": "contains",
@@ -4198,9 +4198,9 @@
       "source_file": "internal\\provider\\gemini\\provider.go",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_gemini_provider_go",
-      "target": "gemini_geminiprovider",
-      "confidence_score": 1.0
+      "target": "gemini_geminiprovider"
     },
     {
       "relation": "contains",
@@ -4208,9 +4208,9 @@
       "source_file": "internal\\provider\\gemini\\provider.go",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_gemini_provider_go",
-      "target": "gemini_provider_newgeminiprovider",
-      "confidence_score": 1.0
+      "target": "gemini_provider_newgeminiprovider"
     },
     {
       "relation": "method",
@@ -4218,9 +4218,9 @@
       "source_file": "internal\\provider\\gemini\\provider.go",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gemini_geminiprovider",
-      "target": "gemini_geminiprovider_name",
-      "confidence_score": 1.0
+      "target": "gemini_geminiprovider_name"
     },
     {
       "relation": "method",
@@ -4228,9 +4228,9 @@
       "source_file": "internal\\provider\\gemini\\provider.go",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gemini_geminiprovider",
-      "target": "gemini_geminiprovider_baseurl",
-      "confidence_score": 1.0
+      "target": "gemini_geminiprovider_baseurl"
     },
     {
       "relation": "method",
@@ -4238,9 +4238,9 @@
       "source_file": "internal\\provider\\gemini\\provider.go",
       "source_location": "L31",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gemini_geminiprovider",
-      "target": "gemini_geminiprovider_injectauth",
-      "confidence_score": 1.0
+      "target": "gemini_geminiprovider_injectauth"
     },
     {
       "relation": "method",
@@ -4248,9 +4248,9 @@
       "source_file": "internal\\provider\\gemini\\provider.go",
       "source_location": "L37",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gemini_geminiprovider",
-      "target": "gemini_geminiprovider_rewritepath",
-      "confidence_score": 1.0
+      "target": "gemini_geminiprovider_rewritepath"
     },
     {
       "relation": "method",
@@ -4258,9 +4258,9 @@
       "source_file": "internal\\provider\\gemini\\provider.go",
       "source_location": "L41",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gemini_geminiprovider",
-      "target": "gemini_geminiprovider_parserequest",
-      "confidence_score": 1.0
+      "target": "gemini_geminiprovider_parserequest"
     },
     {
       "relation": "method",
@@ -4268,9 +4268,9 @@
       "source_file": "internal\\provider\\gemini\\provider.go",
       "source_location": "L74",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gemini_geminiprovider",
-      "target": "gemini_geminiprovider_countinputtokens",
-      "confidence_score": 1.0
+      "target": "gemini_geminiprovider_countinputtokens"
     },
     {
       "relation": "method",
@@ -4278,9 +4278,9 @@
       "source_file": "internal\\provider\\gemini\\provider.go",
       "source_location": "L87",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gemini_geminiprovider",
-      "target": "gemini_geminiprovider_parsestreamchunk",
-      "confidence_score": 1.0
+      "target": "gemini_geminiprovider_parsestreamchunk"
     },
     {
       "relation": "method",
@@ -4288,9 +4288,9 @@
       "source_file": "internal\\provider\\gemini\\provider.go",
       "source_location": "L91",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gemini_geminiprovider",
-      "target": "gemini_geminiprovider_parsenonstreamresponse",
-      "confidence_score": 1.0
+      "target": "gemini_geminiprovider_parsenonstreamresponse"
     },
     {
       "relation": "method",
@@ -4298,9 +4298,9 @@
       "source_file": "internal\\provider\\gemini\\provider.go",
       "source_location": "L104",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "gemini_geminiprovider",
-      "target": "gemini_geminiprovider_formatbudgetexceededsse",
-      "confidence_score": 1.0
+      "target": "gemini_geminiprovider_formatbudgetexceededsse"
     },
     {
       "relation": "calls",
@@ -4398,9 +4398,9 @@
       "source_file": "internal\\provider\\gemini\\provider_test.go",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_gemini_provider_test_go",
-      "target": "gemini_provider_test_testgeminiparserequest",
-      "confidence_score": 1.0
+      "target": "gemini_provider_test_testgeminiparserequest"
     },
     {
       "relation": "contains",
@@ -4408,9 +4408,9 @@
       "source_file": "internal\\provider\\gemini\\provider_test.go",
       "source_location": "L49",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_gemini_provider_test_go",
-      "target": "gemini_provider_test_testgeminiinjectauth",
-      "confidence_score": 1.0
+      "target": "gemini_provider_test_testgeminiinjectauth"
     },
     {
       "relation": "contains",
@@ -4418,9 +4418,9 @@
       "source_file": "internal\\provider\\gemini\\provider_test.go",
       "source_location": "L62",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_gemini_provider_test_go",
-      "target": "gemini_provider_test_testgeminirewritepath",
-      "confidence_score": 1.0
+      "target": "gemini_provider_test_testgeminirewritepath"
     },
     {
       "relation": "contains",
@@ -4428,9 +4428,9 @@
       "source_file": "internal\\provider\\gemini\\provider_test.go",
       "source_location": "L71",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_gemini_provider_test_go",
-      "target": "gemini_provider_test_testgeminiparsestreamchunk",
-      "confidence_score": 1.0
+      "target": "gemini_provider_test_testgeminiparsestreamchunk"
     },
     {
       "relation": "contains",
@@ -4438,9 +4438,9 @@
       "source_file": "internal\\provider\\gemini\\provider_test.go",
       "source_location": "L106",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_gemini_provider_test_go",
-      "target": "gemini_provider_test_testgeminiparsenonstreamresponse",
-      "confidence_score": 1.0
+      "target": "gemini_provider_test_testgeminiparsenonstreamresponse"
     },
     {
       "relation": "contains",
@@ -4448,9 +4448,9 @@
       "source_file": "internal\\provider\\gemini\\provider_test.go",
       "source_location": "L122",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_gemini_provider_test_go",
-      "target": "gemini_provider_test_testgeminicountinputtokensfallback",
-      "confidence_score": 1.0
+      "target": "gemini_provider_test_testgeminicountinputtokensfallback"
     },
     {
       "relation": "contains",
@@ -4458,9 +4458,9 @@
       "source_file": "internal\\provider\\gemini\\stream.go",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_gemini_stream_go",
-      "target": "gemini_stream_parsegeministreamchunk",
-      "confidence_score": 1.0
+      "target": "gemini_stream_parsegeministreamchunk"
     },
     {
       "relation": "contains",
@@ -4468,9 +4468,9 @@
       "source_file": "internal\\provider\\gemini\\stream.go",
       "source_location": "L45",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_gemini_stream_go",
-      "target": "gemini_stream_formatgeminibudgetexceededsse",
-      "confidence_score": 1.0
+      "target": "gemini_stream_formatgeminibudgetexceededsse"
     },
     {
       "relation": "contains",
@@ -4478,9 +4478,9 @@
       "source_file": "internal\\provider\\mistral\\provider.go",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_mistral_provider_go",
-      "target": "mistral_mistralprovider",
-      "confidence_score": 1.0
+      "target": "mistral_mistralprovider"
     },
     {
       "relation": "contains",
@@ -4488,9 +4488,9 @@
       "source_file": "internal\\provider\\mistral\\provider.go",
       "source_location": "L17",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_mistral_provider_go",
-      "target": "mistral_provider_newmistralprovider",
-      "confidence_score": 1.0
+      "target": "mistral_provider_newmistralprovider"
     },
     {
       "relation": "method",
@@ -4498,9 +4498,9 @@
       "source_file": "internal\\provider\\mistral\\provider.go",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "mistral_mistralprovider",
-      "target": "mistral_mistralprovider_name",
-      "confidence_score": 1.0
+      "target": "mistral_mistralprovider_name"
     },
     {
       "relation": "method",
@@ -4508,9 +4508,9 @@
       "source_file": "internal\\provider\\mistral\\provider.go",
       "source_location": "L30",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "mistral_mistralprovider",
-      "target": "mistral_mistralprovider_baseurl",
-      "confidence_score": 1.0
+      "target": "mistral_mistralprovider_baseurl"
     },
     {
       "relation": "method",
@@ -4518,9 +4518,9 @@
       "source_file": "internal\\provider\\mistral\\provider.go",
       "source_location": "L34",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "mistral_mistralprovider",
-      "target": "mistral_mistralprovider_injectauth",
-      "confidence_score": 1.0
+      "target": "mistral_mistralprovider_injectauth"
     },
     {
       "relation": "method",
@@ -4528,9 +4528,9 @@
       "source_file": "internal\\provider\\mistral\\provider.go",
       "source_location": "L38",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "mistral_mistralprovider",
-      "target": "mistral_mistralprovider_rewritepath",
-      "confidence_score": 1.0
+      "target": "mistral_mistralprovider_rewritepath"
     },
     {
       "relation": "method",
@@ -4538,9 +4538,9 @@
       "source_file": "internal\\provider\\mistral\\provider.go",
       "source_location": "L43",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "mistral_mistralprovider",
-      "target": "mistral_mistralprovider_parserequest",
-      "confidence_score": 1.0
+      "target": "mistral_mistralprovider_parserequest"
     },
     {
       "relation": "method",
@@ -4548,9 +4548,9 @@
       "source_file": "internal\\provider\\mistral\\provider.go",
       "source_location": "L47",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "mistral_mistralprovider",
-      "target": "mistral_mistralprovider_countinputtokens",
-      "confidence_score": 1.0
+      "target": "mistral_mistralprovider_countinputtokens"
     },
     {
       "relation": "method",
@@ -4558,9 +4558,9 @@
       "source_file": "internal\\provider\\mistral\\provider.go",
       "source_location": "L51",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "mistral_mistralprovider",
-      "target": "mistral_mistralprovider_parsestreamchunk",
-      "confidence_score": 1.0
+      "target": "mistral_mistralprovider_parsestreamchunk"
     },
     {
       "relation": "method",
@@ -4568,9 +4568,9 @@
       "source_file": "internal\\provider\\mistral\\provider.go",
       "source_location": "L55",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "mistral_mistralprovider",
-      "target": "mistral_mistralprovider_parsenonstreamresponse",
-      "confidence_score": 1.0
+      "target": "mistral_mistralprovider_parsenonstreamresponse"
     },
     {
       "relation": "method",
@@ -4578,9 +4578,9 @@
       "source_file": "internal\\provider\\mistral\\provider.go",
       "source_location": "L59",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "mistral_mistralprovider",
-      "target": "mistral_mistralprovider_formatbudgetexceededsse",
-      "confidence_score": 1.0
+      "target": "mistral_mistralprovider_formatbudgetexceededsse"
     },
     {
       "relation": "calls",
@@ -4618,9 +4618,9 @@
       "source_file": "internal\\provider\\mistral\\provider_test.go",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_mistral_provider_test_go",
-      "target": "mistral_provider_test_testmistralprovider",
-      "confidence_score": 1.0
+      "target": "mistral_provider_test_testmistralprovider"
     },
     {
       "relation": "contains",
@@ -4628,9 +4628,9 @@
       "source_file": "internal\\provider\\openai\\provider.go",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_openai_provider_go",
-      "target": "openai_openaiprovider",
-      "confidence_score": 1.0
+      "target": "openai_openaiprovider"
     },
     {
       "relation": "contains",
@@ -4638,9 +4638,9 @@
       "source_file": "internal\\provider\\openai\\provider.go",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_openai_provider_go",
-      "target": "openai_provider_newopenaiprovider",
-      "confidence_score": 1.0
+      "target": "openai_provider_newopenaiprovider"
     },
     {
       "relation": "method",
@@ -4648,9 +4648,9 @@
       "source_file": "internal\\provider\\openai\\provider.go",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "openai_openaiprovider",
-      "target": "openai_openaiprovider_name",
-      "confidence_score": 1.0
+      "target": "openai_openaiprovider_name"
     },
     {
       "relation": "method",
@@ -4658,9 +4658,9 @@
       "source_file": "internal\\provider\\openai\\provider.go",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "openai_openaiprovider",
-      "target": "openai_openaiprovider_baseurl",
-      "confidence_score": 1.0
+      "target": "openai_openaiprovider_baseurl"
     },
     {
       "relation": "method",
@@ -4668,9 +4668,9 @@
       "source_file": "internal\\provider\\openai\\provider.go",
       "source_location": "L31",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "openai_openaiprovider",
-      "target": "openai_openaiprovider_injectauth",
-      "confidence_score": 1.0
+      "target": "openai_openaiprovider_injectauth"
     },
     {
       "relation": "method",
@@ -4678,9 +4678,9 @@
       "source_file": "internal\\provider\\openai\\provider.go",
       "source_location": "L35",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "openai_openaiprovider",
-      "target": "openai_openaiprovider_rewritepath",
-      "confidence_score": 1.0
+      "target": "openai_openaiprovider_rewritepath"
     },
     {
       "relation": "method",
@@ -4688,9 +4688,9 @@
       "source_file": "internal\\provider\\openai\\provider.go",
       "source_location": "L39",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "openai_openaiprovider",
-      "target": "openai_openaiprovider_parserequest",
-      "confidence_score": 1.0
+      "target": "openai_openaiprovider_parserequest"
     },
     {
       "relation": "method",
@@ -4698,9 +4698,9 @@
       "source_file": "internal\\provider\\openai\\provider.go",
       "source_location": "L79",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "openai_openaiprovider",
-      "target": "openai_openaiprovider_countinputtokens",
-      "confidence_score": 1.0
+      "target": "openai_openaiprovider_countinputtokens"
     },
     {
       "relation": "method",
@@ -4708,9 +4708,9 @@
       "source_file": "internal\\provider\\openai\\provider.go",
       "source_location": "L83",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "openai_openaiprovider",
-      "target": "openai_openaiprovider_parsestreamchunk",
-      "confidence_score": 1.0
+      "target": "openai_openaiprovider_parsestreamchunk"
     },
     {
       "relation": "method",
@@ -4718,9 +4718,9 @@
       "source_file": "internal\\provider\\openai\\provider.go",
       "source_location": "L87",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "openai_openaiprovider",
-      "target": "openai_openaiprovider_parsenonstreamresponse",
-      "confidence_score": 1.0
+      "target": "openai_openaiprovider_parsenonstreamresponse"
     },
     {
       "relation": "method",
@@ -4728,9 +4728,9 @@
       "source_file": "internal\\provider\\openai\\provider.go",
       "source_location": "L100",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "openai_openaiprovider",
-      "target": "openai_openaiprovider_formatbudgetexceededsse",
-      "confidence_score": 1.0
+      "target": "openai_openaiprovider_formatbudgetexceededsse"
     },
     {
       "relation": "calls",
@@ -4788,9 +4788,9 @@
       "source_file": "internal\\provider\\openai\\stream.go",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_openai_stream_go",
-      "target": "openai_stream_parseopenaistreamchunk",
-      "confidence_score": 1.0
+      "target": "openai_stream_parseopenaistreamchunk"
     },
     {
       "relation": "contains",
@@ -4798,9 +4798,9 @@
       "source_file": "internal\\provider\\openai\\stream.go",
       "source_location": "L30",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_provider_openai_stream_go",
-      "target": "openai_stream_formatopenaibudgetexceededsse",
-      "confidence_score": 1.0
+      "target": "openai_stream_formatopenaibudgetexceededsse"
     },
     {
       "relation": "contains",
@@ -4808,9 +4808,9 @@
       "source_file": "internal\\proxy\\director.go",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_proxy_director_go",
-      "target": "proxy_contextkey",
-      "confidence_score": 1.0
+      "target": "proxy_contextkey"
     },
     {
       "relation": "contains",
@@ -4818,9 +4818,9 @@
       "source_file": "internal\\proxy\\director.go",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_proxy_director_go",
-      "target": "proxy_proxy",
-      "confidence_score": 1.0
+      "target": "proxy_proxy"
     },
     {
       "relation": "contains",
@@ -4828,9 +4828,9 @@
       "source_file": "internal\\proxy\\director.go",
       "source_location": "L33",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_proxy_director_go",
-      "target": "proxy_director_newproxy",
-      "confidence_score": 1.0
+      "target": "proxy_director_newproxy"
     },
     {
       "relation": "method",
@@ -4838,9 +4838,9 @@
       "source_file": "internal\\proxy\\director.go",
       "source_location": "L81",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "proxy_proxy",
-      "target": "proxy_proxy_servehttp",
-      "confidence_score": 1.0
+      "target": "proxy_proxy_servehttp"
     },
     {
       "relation": "calls",
@@ -4858,9 +4858,9 @@
       "source_file": "internal\\proxy\\stream.go",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_proxy_stream_go",
-      "target": "proxy_stream_splitsseframes",
-      "confidence_score": 1.0
+      "target": "proxy_stream_splitsseframes"
     },
     {
       "relation": "contains",
@@ -4868,9 +4868,9 @@
       "source_file": "internal\\proxy\\stream.go",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_proxy_stream_go",
-      "target": "proxy_ssestreamreader",
-      "confidence_score": 1.0
+      "target": "proxy_ssestreamreader"
     },
     {
       "relation": "contains",
@@ -4878,9 +4878,9 @@
       "source_file": "internal\\proxy\\stream.go",
       "source_location": "L35",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_proxy_stream_go",
-      "target": "proxy_stream_newssestreamreader",
-      "confidence_score": 1.0
+      "target": "proxy_stream_newssestreamreader"
     },
     {
       "relation": "contains",
@@ -4888,9 +4888,9 @@
       "source_file": "internal\\proxy\\stream.go",
       "source_location": "L207",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_proxy_stream_go",
-      "target": "proxy_stream_readeventstreamframe",
-      "confidence_score": 1.0
+      "target": "proxy_stream_readeventstreamframe"
     },
     {
       "relation": "method",
@@ -4898,9 +4898,9 @@
       "source_file": "internal\\proxy\\stream.go",
       "source_location": "L49",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "proxy_ssestreamreader",
-      "target": "proxy_ssestreamreader_read",
-      "confidence_score": 1.0
+      "target": "proxy_ssestreamreader_read"
     },
     {
       "relation": "method",
@@ -4908,9 +4908,9 @@
       "source_file": "internal\\proxy\\stream.go",
       "source_location": "L54",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "proxy_ssestreamreader",
-      "target": "proxy_ssestreamreader_close",
-      "confidence_score": 1.0
+      "target": "proxy_ssestreamreader_close"
     },
     {
       "relation": "method",
@@ -4918,9 +4918,9 @@
       "source_file": "internal\\proxy\\stream.go",
       "source_location": "L58",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "proxy_ssestreamreader",
-      "target": "proxy_ssestreamreader_processstream",
-      "confidence_score": 1.0
+      "target": "proxy_ssestreamreader_processstream"
     },
     {
       "relation": "method",
@@ -4928,9 +4928,9 @@
       "source_file": "internal\\proxy\\stream.go",
       "source_location": "L142",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "proxy_ssestreamreader",
-      "target": "proxy_ssestreamreader_processbedrockstream",
-      "confidence_score": 1.0
+      "target": "proxy_ssestreamreader_processbedrockstream"
     },
     {
       "relation": "calls",
@@ -4938,9 +4938,9 @@
       "source_file": "internal\\proxy\\stream.go",
       "source_location": "L43",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "proxy_stream_newssestreamreader",
-      "target": "proxy_ssestreamreader_processstream",
-      "confidence_score": 1.0
+      "target": "proxy_ssestreamreader_processstream"
     },
     {
       "relation": "calls",
@@ -4998,9 +4998,9 @@
       "source_file": "internal\\proxy\\stream.go",
       "source_location": "L59",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "proxy_ssestreamreader_processstream",
-      "target": "proxy_ssestreamreader_close",
-      "confidence_score": 1.0
+      "target": "proxy_ssestreamreader_close"
     },
     {
       "relation": "calls",
@@ -5008,9 +5008,9 @@
       "source_file": "internal\\proxy\\stream.go",
       "source_location": "L63",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "proxy_ssestreamreader_processstream",
-      "target": "proxy_ssestreamreader_processbedrockstream",
-      "confidence_score": 1.0
+      "target": "proxy_ssestreamreader_processbedrockstream"
     },
     {
       "relation": "calls",
@@ -5018,9 +5018,9 @@
       "source_file": "internal\\proxy\\stream.go",
       "source_location": "L152",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "proxy_ssestreamreader_processbedrockstream",
-      "target": "proxy_stream_readeventstreamframe",
-      "confidence_score": 1.0
+      "target": "proxy_stream_readeventstreamframe"
     },
     {
       "relation": "contains",
@@ -5028,9 +5028,9 @@
       "source_file": "internal\\proxy\\stream_test.go",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_proxy_stream_test_go",
-      "target": "proxy_mockreadcloser",
-      "confidence_score": 1.0
+      "target": "proxy_mockreadcloser"
     },
     {
       "relation": "contains",
@@ -5038,9 +5038,9 @@
       "source_file": "internal\\proxy\\stream_test.go",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_proxy_stream_test_go",
-      "target": "proxy_stream_test_testsseframeparsing",
-      "confidence_score": 1.0
+      "target": "proxy_stream_test_testsseframeparsing"
     },
     {
       "relation": "contains",
@@ -5048,9 +5048,9 @@
       "source_file": "internal\\proxy\\stream_test.go",
       "source_location": "L44",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_proxy_stream_test_go",
-      "target": "proxy_stream_test_testdonehandling",
-      "confidence_score": 1.0
+      "target": "proxy_stream_test_testdonehandling"
     },
     {
       "relation": "contains",
@@ -5058,9 +5058,9 @@
       "source_file": "internal\\proxy\\stream_test.go",
       "source_location": "L63",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_proxy_stream_test_go",
-      "target": "proxy_stream_test_testanthropiceventparsing",
-      "confidence_score": 1.0
+      "target": "proxy_stream_test_testanthropiceventparsing"
     },
     {
       "relation": "contains",
@@ -5068,9 +5068,9 @@
       "source_file": "internal\\proxy\\stream_test.go",
       "source_location": "L86",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_proxy_stream_test_go",
-      "target": "proxy_stream_test_teststreambudgetcutoff",
-      "confidence_score": 1.0
+      "target": "proxy_stream_test_teststreambudgetcutoff"
     },
     {
       "relation": "method",
@@ -5078,9 +5078,9 @@
       "source_file": "internal\\proxy\\stream_test.go",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "proxy_mockreadcloser",
-      "target": "proxy_mockreadcloser_close",
-      "confidence_score": 1.0
+      "target": "proxy_mockreadcloser_close"
     },
     {
       "relation": "calls",
@@ -5088,9 +5088,9 @@
       "source_file": "internal\\proxy\\stream_test.go",
       "source_location": "L30",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "proxy_stream_test_testsseframeparsing",
-      "target": "proxy_mockreadcloser_close",
-      "confidence_score": 1.0
+      "target": "proxy_mockreadcloser_close"
     },
     {
       "relation": "calls",
@@ -5098,9 +5098,9 @@
       "source_file": "internal\\proxy\\stream_test.go",
       "source_location": "L53",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "proxy_stream_test_testdonehandling",
-      "target": "proxy_mockreadcloser_close",
-      "confidence_score": 1.0
+      "target": "proxy_mockreadcloser_close"
     },
     {
       "relation": "calls",
@@ -5108,9 +5108,9 @@
       "source_file": "internal\\proxy\\stream_test.go",
       "source_location": "L75",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "proxy_stream_test_testanthropiceventparsing",
-      "target": "proxy_mockreadcloser_close",
-      "confidence_score": 1.0
+      "target": "proxy_mockreadcloser_close"
     },
     {
       "relation": "calls",
@@ -5118,9 +5118,9 @@
       "source_file": "internal\\proxy\\stream_test.go",
       "source_location": "L94",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "proxy_stream_test_teststreambudgetcutoff",
-      "target": "proxy_mockreadcloser_close",
-      "confidence_score": 1.0
+      "target": "proxy_mockreadcloser_close"
     },
     {
       "relation": "contains",
@@ -5128,9 +5128,9 @@
       "source_file": "internal\\server\\graceful.go",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_server_graceful_go",
-      "target": "server_graceful_listenandservewithgracefulshutdown",
-      "confidence_score": 1.0
+      "target": "server_graceful_listenandservewithgracefulshutdown"
     },
     {
       "relation": "contains",
@@ -5138,9 +5138,9 @@
       "source_file": "internal\\server\\middleware.go",
       "source_location": "L24",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_server_middleware_go",
-      "target": "server_middleware_requestid",
-      "confidence_score": 1.0
+      "target": "server_middleware_requestid"
     },
     {
       "relation": "contains",
@@ -5148,9 +5148,9 @@
       "source_file": "internal\\server\\middleware.go",
       "source_location": "L37",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_server_middleware_go",
-      "target": "server_middleware_recovery",
-      "confidence_score": 1.0
+      "target": "server_middleware_recovery"
     },
     {
       "relation": "contains",
@@ -5158,9 +5158,9 @@
       "source_file": "internal\\server\\middleware.go",
       "source_location": "L63",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_server_middleware_go",
-      "target": "server_middleware_requestlogger",
-      "confidence_score": 1.0
+      "target": "server_middleware_requestlogger"
     },
     {
       "relation": "contains",
@@ -5168,9 +5168,9 @@
       "source_file": "internal\\server\\middleware.go",
       "source_location": "L90",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_server_middleware_go",
-      "target": "server_middleware_maxbytesreader",
-      "confidence_score": 1.0
+      "target": "server_middleware_maxbytesreader"
     },
     {
       "relation": "contains",
@@ -5178,9 +5178,9 @@
       "source_file": "internal\\server\\middleware.go",
       "source_location": "L99",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_server_middleware_go",
-      "target": "server_middleware_keyextractor",
-      "confidence_score": 1.0
+      "target": "server_middleware_keyextractor"
     },
     {
       "relation": "contains",
@@ -5188,9 +5188,9 @@
       "source_file": "internal\\server\\middleware.go",
       "source_location": "L125",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_server_middleware_go",
-      "target": "server_middleware_bodybuffer",
-      "confidence_score": 1.0
+      "target": "server_middleware_bodybuffer"
     },
     {
       "relation": "calls",
@@ -5258,9 +5258,9 @@
       "source_file": "internal\\server\\server.go",
       "source_location": "L61",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_server_server_go",
-      "target": "server_servercontextkey",
-      "confidence_score": 1.0
+      "target": "server_servercontextkey"
     },
     {
       "relation": "contains",
@@ -5268,9 +5268,9 @@
       "source_file": "internal\\server\\server.go",
       "source_location": "L76",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_server_server_go",
-      "target": "server_server",
-      "confidence_score": 1.0
+      "target": "server_server"
     },
     {
       "relation": "contains",
@@ -5278,9 +5278,9 @@
       "source_file": "internal\\server\\server.go",
       "source_location": "L86",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_server_server_go",
-      "target": "server_server_newserver",
-      "confidence_score": 1.0
+      "target": "server_server_newserver"
     },
     {
       "relation": "method",
@@ -5288,9 +5288,9 @@
       "source_file": "internal\\server\\server.go",
       "source_location": "L121",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_server",
-      "target": "server_server_setuproutes",
-      "confidence_score": 1.0
+      "target": "server_server_setuproutes"
     },
     {
       "relation": "method",
@@ -5298,9 +5298,9 @@
       "source_file": "internal\\server\\server.go",
       "source_location": "L143",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_server",
-      "target": "server_server_handlehealth",
-      "confidence_score": 1.0
+      "target": "server_server_handlehealth"
     },
     {
       "relation": "method",
@@ -5308,9 +5308,9 @@
       "source_file": "internal\\server\\server.go",
       "source_location": "L161",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_server",
-      "target": "server_server_handlebudgetstatus",
-      "confidence_score": 1.0
+      "target": "server_server_handlebudgetstatus"
     },
     {
       "relation": "method",
@@ -5318,9 +5318,9 @@
       "source_file": "internal\\server\\server.go",
       "source_location": "L194",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_server",
-      "target": "server_server_handleproxy",
-      "confidence_score": 1.0
+      "target": "server_server_handleproxy"
     },
     {
       "relation": "method",
@@ -5328,9 +5328,9 @@
       "source_file": "internal\\server\\server.go",
       "source_location": "L375",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_server",
-      "target": "server_server_modifyresponse",
-      "confidence_score": 1.0
+      "target": "server_server_modifyresponse"
     },
     {
       "relation": "method",
@@ -5338,9 +5338,9 @@
       "source_file": "internal\\server\\server.go",
       "source_location": "L523",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_server",
-      "target": "server_server_getrouter",
-      "confidence_score": 1.0
+      "target": "server_server_getrouter"
     },
     {
       "relation": "calls",
@@ -5348,9 +5348,9 @@
       "source_file": "internal\\server\\server.go",
       "source_location": "L117",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_server_newserver",
-      "target": "server_server_setuproutes",
-      "confidence_score": 1.0
+      "target": "server_server_setuproutes"
     },
     {
       "relation": "calls",
@@ -5378,9 +5378,9 @@
       "source_file": "internal\\server\\server.go",
       "source_location": "L138",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_server_setuproutes",
-      "target": "server_server_handleproxy",
-      "confidence_score": 1.0
+      "target": "server_server_handleproxy"
     },
     {
       "relation": "calls",
@@ -5418,9 +5418,9 @@
       "source_file": "internal\\server\\server_test.go",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_server_server_test_go",
-      "target": "server_server_test_testhealthendpoint",
-      "confidence_score": 1.0
+      "target": "server_server_test_testhealthendpoint"
     },
     {
       "relation": "contains",
@@ -5428,9 +5428,9 @@
       "source_file": "internal\\server\\server_test.go",
       "source_location": "L57",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_server_server_test_go",
-      "target": "server_server_test_testbudgetstatusendpoint",
-      "confidence_score": 1.0
+      "target": "server_server_test_testbudgetstatusendpoint"
     },
     {
       "relation": "contains",
@@ -5438,9 +5438,9 @@
       "source_file": "pkg\\api\\errors.go",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_errors_go",
-      "target": "api_budgetexceededdetails",
-      "confidence_score": 1.0
+      "target": "api_budgetexceededdetails"
     },
     {
       "relation": "contains",
@@ -5448,9 +5448,9 @@
       "source_file": "pkg\\api\\errors.go",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_errors_go",
-      "target": "api_errorpayload",
-      "confidence_score": 1.0
+      "target": "api_errorpayload"
     },
     {
       "relation": "contains",
@@ -5458,9 +5458,9 @@
       "source_file": "pkg\\api\\errors.go",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_errors_go",
-      "target": "api_budgetexceededresponse",
-      "confidence_score": 1.0
+      "target": "api_budgetexceededresponse"
     },
     {
       "relation": "contains",
@@ -5468,9 +5468,9 @@
       "source_file": "pkg\\api\\errors.go",
       "source_location": "L31",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_errors_go",
-      "target": "api_errors_newbudgetexceededresponse",
-      "confidence_score": 1.0
+      "target": "api_errors_newbudgetexceededresponse"
     },
     {
       "relation": "contains",
@@ -5478,9 +5478,9 @@
       "source_file": "pkg\\api\\errors.go",
       "source_location": "L75",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_errors_go",
-      "target": "api_sessionbudgetexceededresponse",
-      "confidence_score": 1.0
+      "target": "api_sessionbudgetexceededresponse"
     },
     {
       "relation": "contains",
@@ -5488,9 +5488,9 @@
       "source_file": "pkg\\api\\errors.go",
       "source_location": "L79",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_errors_go",
-      "target": "api_errors_newsessionbudgetexceededresponse",
-      "confidence_score": 1.0
+      "target": "api_errors_newsessionbudgetexceededresponse"
     },
     {
       "relation": "contains",
@@ -5498,9 +5498,9 @@
       "source_file": "pkg\\api\\errors.go",
       "source_location": "L99",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_errors_go",
-      "target": "api_sessionstepsdetails",
-      "confidence_score": 1.0
+      "target": "api_sessionstepsdetails"
     },
     {
       "relation": "contains",
@@ -5508,9 +5508,9 @@
       "source_file": "pkg\\api\\errors.go",
       "source_location": "L107",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_errors_go",
-      "target": "api_sessionstepsexceededresponse",
-      "confidence_score": 1.0
+      "target": "api_sessionstepsexceededresponse"
     },
     {
       "relation": "contains",
@@ -5518,9 +5518,9 @@
       "source_file": "pkg\\api\\errors.go",
       "source_location": "L111",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_errors_go",
-      "target": "api_errors_newsessionstepsexceededresponse",
-      "confidence_score": 1.0
+      "target": "api_errors_newsessionstepsexceededresponse"
     },
     {
       "relation": "contains",
@@ -5528,9 +5528,9 @@
       "source_file": "pkg\\api\\types.go",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_types_go",
-      "target": "api_message",
-      "confidence_score": 1.0
+      "target": "api_message"
     },
     {
       "relation": "contains",
@@ -5538,9 +5538,9 @@
       "source_file": "pkg\\api\\types.go",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_types_go",
-      "target": "api_chatcompletionrequest",
-      "confidence_score": 1.0
+      "target": "api_chatcompletionrequest"
     },
     {
       "relation": "contains",
@@ -5548,9 +5548,9 @@
       "source_file": "pkg\\api\\types.go",
       "source_location": "L17",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_types_go",
-      "target": "api_openaiusage",
-      "confidence_score": 1.0
+      "target": "api_openaiusage"
     },
     {
       "relation": "contains",
@@ -5558,9 +5558,9 @@
       "source_file": "pkg\\api\\types.go",
       "source_location": "L24",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_types_go",
-      "target": "api_openaistreamchunk",
-      "confidence_score": 1.0
+      "target": "api_openaistreamchunk"
     },
     {
       "relation": "contains",
@@ -5568,9 +5568,9 @@
       "source_file": "pkg\\api\\types.go",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_types_go",
-      "target": "api_anthropicusage",
-      "confidence_score": 1.0
+      "target": "api_anthropicusage"
     },
     {
       "relation": "contains",
@@ -5578,9 +5578,9 @@
       "source_file": "pkg\\api\\types.go",
       "source_location": "L35",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_types_go",
-      "target": "api_anthropicmessagestart",
-      "confidence_score": 1.0
+      "target": "api_anthropicmessagestart"
     },
     {
       "relation": "contains",
@@ -5588,9 +5588,9 @@
       "source_file": "pkg\\api\\types.go",
       "source_location": "L42",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_types_go",
-      "target": "api_anthropicmessagedelta",
-      "confidence_score": 1.0
+      "target": "api_anthropicmessagedelta"
     },
     {
       "relation": "contains",
@@ -5598,9 +5598,9 @@
       "source_file": "pkg\\api\\types.go",
       "source_location": "L47",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "pkg_api_types_go",
-      "target": "api_anthropiccountresponse",
-      "confidence_score": 1.0
+      "target": "api_anthropiccountresponse"
     },
     {
       "relation": "contains",
@@ -5608,9 +5608,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sdk_python_loopers_client_client_py",
-      "target": "loopers_client_client_get_last_headers",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_get_last_headers"
     },
     {
       "relation": "contains",
@@ -5618,9 +5618,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sdk_python_loopers_client_client_py",
-      "target": "loopers_client_client_set_last_headers",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_set_last_headers"
     },
     {
       "relation": "contains",
@@ -5628,9 +5628,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sdk_python_loopers_client_client_py",
-      "target": "loopers_client_client_response_hook",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_response_hook"
     },
     {
       "relation": "contains",
@@ -5638,9 +5638,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sdk_python_loopers_client_client_py",
-      "target": "loopers_client_client_async_response_hook",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_async_response_hook"
     },
     {
       "relation": "contains",
@@ -5648,9 +5648,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sdk_python_loopers_client_client_py",
-      "target": "loopers_client_client_attach_loopers_attributes",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_attach_loopers_attributes"
     },
     {
       "relation": "contains",
@@ -5658,9 +5658,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L161",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sdk_python_loopers_client_client_py",
-      "target": "loopers_client_client_loopersopenai",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersopenai"
     },
     {
       "relation": "contains",
@@ -5668,9 +5668,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L168",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sdk_python_loopers_client_client_py",
-      "target": "loopers_client_client_loopersasyncopenai",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersasyncopenai"
     },
     {
       "relation": "contains",
@@ -5678,9 +5678,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L282",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sdk_python_loopers_client_client_py",
-      "target": "loopers_client_client_loopersanthropic",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersanthropic"
     },
     {
       "relation": "contains",
@@ -5688,9 +5688,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L289",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sdk_python_loopers_client_client_py",
-      "target": "loopers_client_client_loopersasyncanthropic",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersasyncanthropic"
     },
     {
       "relation": "imports_from",
@@ -5698,9 +5698,9 @@
       "source_file": "sdk\\python\\loopers_client\\__init__.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sdk_python_loopers_client_init_py",
-      "target": "sdk_python_loopers_client_client_py",
-      "confidence_score": 1.0
+      "target": "sdk_python_loopers_client_client_py"
     },
     {
       "relation": "calls",
@@ -5708,9 +5708,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L30",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_attach_loopers_attributes",
-      "target": "loopers_client_client_get_last_headers",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_get_last_headers"
     },
     {
       "relation": "calls",
@@ -5718,9 +5718,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L24",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_response_hook",
-      "target": "loopers_client_client_set_last_headers",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_set_last_headers"
     },
     {
       "relation": "calls",
@@ -5728,9 +5728,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L107",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersopenai_request",
-      "target": "loopers_client_client_set_last_headers",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_set_last_headers"
     },
     {
       "relation": "calls",
@@ -5738,9 +5738,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L156",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersasyncopenai_request",
-      "target": "loopers_client_client_set_last_headers",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_set_last_headers"
     },
     {
       "relation": "calls",
@@ -5748,9 +5748,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L228",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersanthropic_request",
-      "target": "loopers_client_client_set_last_headers",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_set_last_headers"
     },
     {
       "relation": "calls",
@@ -5758,9 +5758,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L277",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersasyncanthropic_request",
-      "target": "loopers_client_client_set_last_headers",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_set_last_headers"
     },
     {
       "relation": "calls",
@@ -5768,9 +5768,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_async_response_hook",
-      "target": "loopers_client_client_response_hook",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_response_hook"
     },
     {
       "relation": "calls",
@@ -5778,9 +5778,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L109",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersopenai_request",
-      "target": "loopers_client_client_attach_loopers_attributes",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_attach_loopers_attributes"
     },
     {
       "relation": "calls",
@@ -5788,9 +5788,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L158",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersasyncopenai_request",
-      "target": "loopers_client_client_attach_loopers_attributes",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_attach_loopers_attributes"
     },
     {
       "relation": "calls",
@@ -5798,9 +5798,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L230",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersanthropic_request",
-      "target": "loopers_client_client_attach_loopers_attributes",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_attach_loopers_attributes"
     },
     {
       "relation": "calls",
@@ -5808,9 +5808,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L279",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersasyncanthropic_request",
-      "target": "loopers_client_client_attach_loopers_attributes",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_attach_loopers_attributes"
     },
     {
       "relation": "method",
@@ -5818,9 +5818,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L162",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersopenai",
-      "target": "loopers_client_client_loopersopenai_init",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersopenai_init"
     },
     {
       "relation": "method",
@@ -5828,9 +5828,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L106",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersopenai",
-      "target": "loopers_client_client_loopersopenai_request",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersopenai_request"
     },
     {
       "relation": "rationale_for",
@@ -5838,9 +5838,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L63",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_rationale_63",
-      "target": "loopers_client_client_loopersopenai",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersopenai"
     },
     {
       "relation": "calls",
@@ -5848,9 +5848,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L99",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersopenai_init",
-      "target": "loopers_client_client_loopersasyncanthropic_init",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersasyncanthropic_init"
     },
     {
       "relation": "calls",
@@ -5858,9 +5858,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L108",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersopenai_request",
-      "target": "loopers_client_client_loopersasyncanthropic_request",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersasyncanthropic_request"
     },
     {
       "relation": "method",
@@ -5868,9 +5868,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L169",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersasyncopenai",
-      "target": "loopers_client_client_loopersasyncopenai_init",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersasyncopenai_init"
     },
     {
       "relation": "method",
@@ -5878,9 +5878,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L155",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersasyncopenai",
-      "target": "loopers_client_client_loopersasyncopenai_request",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersasyncopenai_request"
     },
     {
       "relation": "rationale_for",
@@ -5888,9 +5888,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L113",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_rationale_113",
-      "target": "loopers_client_client_loopersasyncopenai",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersasyncopenai"
     },
     {
       "relation": "calls",
@@ -5898,9 +5898,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L148",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersasyncopenai_init",
-      "target": "loopers_client_client_loopersasyncanthropic_init",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersasyncanthropic_init"
     },
     {
       "relation": "calls",
@@ -5908,9 +5908,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L157",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersasyncopenai_request",
-      "target": "loopers_client_client_loopersasyncanthropic_request",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersasyncanthropic_request"
     },
     {
       "relation": "method",
@@ -5918,9 +5918,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L283",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersanthropic",
-      "target": "loopers_client_client_loopersanthropic_init",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersanthropic_init"
     },
     {
       "relation": "method",
@@ -5928,9 +5928,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L227",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersanthropic",
-      "target": "loopers_client_client_loopersanthropic_request",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersanthropic_request"
     },
     {
       "relation": "rationale_for",
@@ -5938,9 +5938,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L185",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_rationale_185",
-      "target": "loopers_client_client_loopersanthropic",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersanthropic"
     },
     {
       "relation": "calls",
@@ -5948,9 +5948,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L220",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersanthropic_init",
-      "target": "loopers_client_client_loopersasyncanthropic_init",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersasyncanthropic_init"
     },
     {
       "relation": "calls",
@@ -5958,9 +5958,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L229",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersanthropic_request",
-      "target": "loopers_client_client_loopersasyncanthropic_request",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersasyncanthropic_request"
     },
     {
       "relation": "method",
@@ -5968,9 +5968,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L290",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersasyncanthropic",
-      "target": "loopers_client_client_loopersasyncanthropic_init",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersasyncanthropic_init"
     },
     {
       "relation": "method",
@@ -5978,9 +5978,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L276",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_loopersasyncanthropic",
-      "target": "loopers_client_client_loopersasyncanthropic_request",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersasyncanthropic_request"
     },
     {
       "relation": "rationale_for",
@@ -5988,9 +5988,9 @@
       "source_file": "sdk\\python\\loopers_client\\client.py",
       "source_location": "L234",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "loopers_client_client_rationale_234",
-      "target": "loopers_client_client_loopersasyncanthropic",
-      "confidence_score": 1.0
+      "target": "loopers_client_client_loopersasyncanthropic"
     },
     {
       "relation": "contains",
@@ -5998,9 +5998,9 @@
       "source_file": "sdk\\ts\\src\\client.ts",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sdk_ts_src_client_ts",
-      "target": "src_client_createloopersfetch",
-      "confidence_score": 1.0
+      "target": "src_client_createloopersfetch"
     },
     {
       "relation": "contains",
@@ -6008,9 +6008,9 @@
       "source_file": "sdk\\ts\\src\\client.ts",
       "source_location": "L98",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sdk_ts_src_client_ts",
-      "target": "src_client_loopersopenai",
-      "confidence_score": 1.0
+      "target": "src_client_loopersopenai"
     },
     {
       "relation": "contains",
@@ -6018,9 +6018,9 @@
       "source_file": "sdk\\ts\\src\\client.ts",
       "source_location": "L133",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "sdk_ts_src_client_ts",
-      "target": "src_client_loopersanthropic",
-      "confidence_score": 1.0
+      "target": "src_client_loopersanthropic"
     },
     {
       "relation": "calls",
@@ -6028,9 +6028,9 @@
       "source_file": "sdk\\ts\\src\\client.ts",
       "source_location": "L115",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_client_loopersopenai_constructor",
-      "target": "src_client_createloopersfetch",
-      "confidence_score": 1.0
+      "target": "src_client_createloopersfetch"
     },
     {
       "relation": "calls",
@@ -6038,9 +6038,9 @@
       "source_file": "sdk\\ts\\src\\client.ts",
       "source_location": "L150",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_client_loopersanthropic_constructor",
-      "target": "src_client_createloopersfetch",
-      "confidence_score": 1.0
+      "target": "src_client_createloopersfetch"
     },
     {
       "relation": "method",
@@ -6048,9 +6048,9 @@
       "source_file": "sdk\\ts\\src\\client.ts",
       "source_location": "L99",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_client_loopersopenai",
-      "target": "src_client_loopersopenai_constructor",
-      "confidence_score": 1.0
+      "target": "src_client_loopersopenai_constructor"
     },
     {
       "relation": "method",
@@ -6058,9 +6058,9 @@
       "source_file": "sdk\\ts\\src\\client.ts",
       "source_location": "L134",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_client_loopersanthropic",
-      "target": "src_client_loopersanthropic_constructor",
-      "confidence_score": 1.0
+      "target": "src_client_loopersanthropic_constructor"
     }
   ],
   "hyperedges": []
