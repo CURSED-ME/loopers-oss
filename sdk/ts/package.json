@@ -1,0 +1,38 @@
+{
+  "name": "@loopers/client",
+  "version": "0.4.0",
+  "description": "A premium TypeScript client wrapper for the Loopers AI budget & rate-limit proxy.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "loopers",
+    "budget",
+    "firewall",
+    "openai",
+    "anthropic",
+    "proxy"
+  ],
+  "author": "Loopers OSS Contributors",
+  "license": "MIT",
+  "peerDependencies": {
+    "openai": "^4.0.0",
+    "@anthropic-ai/sdk": "^0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "openai": {
+      "optional": true
+    },
+    "@anthropic-ai/sdk": {
+      "optional": true
+    }
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "openai": "^4.0.0",
+    "@anthropic-ai/sdk": "^0.1.0"
+  }
+}

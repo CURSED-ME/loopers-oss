@@ -1,0 +1,176 @@
+<p align="center">
+  <img src="https://loopers-azure.vercel.app/og.png" alt="Loopers" width="800"/>
+</p>
+
+# Loopers – Pre-call AI billing circuit breaker
+
+> **Break the loop before it breaks your budget.**
+
+<p align="left">
+  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License" />
+  <img src="https://img.shields.io/badge/go-%3E%3D1.26.1-blue.svg" alt="Go Version" />
+  <img src="https://img.shields.io/badge/providers-6%20Supported-orange.svg" alt="Providers" />
+  <a href="https://securityscorecards.dev/viewer/?uri=github.com/loopers-oss/loopers"><img src="https://api.securityscorecards.dev/projects/github.com/loopers-oss/loopers/badge" alt="OpenSSF Scorecard" /></a>
+</p>
+
+Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It intercepts requests to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
+
+---
+
+## ⚡ Why Loopers?
+
+If an autonomous agent gets stuck in a loop or an API key is compromised, it can burn thousands of dollars in minutes. Loopers is not an alert or a dashboard—it's a **kill-switch**:
+
+- **Atomic Correctness Guarantee**: Executes checks in a single Redis Lua transaction, preventing TOCTOU race conditions under extreme concurrency.
+- **Zero-Storage Security Model**: Pass-through architecture. Your API keys are only kept in-memory during request lifecycles. Zero persistence to disk/database, rendering it immune to data breaches.
+- **Fail-Closed Guarantee**: Fails closed if Redis goes down, instantly blocking requests to protect your wallet.
+- **Mid-Stream Cutoffs**: Intercepts streaming Server-Sent Events (SSE) responses, counts tokens in real-time, and severs the connection instantly if limits are exceeded.
+
+---
+
+## 🥊 Competitor Analysis
+
+Loopers is engineered specifically as a high-performance infrastructure-level circuit breaker, prioritizing absolute security and correctness over simple observability.
+
+| Feature / Tool | **Loopers** | Bifrost | AgentBudget | LiteLLM |
+|---|---|---|---|---|
+| **Type** | OSS Gateway | OSS Gateway | Python SDK | OSS Gateway |
+| **Pre-Call Enforcement** | **Yes (Atomic Lua)** | Yes | Yes | Partial (Post-call) |
+| **Storage Security** | **Zero-Storage (Pass-through)** | In-Memory | In-Process | Database Required |
+| **Agent Loop Circuit Breaking** | **Yes** | No | Yes | No |
+| **Fail-Closed Guarantee** | **Yes** | Varies | N/A | No |
+
+---
+
+## 🛡️ Supported Providers
+
+| Provider | Model Names | Streaming | Non-Streaming | Budget Enforcement | Token Counting |
+|---|---|---|---|---|---|
+| **OpenAI** | `gpt-4o`, `gpt-4o-mini`, etc. | ✅ | ✅ | ✅ | ✅ (tiktoken) |
+| **Anthropic** | `claude-3-5-sonnet`, etc. | ✅ | ✅ | ✅ | ✅ (countTokens API) |
+| **Google Gemini** | `gemini-2.5-flash`, etc. | ✅ | ✅ | ✅ | ✅ (countTokens API) |
+| **AWS Bedrock** | Claude/Llama on Bedrock | ✅ | ✅ | ✅ | ✅ (Model Tokenizer) |
+| **Azure OpenAI** | GPT models on Azure | ✅ | ✅ | ✅ | ✅ (tiktoken) |
+| **Mistral AI** | `mistral-large`, etc. | ✅ | ✅ | ✅ | ✅ (tiktoken) |
+
+---
+
+## 🚀 Quickstart (Under 2 Minutes)
+
+### Step 1: Initialize Configuration
+Run the onboarding wizard to automatically generate `loopers.yaml` and `docker-compose.yml`:
+
+```bash
+# Start the interactive wizard
+go run github.com/loopers-oss/loopers/cmd/loopers init
+```
+
+### Step 2: Spin Up the Firewall
+```bash
+docker-compose up -d --build
+```
+
+### Step 3: Create a Key and Configure a Budget
+Generate an API proxy key for OpenAI:
+```bash
+docker-compose exec loopers /app/loopers keys create --name my-app-key --provider openai
+```
+*Note the generated raw key (`lp-xxx`) and its hash.*
+
+Set budget limits across 5 granular windows (e.g., $10.00 daily, $2.00 hourly) for the key hash:
+```bash
+docker-compose exec loopers /app/loopers budget set <KEY_HASH> --daily 10.00 --hourly 2.00
+```
+
+### Step 4: Route Your Requests
+Make API calls through the Loopers proxy using one of our official SDKs or raw cURL:
+
+```bash
+curl -X POST http://localhost:8080/openai/v1/chat/completions \
+  -H "Authorization: Bearer <RAW_LP_KEY>" \
+  -H "X-Loopers-Provider-Key: <YOUR_REAL_OPENAI_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role": "user", "content": "Hello, Loopers!"}]
+  }'
+```
+
+---
+
+## 📦 Client SDKs
+
+Integrate Loopers easily into your code using our client wrappers:
+
+### Python SDK
+```bash
+pip install loopers-client
+```
+```python
+from loopers_client import LoopersOpenAI
+
+client = LoopersOpenAI(
+    loopers_url="http://localhost:8080",
+    loopers_key="lp-xxx",
+    provider_key="sk-proj-...",
+    session_id="agent-run-1",
+    session_budget=5.00,
+    max_steps=20
+)
+```
+
+### TypeScript / Node.js SDK
+```bash
+npm install @loopers/client
+```
+```typescript
+import { LoopersOpenAI } from '@loopers/client';
+
+const client = new LoopersOpenAI({
+  loopersUrl: 'http://localhost:8080',
+  loopersKey: 'lp-xxx',
+  providerKey: 'sk-proj-...',
+  sessionId: 'agent-run-1',
+  sessionBudget: 5.00,
+  maxSteps: 20
+});
+```
+
+For full details, see the [Python SDK documentation](./sdk/python/README.md) and [TypeScript SDK documentation](./sdk/ts/README.md).
+
+---
+
+## 🏛️ Architecture
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Application Client
+    participant Proxy as Loopers Proxy
+    participant Redis as Redis Cache
+    participant LLM as Upstream LLM Provider
+
+    Client->>Proxy: POST /openai/... (Authorization, X-Loopers-Provider-Key)
+    Proxy->>Redis: Check & Reserve estimated budget
+    alt Budget Exceeded or Redis Down (Fail-Closed)
+        Proxy-->>Client: 429 Too Many Requests (or 503 Service Unavailable)
+    else Budget Check OK
+        Proxy->>LLM: Forward Request with Provider API Key
+        LLM-->>Proxy: Stream response chunks (SSE)
+        Loop Stream Chunk Processing
+            Proxy->>Proxy: Count output tokens & calculate running cost
+            alt Cost exceeds reserved budget
+                Proxy-->>Client: Send mid-stream budget cut event & terminate
+            else Cost OK
+                Proxy-->>Client: Forward raw SSE chunk
+            end
+        end
+        Proxy->>Redis: Reconcile actual spend (refund unused reservation)
+    end
+```
+
+---
+
+## 📄 License
+
+MIT License. See [LICENSE](LICENSE) for details.

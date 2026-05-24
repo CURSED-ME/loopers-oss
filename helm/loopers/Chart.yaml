@@ -1,0 +1,11 @@
+apiVersion: v2
+name: loopers
+description: A Helm chart to deploy the Loopers cost firewall on Kubernetes.
+type: application
+version: 0.4.0
+appVersion: "0.4.0"
+dependencies:
+  - name: redis
+    version: 18.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled

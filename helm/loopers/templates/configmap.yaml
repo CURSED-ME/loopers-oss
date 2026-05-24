@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "loopers.fullname" . }}-config
+  labels:
+    {{- include "loopers.labels" . | nindent 4 }}
+data:
+  loopers.yaml: |
+    server:
+      port: 8080
+    redis:
+      addr: {{ if .Values.redis.enabled }}"{{ .Release.Name }}-redis-master:6379"{{ else }}"{{ .Values.externalRedis.host }}:{{ .Values.externalRedis.port }}"{{ end }}
+      password: {{ if .Values.redis.enabled }}""{{ else }}"{{ .Values.externalRedis.password }}"{{ end }}
+      db: {{ if .Values.redis.enabled }}0{{ else }}{{ .Values.externalRedis.db }}{{ end }}
+    log:
+      level: "{{ .Values.config.logLevel }}"
+    pricing_path: "/app/pricing.yaml"
+    {{- if .Values.config.alerting.webhookUrl }}
+    alerting:
+      webhook_url: "{{ .Values.config.alerting.webhookUrl }}"
+      thresholds:
+        - percent: 50
+          message: "Budget 50% consumed"
+        - percent: 80
+          message: "Budget 80% consumed — approaching limit"
+        - percent: 95
+          message: "Budget 95% consumed — imminent cutoff"
+    {{- end }}

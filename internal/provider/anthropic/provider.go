@@ -1,0 +1,86 @@
+package anthropic
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"strings"
+
+	"github.com/loopers-oss/loopers/internal/provider"
+)
+
+type AnthropicProvider struct{}
+
+// NewAnthropicProvider creates a new instance of AnthropicProvider.
+func NewAnthropicProvider() *AnthropicProvider {
+	return &AnthropicProvider{}
+}
+
+// Ensure AnthropicProvider implements provider.Provider.
+var _ provider.Provider = (*AnthropicProvider)(nil) // wait, typo in compilation warning: should check against (*AnthropicProvider)
+
+func (a *AnthropicProvider) Name() string {
+	return "anthropic"
+}
+
+func (a *AnthropicProvider) BaseURL() string {
+	return "https://api.anthropic.com"
+}
+
+func (a *AnthropicProvider) InjectAuth(req *http.Request, providerKey string) {
+	req.Header.Set("x-api-key", providerKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+}
+
+func (a *AnthropicProvider) RewritePath(originalPath string) string {
+	return strings.TrimPrefix(originalPath, "/anthropic")
+}
+
+func (a *AnthropicProvider) ParseRequest(req *http.Request, body []byte) (model string, isStream bool, maxTokens int, mutatedBody []byte, err error) {
+	var reqPayload struct {
+		Model           string `json:"model"`
+		Stream          bool   `json:"stream"`
+		MaxTokens       *int   `json:"max_tokens"`
+		MaxTokensSecond *int   `json:"max_tokens_to_sample"`
+	}
+	if err := json.Unmarshal(body, &reqPayload); err != nil {
+		return "", false, 0, nil, err
+	}
+
+	maxTokensVal := 0
+	if reqPayload.MaxTokens != nil {
+		maxTokensVal = *reqPayload.MaxTokens
+	} else if reqPayload.MaxTokensSecond != nil {
+		maxTokensVal = *reqPayload.MaxTokensSecond
+	}
+
+	return reqPayload.Model, reqPayload.Stream, maxTokensVal, body, nil
+}
+
+func (a *AnthropicProvider) CountInputTokens(ctx context.Context, model string, body []byte, providerKey string) (int, error) {
+	return countAnthropicRequestTokens(ctx, model, body, providerKey)
+}
+
+func (a *AnthropicProvider) ParseStreamChunk(chunk []byte) (inputTokens int, outputTokens int, isDone bool, err error) {
+	return parseAnthropicStreamChunk(chunk)
+}
+
+func (a *AnthropicProvider) ParseNonStreamResponse(body []byte) (inputTokens int, outputTokens int, err error) {
+	var respObj struct {
+		Usage *struct {
+			InputTokens  int `json:"input_tokens"`
+			OutputTokens int `json:"output_tokens"`
+		} `json:"usage"`
+	}
+	if err := json.Unmarshal(body, &respObj); err != nil {
+		return 0, 0, err
+	}
+	if respObj.Usage == nil {
+		return 0, 0, nil
+	}
+	return respObj.Usage.InputTokens, respObj.Usage.OutputTokens, nil
+}
+
+func (a *AnthropicProvider) FormatBudgetExceededSSE() []byte {
+	return formatAnthropicBudgetExceededSSE()
+}

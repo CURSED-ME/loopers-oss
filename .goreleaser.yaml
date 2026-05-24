@@ -1,0 +1,63 @@
+# .goreleaser.yaml
+# Verification documentation: https://goreleaser.com
+
+version: 2
+
+project_name: loopers
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd/loopers
+    binary: loopers
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+
+archives:
+  - format: tar.gz
+    # this name template makes the archives compatible with godownloader
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+sboms:
+  - artifacts: archive
+    documents: true
+
+brews:
+  - name: loopers
+    repository:
+      owner: loopers-oss
+      name: homebrew-tap
+    directory: Formula
+    homepage: "https://loopers.dev"
+    description: "The Circuit Breaker for AI API Billing"
+    license: "MIT"
+    install: |
+      bin.install "loopers"

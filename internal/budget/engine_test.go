@@ -1,0 +1,207 @@
+package budget
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+func TestBudgetRaceCondition(t *testing.T) {
+	redisAddr := os.Getenv("REDIS_TEST_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+
+	client, err := NewClient(redisAddr, "", 0)
+	if err != nil {
+		t.Skipf("Skipping TestBudgetRaceCondition: Redis not running on %s. Run local Redis or set REDIS_TEST_ADDR to run this test.", redisAddr)
+		return
+	}
+	defer client.Close()
+
+	ctx := context.Background()
+	rdb := client.GetUnderlyingClient()
+
+	keyHash := "test-race-key-" + uuid.New().String()
+
+	// Setup registry key
+	rdb.HSet(ctx, "loopers:key:"+keyHash, map[string]interface{}{
+		"name":       "test-race",
+		"provider":   "openai",
+		"created_at": time.Now().UTC().Format(time.RFC3339),
+		"active":     "true",
+	})
+	defer rdb.Del(ctx, "loopers:key:"+keyHash)
+
+	// Setup budget config: $5.00 limit for daily window
+	configKey := "loopers:budget:" + keyHash + ":config"
+	rdb.HSet(ctx, configKey, "daily", "5.00")
+	defer rdb.Del(ctx, configKey)
+
+	// Clean any pre-existing spend counter
+	dailySpendKey := "loopers:spend:" + keyHash + ":daily:" + time.Now().UTC().Format("2006-01-02")
+	rdb.Del(ctx, dailySpendKey)
+	defer rdb.Del(ctx, dailySpendKey)
+
+	var allowed int64
+	var blocked int64
+	var wg sync.WaitGroup
+
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// Reserve $0.10. With $5.00 limit, exactly 50 requests should pass and 50 should fail.
+			err := client.CheckAndReserve(ctx, keyHash, 0.10)
+			if err == nil {
+				atomic.AddInt64(&allowed, 1)
+			} else {
+				atomic.AddInt64(&blocked, 1)
+			}
+		}()
+	}
+	wg.Wait()
+
+	if allowed != 50 {
+		t.Errorf("Expected exactly 50 allowed requests, got %d", allowed)
+	}
+	if blocked != 50 {
+		t.Errorf("Expected exactly 50 blocked requests, got %d", blocked)
+	}
+}
+
+func TestBudgetWindowExpansion(t *testing.T) {
+	redisAddr := os.Getenv("REDIS_TEST_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+
+	client, err := NewClient(redisAddr, "", 0)
+	if err != nil {
+		t.Skipf("Skipping TestBudgetWindowExpansion: Redis not running on %s", redisAddr)
+		return
+	}
+	defer client.Close()
+
+	ctx := context.Background()
+	rdb := client.GetUnderlyingClient()
+	keyHash := "test-window-key-" + uuid.New().String()
+
+	// Setup registry key
+	rdb.HSet(ctx, "loopers:key:"+keyHash, map[string]interface{}{
+		"name":       "test-window",
+		"provider":   "openai",
+		"created_at": time.Now().UTC().Format(time.RFC3339),
+		"active":     "true",
+	})
+	defer rdb.Del(ctx, "loopers:key:"+keyHash)
+
+	// Set minute limit of 0.20 and weekly limit of 0.50
+	configKey := "loopers:budget:" + keyHash + ":config"
+	rdb.HSet(ctx, configKey, map[string]interface{}{
+		"minute": "0.20",
+		"weekly": "0.50",
+	})
+	defer rdb.Del(ctx, configKey)
+
+	// Clean up keys
+	now := time.Now().UTC()
+	minuteKey := "loopers:spend:" + keyHash + ":minute:" + now.Format("2006-01-02T15:04")
+	year, week := now.ISOWeek()
+	weeklyKey := fmt.Sprintf("loopers:spend:%s:weekly:%d-W%02d", keyHash, year, week)
+	rdb.Del(ctx, minuteKey, weeklyKey)
+	defer rdb.Del(ctx, minuteKey, weeklyKey)
+
+	// First request: reserve 0.15 -> should succeed
+	err = client.CheckAndReserve(ctx, keyHash, 0.15)
+	if err != nil {
+		t.Errorf("expected first request to succeed, got: %v", err)
+	}
+
+	// Second request: reserve 0.10 -> should fail minute limit (0.15 + 0.10 = 0.25 > 0.20)
+	err = client.CheckAndReserve(ctx, keyHash, 0.10)
+	if err == nil {
+		t.Errorf("expected second request to fail minute limit")
+	} else if budgetErr, ok := err.(*BudgetExceededError); !ok || budgetErr.WindowName != "minute" {
+		t.Errorf("expected minute BudgetExceededError, got: %v", err)
+	}
+
+	// Reconcile first request actual cost: 0.15 -> 0.05
+	err = client.Reconcile(ctx, keyHash, 0.15, 0.05)
+	if err != nil {
+		t.Errorf("expected reconcile to succeed, got: %v", err)
+	}
+
+	// Spend is now 0.05. Third request: reserve 0.10 -> should succeed (0.05 + 0.10 = 0.15 <= 0.20)
+	err = client.CheckAndReserve(ctx, keyHash, 0.10)
+	if err != nil {
+		t.Errorf("expected third request to succeed after reconciliation, got: %v", err)
+	}
+}
+
+func TestSessionEnforcement(t *testing.T) {
+	redisAddr := os.Getenv("REDIS_TEST_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+
+	client, err := NewClient(redisAddr, "", 0)
+	if err != nil {
+		t.Skipf("Skipping TestSessionEnforcement: Redis not running on %s", redisAddr)
+		return
+	}
+	defer client.Close()
+
+	ctx := context.Background()
+	rdb := client.GetUnderlyingClient()
+	sessionID := "test-sess-" + uuid.New().String()
+
+	spendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
+	budgetKey := fmt.Sprintf("loopers:session:%s:budget", sessionID)
+	stepsKey := fmt.Sprintf("loopers:session:%s:steps", sessionID)
+	maxStepsKey := fmt.Sprintf("loopers:session:%s:max_steps", sessionID)
+
+	defer rdb.Del(ctx, spendKey, budgetKey, stepsKey, maxStepsKey)
+
+	// First session reservation: cost=0.50, budget=1.00, max_steps=2
+	allowed, spend, steps, status, err := client.CheckAndReserveSession(ctx, sessionID, 0.50, 1.00, 2, 3600)
+	if err != nil {
+		t.Fatalf("CheckAndReserveSession failed: %v", err)
+	}
+	if !allowed || spend != 0.50 || steps != 1 || status != "ok" {
+		t.Errorf("expected allowed=true, spend=0.50, steps=1, status=ok; got allowed=%v, spend=%f, steps=%f, status=%s", allowed, spend, steps, status)
+	}
+
+	// Second reservation: cost=0.60 -> should fail session budget limit (0.50 + 0.60 = 1.10 > 1.00)
+	allowed, val1, val2, status, err := client.CheckAndReserveSession(ctx, sessionID, 0.60, 0, 0, 3600)
+	if err != nil {
+		t.Fatalf("CheckAndReserveSession failed: %v", err)
+	}
+	if allowed || status != "session_budget_exceeded" || val1 != 0.50 || val2 != 1.00 {
+		t.Errorf("expected blocked with session_budget_exceeded, current=0.50, limit=1.00; got allowed=%v, status=%s, val1=%f, val2=%f", allowed, status, val1, val2)
+	}
+
+	// Third reservation: cost=0.10 -> should pass, step count becomes 2
+	allowed, spend, steps, status, err = client.CheckAndReserveSession(ctx, sessionID, 0.10, 0, 0, 3600)
+	if err != nil {
+		t.Fatalf("CheckAndReserveSession failed: %v", err)
+	}
+	if !allowed || spend != 0.60 || steps != 2 {
+		t.Errorf("expected allowed, spend=0.60, steps=2; got allowed=%v, spend=%f, steps=%f", allowed, spend, steps)
+	}
+
+	// Fourth reservation: cost=0.10 -> should fail session max steps limit (current steps=2, max_steps=2)
+	allowed, val1, val2, status, err = client.CheckAndReserveSession(ctx, sessionID, 0.10, 0, 0, 3600)
+	if err != nil {
+		t.Fatalf("CheckAndReserveSession failed: %v", err)
+	}
+	if allowed || status != "session_steps_exceeded" || val1 != 2 || val2 != 2 {
+		t.Errorf("expected blocked with session_steps_exceeded; got allowed=%v, status=%s, val1=%f, val2=%f", allowed, status, val1, val2)
+	}
+}

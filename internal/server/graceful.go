@@ -1,0 +1,57 @@
+package server
+
+import (
+	"context"
+	"net/http"
+	"os"
+	"os/signal"
+	"runtime"
+	"syscall"
+	"time"
+
+	"github.com/loopers-oss/loopers/internal/logging"
+)
+
+// ListenAndServeWithGracefulShutdown starts the HTTP server and listens for SIGTERM/SIGINT.
+func ListenAndServeWithGracefulShutdown(srv *http.Server, redisClient interface{ Close() error }) {
+	// Channel to listen for signals
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logging.Logger.Fatal().Err(err).Msg("Server failed to start")
+		}
+	}()
+
+	logging.Logger.Info().Msgf("Server started listening on %s", srv.Addr)
+
+	// Block until a signal is received
+	sig := <-quit
+	logging.Logger.Info().Msgf("Received signal: %v. Initiating graceful shutdown...", sig)
+
+	// Log pre-shutdown goroutine count for troubleshooting leak issues
+	logging.Logger.Info().Int("goroutines_before_shutdown", runtime.NumGoroutine()).Msg("Goroutines count audit")
+
+	// Create shutdown context with a 30s timeout limit
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		logging.Logger.Error().Err(err).Msg("Server forced to shutdown prematurely")
+	} else {
+		logging.Logger.Info().Msg("HTTP server closed gracefully")
+	}
+
+	// Close Redis connection pool
+	if redisClient != nil {
+		if err := redisClient.Close(); err != nil {
+			logging.Logger.Error().Err(err).Msg("Error closing Redis connection pool")
+		} else {
+			logging.Logger.Info().Msg("Redis connection closed gracefully")
+		}
+	}
+
+	// Log post-shutdown goroutine count to ensure cleanup of all background tasks
+	logging.Logger.Info().Int("goroutines_after_shutdown", runtime.NumGoroutine()).Msg("Goroutines count audit")
+}

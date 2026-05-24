@@ -1,0 +1,262 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "datasource",
+          "uid": "grafana"
+        },
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "title": "Requests per Second (by Provider & Status)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(loopers_requests_total[5m])) by (provider, status)",
+          "legendFormat": "{{provider}} ({{status}})",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth"
+          },
+          "unit": "reqps"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "title": "Budget Blocks (by Window)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(loopers_budget_blocks_total[5m])) by (provider, window)",
+          "legendFormat": "{{provider}} - {{window}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bar",
+            "fillOpacity": 80
+          },
+          "unit": "ops"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "title": "Request Latency (p50, p95, p99)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum(rate(loopers_request_duration_seconds_bucket[5m])) by (le, provider))",
+          "legendFormat": "p50 - {{provider}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum(rate(loopers_request_duration_seconds_bucket[5m])) by (le, provider))",
+          "legendFormat": "p95 - {{provider}}",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum(rate(loopers_request_duration_seconds_bucket[5m])) by (le, provider))",
+          "legendFormat": "p99 - {{provider}}",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth"
+          },
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "title": "Accumulated USD Spend (by Key Hash)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(loopers_spend_usd_total) by (key_hash, provider)",
+          "legendFormat": "key: {{key_hash}} ({{provider}})",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line"
+          },
+          "unit": "currencyUSD"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 5,
+      "title": "Token Throughput (Tokens/sec)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(loopers_tokens_total[5m])) by (direction, provider)",
+          "legendFormat": "{{direction}} - {{provider}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth"
+          },
+          "unit": "tps"
+        }
+      }
+    }
+  ],
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": ["loopers", "observability", "ai"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "label": "Data Source",
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Loopers Cost Firewall Overview",
+  "weekStart": ""
+}

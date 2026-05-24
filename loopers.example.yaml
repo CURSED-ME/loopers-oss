@@ -1,0 +1,19 @@
+server:
+  port: 8080
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+log:
+  level: "info"
+pricing_path: "./pricing.yaml"
+
+alerting:
+  webhook_url: "https://example.com/webhook"
+  thresholds:
+    - percent: 50
+      message: "Budget 50% consumed"
+    - percent: 80
+      message: "Budget 80% consumed — approaching limit"
+    - percent: 95
+      message: "Budget 95% consumed — imminent cutoff"

@@ -1,0 +1,30 @@
+name: Pricing Validation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'pricing.yaml'
+      - 'cmd/pricing-validator/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'pricing.yaml'
+      - 'cmd/pricing-validator/**'
+
+jobs:
+  validate:
+    name: Validate pricing.yaml
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache: true
+
+      - name: Run Pricing Validator
+        run: go run cmd/pricing-validator/main.go pricing.yaml

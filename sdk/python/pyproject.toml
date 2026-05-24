@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "loopers-client"
+version = "0.4.0"
+description = "A premium Python client wrapper for the Loopers AI budget & rate-limit proxy."
+readme = "README.md"
+requires-python = ">=3.7"
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "httpx>=0.20.0",
+]
+
+[project.optional-dependencies]
+openai = ["openai>=1.0.0"]
+anthropic = ["anthropic>=0.3.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["loopers_client*"]

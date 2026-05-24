@@ -1,0 +1,35 @@
+name: 'Loopers Budget Check'
+description: 'Ensures there is sufficient remaining budget on a Loopers key before executing subsequent steps.'
+inputs:
+  loopers-url:
+    description: 'URL of the Loopers server (e.g., http://my-proxy.com:8080)'
+    required: true
+  loopers-key:
+    description: 'Loopers raw proxy key'
+    required: true
+  key-hash:
+    description: 'Loopers key hash'
+    required: true
+  min-remaining:
+    description: 'Minimum remaining budget in USD required (e.g., 5.00)'
+    required: true
+    default: '1.00'
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '>=1.20'
+    - name: Execute budget check
+      shell: bash
+      run: |
+        go run ${{ github.action_path }}/check.go
+      env:
+        LOOPERS_URL: ${{ inputs.loopers-url }}
+        LOOPERS_KEY: ${{ inputs.loopers-key }}
+        KEY_HASH: ${{ inputs.key-hash }}
+        MIN_REMAINING: ${{ inputs.min-remaining }}
+branding:
+  icon: 'shield'
+  color: 'red'
