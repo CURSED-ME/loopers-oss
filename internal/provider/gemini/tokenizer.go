@@ -21,12 +21,12 @@ func callGeminiCountTokensAPI(ctx context.Context, model string, body []byte, pr
 
 	// countTokens endpoint matches the generateContent endpoint path format
 	reqURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:countTokens?key=%s", model, providerKey)
-	
+
 	// Create payload containing the contents structure
 	var contentPayload struct {
 		Contents interface{} `json:"contents"`
 	}
-	
+
 	// Try parsing contents from generateContent request body
 	var reqBody struct {
 		Contents interface{} `json:"contents"`

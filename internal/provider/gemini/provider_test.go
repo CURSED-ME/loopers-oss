@@ -12,7 +12,7 @@ func TestGeminiParseRequest(t *testing.T) {
 	// 1. Non-streaming request
 	req1, _ := http.NewRequest(http.MethodPost, "http://localhost:8080/gemini/v1beta/models/gemini-3.5-flash:generateContent", nil)
 	body1 := []byte(`{"contents":[{"parts":[{"text":"hello"}]}],"generationConfig":{"maxOutputTokens":1024}}`)
-	
+
 	model, isStream, maxTokens, _, err := prov.ParseRequest(req1, body1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -49,9 +49,9 @@ func TestGeminiParseRequest(t *testing.T) {
 func TestGeminiInjectAuth(t *testing.T) {
 	prov := NewGeminiProvider()
 	req, _ := http.NewRequest(http.MethodPost, "http://localhost:8080/gemini/v1beta/models/gemini-3.5-flash:generateContent", nil)
-	
+
 	prov.InjectAuth(req, "test-api-key")
-	
+
 	q := req.URL.Query()
 	key := q.Get("key")
 	if key != "test-api-key" {
@@ -106,7 +106,7 @@ func TestGeminiParseStreamChunk(t *testing.T) {
 func TestGeminiParseNonStreamResponse(t *testing.T) {
 	prov := NewGeminiProvider()
 	body := []byte(`{"candidates":[],"usageMetadata":{"promptTokenCount":8,"candidatesTokenCount":12}}`)
-	
+
 	inTokens, outTokens, err := prov.ParseNonStreamResponse(body)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -122,7 +122,7 @@ func TestGeminiParseNonStreamResponse(t *testing.T) {
 func TestGeminiCountInputTokensFallback(t *testing.T) {
 	prov := NewGeminiProvider()
 	body := []byte(`{"contents":[{"role":"user","parts":[{"text":"hello world"}]}]}`)
-	
+
 	tokens, err := prov.CountInputTokens(context.Background(), "gemini-3.5-flash", body, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

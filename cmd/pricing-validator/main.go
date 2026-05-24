@@ -14,7 +14,7 @@ type ModelPrice struct {
 }
 
 type ProviderConfig struct {
-	DefaultMaxOutputTokens *int                  `yaml:"default_max_output_tokens"`
+	DefaultMaxOutputTokens *int                   `yaml:"default_max_output_tokens"`
 	Models                 map[string]*ModelPrice `yaml:"models"`
 }
 

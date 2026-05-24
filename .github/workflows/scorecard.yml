@@ -26,7 +26,7 @@ jobs:
         with:
           results_file: results.sarif
           results_format: sarif
-          publish_results: true
+          publish_results: false
 
       - name: "Upload artifact"
         uses: actions/upload-artifact@60a12d5b69902270cc23f24073ac762813b7a53e # v4.4.1

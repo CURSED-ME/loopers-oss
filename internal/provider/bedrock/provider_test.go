@@ -15,7 +15,7 @@ func TestBedrockParseRequest(t *testing.T) {
 	// 1. Non-streaming request
 	req1, _ := http.NewRequest(http.MethodPost, "http://localhost:8080/bedrock/model/anthropic.claude-3-5-sonnet-20240620-v1:0/invoke", nil)
 	body1 := []byte(`{"messages":[{"role":"user","content":"hello"}],"max_tokens":1000}`)
-	
+
 	model, isStream, maxTokens, _, err := prov.ParseRequest(req1, body1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -60,7 +60,7 @@ func TestBedrockRewritePath(t *testing.T) {
 
 func TestBedrockParseNonStreamResponse(t *testing.T) {
 	prov := NewBedrockProvider()
-	
+
 	// 1. Claude format
 	body1 := []byte(`{"usage":{"input_tokens":10,"output_tokens":20}}`)
 	inTokens, outTokens, err := prov.ParseNonStreamResponse(body1)
@@ -159,7 +159,7 @@ func TestBedrockStreamChunkParsing(t *testing.T) {
 func TestBedrockFormatBudgetExceededFrame(t *testing.T) {
 	prov := NewBedrockProvider()
 	frameBytes := prov.FormatBudgetExceededSSE()
-	
+
 	decoder := eventstream.NewDecoder()
 	msg, err := decoder.Decode(bytes.NewReader(frameBytes), nil)
 	if err != nil {
