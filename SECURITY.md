@@ -12,11 +12,11 @@ Loopers is architected with a **zero-storage, zero-persistence** security model 
 
 We are committed to absolute data privacy:
 * **No Telemetry:** Loopers OSS does not collect any usage telemetry, analytics, request counts, or cost data. All metric aggregation occurs locally via the Prometheus `/metrics` endpoint on your deployed instance.
-* **No Key Leakage:** Loopers never sends, routes, or logs your credentials to `loopers.dev` or any external third-party hosts. Your API keys remain strictly under your infrastructure's control.
+* **No Key Leakage:** Loopers never sends, routes, or logs your credentials to `tryloopers.com` or any external third-party hosts. Your API keys remain strictly under your infrastructure's control.
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it immediately by opening a secure GitHub advisory or emailing our maintainers directly at security@loopers.dev. 
+If you discover a security vulnerability, please report it immediately by opening a secure GitHub advisory or emailing our maintainers directly at varadkhoriya17@gmail.com. 
 
 Please do not disclose vulnerabilities publicly until a patch has been cut. We commit to:
 1. Responding to your initial report within **24 hours**.
