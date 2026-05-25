@@ -53,6 +53,10 @@ jobs:
         run: |
           go test -v ./... 2>&1 | grep -E '(sk-[A-Za-z0-9]{32,}|sk-ant-api03-[A-Za-z0-9]{93,}|AIza[0-9A-Za-z]{35})' && { echo "KEY LEAK DETECTED"; exit 1; } || echo "KEY LEAK SCAN PASS"
 
+      - name: Fuzz
+        run: |
+          go test -fuzz=FuzzCountGeminiTokensFallback -fuzztime=10s ./internal/provider/gemini
+
       - name: Go Vuln Check
         continue-on-error: true
         run: |
