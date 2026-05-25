@@ -6,9 +6,12 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
-  build:
-    name: Build & Test
+  test:
+    name: Run Tests
     runs-on: ubuntu-latest
     services:
       redis:
@@ -53,5 +56,5 @@ jobs:
       - name: Go Vuln Check
         continue-on-error: true
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
           govulncheck ./...
