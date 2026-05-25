@@ -8,7 +8,7 @@
 
 <p align="left">
   <img src="https://img.shields.io/badge/license-MIT-black.svg?style=for-the-badge" alt="License" />
-  <img src="https://img.shields.io/badge/go-%3E%3D1.26.1-black.svg?style=for-the-badge" alt="Go Version" />
+  <img src="https://img.shields.io/badge/go-1.26.1-black.svg?style=for-the-badge" alt="Go Version" />
   <img src="https://img.shields.io/badge/providers-6%20Supported-black.svg?style=for-the-badge" alt="Providers" />
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/CURSED-ME/loopers-oss"><img src="https://api.securityscorecards.dev/projects/github.com/CURSED-ME/loopers-oss/badge?style=for-the-badge" alt="OpenSSF Scorecard" /></a>
 </p>
@@ -77,10 +77,17 @@ docker-compose exec loopers /app/loopers keys create --name my-app-key --provide
 ```
 *Note the generated raw key (`lp-xxx`) and its hash.*
 
-Set budget limits across 5 granular windows (e.g., $10.00 daily, $2.00 hourly) for the key hash:
+Set budget limits across 5 granular time windows for the key hash:
 ```bash
-docker-compose exec loopers /app/loopers budget set <KEY_HASH> --daily 10.00 --hourly 2.00
+docker-compose exec loopers /app/loopers budget set <KEY_HASH> \
+  --minute 0.50 \
+  --hourly 2.00 \
+  --daily 10.00 \
+  --weekly 50.00 \
+  --monthly 150.00
 ```
+
+All five windows (`--minute`, `--hourly`, `--daily`, `--weekly`, `--monthly`) are optional and can be combined freely. The first limit hit wins and blocks the request.
 
 ### Step 4: Route Your Requests
 Make API calls through the Loopers proxy using one of our official SDKs or raw cURL:
@@ -95,6 +102,20 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
     "messages": [{"role": "user", "content": "Hello, Loopers!"}]
   }'
 ```
+
+---
+
+## CLI Reference
+
+| Command | Description |
+|---|---|
+| `loopers init` | Interactive wizard — generates `loopers.yaml` and `docker-compose.yml` |
+| `loopers serve` | Start the proxy server |
+| `loopers keys create --name <n> --provider <p>` | Create a new proxy key (providers: `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`) |
+| `loopers keys list` | List all proxy keys with metadata |
+| `loopers keys revoke <hash>` | Revoke a key by hash |
+| `loopers budget set <hash> [flags]` | Set budget limits (`--minute`, `--hourly`, `--daily`, `--weekly`, `--monthly`) |
+| `loopers budget status <hash>` | View current spend vs. limits for a key |
 
 ---
 
@@ -168,6 +189,52 @@ sequenceDiagram
         Proxy->>Redis: Reconcile actual spend (refund unused reservation)
     end
 ```
+
+---
+
+## Monitoring
+
+Loopers exposes a Prometheus metrics endpoint out of the box. A pre-built Grafana dashboard is included in [`./grafana/`](./grafana/) for instant observability into request throughput, budget block rates, and latency percentiles.
+
+---
+
+## OSS vs. Loopers Cloud
+
+The OSS version is the full circuit-breaker engine — everything you need to self-host and protect your own AI budget. [**Loopers Cloud**](https://tryloopers.com) wraps this engine in a managed, multi-tenant SaaS with team collaboration, anomaly detection, and compliance features.
+
+| Feature | OSS (Self-Hosted) | [Loopers Cloud](https://tryloopers.com) |
+|---|:---:|:---:|
+| Pre-call budget enforcement | ✅ | ✅ |
+| 6 provider support (OpenAI, Anthropic, Gemini, Bedrock, Azure, Mistral) | ✅ | ✅ |
+| 5 budget windows (minute / hourly / daily / weekly / monthly) | ✅ | ✅ |
+| Mid-stream SSE cutoff | ✅ | ✅ |
+| Fail-closed Redis guarantee | ✅ | ✅ |
+| Zero-storage pass-through key model | ✅ | ✅ |
+| Prometheus metrics + Grafana dashboard | ✅ | ✅ |
+| Helm chart for Kubernetes | ✅ | — |
+| Web dashboard & spend analytics | ❌ | ✅ |
+| Team management & RBAC | ❌ | ✅ |
+| LLMjacking anomaly detection & auto-revocation | ❌ | ✅ |
+| Agent loop circuit breaker (step counter) | ❌ | ✅ |
+| Tamper-proof audit log | ❌ | ✅ |
+| Slack / PagerDuty / webhook alerting | ❌ | ✅ |
+| Multi-project & org-level budget hierarchy | ❌ | ✅ |
+| SSO / SAML | ❌ | ✅ (Business+) |
+| SOC 2 compliance export | ❌ | ✅ (Business+) |
+| Managed infrastructure (no Redis to run) | ❌ | ✅ |
+| Support | Community | Email / Priority / Dedicated |
+
+> **Self-hosting Loopers?** You own your data, your infra, and your keys. If you want the managed experience with zero ops overhead, [start free at tryloopers.com](https://tryloopers.com).
+
+---
+
+## Contributing
+
+We welcome contributions! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on how to get started, and review our [Code of Conduct](./CODE_OF_CONDUCT.md).
+
+## Security
+
+Found a vulnerability? Please report it responsibly via [SECURITY.md](./SECURITY.md). Do **not** open a public GitHub issue for security bugs.
 
 ---
 
