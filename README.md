@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/license-MIT-black.svg?style=for-the-badge" alt="License" />
   <img src="https://img.shields.io/badge/go-1.26.3-black.svg?style=for-the-badge" alt="Go Version" />
   <img src="https://img.shields.io/badge/providers-6%20Supported-black.svg?style=for-the-badge" alt="Providers" />
-  <a href="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/CURSED-ME/loopers-oss/ci.yml?branch=main&style=for-the-badge" alt="Build Status" /></a>
+  <a href="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml"><img src="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml/badge.svg" alt="Build Status" /></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/CURSED-ME/loopers-oss"><img src="https://api.securityscorecards.dev/projects/github.com/CURSED-ME/loopers-oss/badge?style=for-the-badge" alt="OpenSSF Scorecard" /></a>
 </p>
 
@@ -216,7 +216,7 @@ The OSS version is the full circuit-breaker engine — everything you need to se
 | Web dashboard & spend analytics | ❌ | ✅ |
 | Team management & RBAC | ❌ | ✅ |
 | LLMjacking anomaly detection & auto-revocation | ❌ | ✅ |
-| Agent loop circuit breaker (step counter) | ❌ | ✅ |
+| Agent loop circuit breaker (step counter) | ✅ | ✅ |
 | Tamper-proof audit log | ❌ | ✅ |
 | Slack / PagerDuty / webhook alerting | ❌ | ✅ |
 | Multi-project & org-level budget hierarchy | ❌ | ✅ |

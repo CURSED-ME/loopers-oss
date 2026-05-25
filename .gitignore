@@ -5,3 +5,5 @@ docs/launch/show-hn.md
 docs/launch/blog-post-llmjacking.md
 graphify-out/
 bin/
+*.exe
+.agents/
