@@ -93,6 +93,8 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 	for {
 		select {
 		case <-ctx.Done():
+			actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
+			onReconcile(actualUSD, totalInputTokens, totalOutputTokens)
 			return
 		case chunk, ok := <-chunks:
 			if !ok {
@@ -146,6 +148,8 @@ func (sr *SSEStreamReader) processBedrockStream(ctx context.Context, original io
 	for {
 		select {
 		case <-ctx.Done():
+			actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
+			onReconcile(actualUSD, totalInputTokens, totalOutputTokens)
 			return
 		default:
 			// Read one frame of binary event stream
