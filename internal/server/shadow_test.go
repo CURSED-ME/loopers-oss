@@ -56,7 +56,25 @@ func TestShadowMode(t *testing.T) {
 	}
 	defer redisClient.Close()
 
-	pricingStore, _ := pricing.LoadStore("../../pricing.yaml")
+	// Create a temp pricing yaml with non-zero prices so estimatedCost > 0 and budget check trips
+	yamlContent := []byte(`
+providers:
+  mock:
+    default_max_output_tokens: 100
+    models:
+      mock-model:
+        input_per_1m: 10.0
+        output_per_1m: 30.0
+`)
+	tmpFile, _ := os.CreateTemp("", "pricing*.yaml")
+	defer os.Remove(tmpFile.Name())
+	tmpFile.Write(yamlContent)
+	tmpFile.Close()
+
+	pricingStore, err := pricing.LoadStore(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("Failed to load pricing store: %v", err)
+	}
 
 	// Start a dummy upstream server
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
