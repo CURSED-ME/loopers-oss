@@ -5,6 +5,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -67,15 +68,15 @@ func PrintHeader(title string) {
 }
 
 func Success(msg string) {
-	fmt.Printf("  %s  %s\n", styleSuccess.Render("✅"), msg)
+	fmt.Printf("  %s  %s\n", styleSuccess.Render("✓"), msg)
 }
 
 func Error(msg string) {
-	fmt.Printf("  %s  %s\n", styleError.Render("❌"), msg)
+	fmt.Printf("  %s  %s\n", styleError.Render("✗"), msg)
 }
 
 func Warn(msg string) {
-	fmt.Printf("  %s  %s\n", styleWarn.Render("⚠️"), msg)
+	fmt.Printf("  %s  %s\n", styleWarn.Render("△"), msg)
 }
 
 func Info(msg string) {
@@ -156,9 +157,9 @@ func PrintBudgetBar(name string, spend, limit float64) {
 
 	msg := fmt.Sprintf("  %-8s %s  %s", name, bar, stats)
 	if pct > 100 {
-		msg += styleError.Render(" ⚠ OVER LIMIT")
+		msg += styleError.Render(" △ OVER LIMIT")
 	} else if pct >= 90 {
-		msg += styleWarn.Render(" ⚠ approaching limit")
+		msg += styleWarn.Render(" △ approaching limit")
 	}
 
 	fmt.Println(msg)
@@ -167,13 +168,13 @@ func PrintBudgetBar(name string, spend, limit float64) {
 func PrintKeyCard(name, provider, rawKey, hash string) {
 	var sb strings.Builder
 
-	sb.WriteString(styleSuccess.Render("✅  Key Created Successfully") + "\n\n")
+	sb.WriteString(styleSuccess.Render("✓  Key Created Successfully") + "\n\n")
 	sb.WriteString(fmt.Sprintf("%s%s\n", styleLabel.Render("Name"), name))
 	sb.WriteString(fmt.Sprintf("%s%s\n\n", styleLabel.Render("Provider"), provider))
 	sb.WriteString(fmt.Sprintf("%s%s\n", styleLabel.Render("Raw Key"), lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true).Render(rawKey)))
 	sb.WriteString(fmt.Sprintf("%s%s\n\n", styleLabel.Render("Hash"), hash))
 
-	warnLines := "⚠  Copy the raw key now. It won't be\n   shown again."
+	warnLines := "△  Copy the raw key now. It won't be\n   shown again."
 	sb.WriteString(styleWarn.Render(warnLines))
 
 	fmt.Println(styleCardBorder.Render(sb.String()))
@@ -181,9 +182,43 @@ func PrintKeyCard(name, provider, rawKey, hash string) {
 
 func PrintSummary(pass bool, issues int) {
 	if pass {
-		fmt.Println(styleSummaryPass.Render("✅  All systems go"))
+		fmt.Println(styleSummaryPass.Render("✓  All systems go"))
 	} else {
 		msg := fmt.Sprintf("✗  Fix %d issues above", issues)
 		fmt.Println(styleSummaryFail.Render(msg))
 	}
+}
+
+func PrintLogo() {
+	mark := "█ ·\n█ █"
+	logo := lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true).Render(mark)
+	text := lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true).PaddingLeft(2).PaddingTop(1).Render("LOOPERS")
+
+	fmt.Println("\n" + lipgloss.JoinHorizontal(lipgloss.Top, logo, text) + "\n")
+}
+
+func GetHuhTheme() *huh.Theme {
+	t := huh.ThemeBase()
+
+	// Apply our monochrome palette
+	t.Focused.Base = t.Focused.Base.BorderForeground(colorBorderStrong)
+	t.Focused.Title = lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true)
+	t.Focused.TextInput.Cursor = lipgloss.NewStyle().Foreground(colorTextPrimary)
+	t.Focused.TextInput.Prompt = lipgloss.NewStyle().Foreground(colorTextPrimary)
+	t.Focused.TextInput.Text = lipgloss.NewStyle().Foreground(colorTextPrimary)
+	t.Focused.SelectSelector = lipgloss.NewStyle().Foreground(colorTextPrimary)
+	t.Focused.Option = lipgloss.NewStyle().Foreground(colorTextPrimary)
+	t.Focused.SelectedOption = lipgloss.NewStyle().Foreground(colorTextPrimary)
+	t.Focused.UnselectedOption = lipgloss.NewStyle().Foreground(colorTextTertiary)
+
+	t.Blurred.Title = lipgloss.NewStyle().Foreground(colorTextTertiary)
+	t.Blurred.TextInput.Prompt = lipgloss.NewStyle().Foreground(colorTextTertiary)
+	t.Blurred.TextInput.Text = lipgloss.NewStyle().Foreground(colorTextTertiary)
+
+	t.Help.Ellipsis = lipgloss.NewStyle().Foreground(colorTextSecondary)
+	t.Help.ShortKey = lipgloss.NewStyle().Foreground(colorTextSecondary)
+	t.Help.ShortDesc = lipgloss.NewStyle().Foreground(colorTextTertiary)
+	t.Help.ShortSeparator = lipgloss.NewStyle().Foreground(colorBorderStrong)
+
+	return t
 }

@@ -1,14 +1,15 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/huh"
 	"github.com/loopers-oss/loopers/cmd/loopers/ui"
 	"github.com/loopers-oss/loopers/internal/budget"
 	"github.com/loopers-oss/loopers/internal/keyring"
@@ -38,6 +39,29 @@ func getRedisClient() (*budget.Client, error) {
 	db := viper.GetInt("redis.db")
 
 	return budget.NewClient(addr, password, db)
+}
+
+func fetchActiveKeys(rdb *budget.Client) ([]huh.Option[string], error) {
+	ctx := context.Background()
+	iter := rdb.GetUnderlyingClient().Scan(ctx, 0, "loopers:key:*", 0).Iterator()
+	var options []huh.Option[string]
+	for iter.Next(ctx) {
+		redisKey := iter.Val()
+		h := redisKey[len("loopers:key:"):]
+		var meta keyring.KeyMetadata
+		if err := rdb.GetUnderlyingClient().HGetAll(ctx, redisKey).Scan(&meta); err == nil && meta.Active == "true" {
+			displayHash := h
+			if len(displayHash) > 12 {
+				displayHash = displayHash[:12] + "..."
+			}
+			label := fmt.Sprintf("%s · %s", meta.Name, displayHash)
+			options = append(options, huh.NewOption(label, h))
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return nil, err
+	}
+	return options, nil
 }
 
 // serveCmd represents the serve command
@@ -92,6 +116,42 @@ var keysCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new proxy key",
 	Run: func(cmd *cobra.Command, args []string) {
+		if (keyName == "" || keyProvider == "") && ui.IsInteractive() {
+			ui.PrintLogo()
+			err := huh.NewForm(
+				huh.NewGroup(
+					huh.NewInput().
+						Title("Key Name").
+						Description("A descriptive name for this key (e.g. 'my-app')").
+						Value(&keyName).
+						Validate(func(s string) error {
+							if s == "" {
+								return fmt.Errorf("name is required")
+							}
+							return nil
+						}),
+					huh.NewSelect[string]().
+						Title("Provider").
+						Options(
+							huh.NewOption("OpenAI", "openai"),
+							huh.NewOption("Anthropic", "anthropic"),
+							huh.NewOption("Gemini", "gemini"),
+							huh.NewOption("Bedrock", "bedrock"),
+							huh.NewOption("Azure", "azure"),
+							huh.NewOption("Mistral", "mistral"),
+							huh.NewOption("Groq", "groq"),
+							huh.NewOption("Cohere", "cohere"),
+							huh.NewOption("DeepSeek", "deepseek"),
+							huh.NewOption("Together", "together"),
+						).
+						Value(&keyProvider),
+				),
+			).WithTheme(ui.GetHuhTheme()).Run()
+			if err != nil {
+				return
+			}
+		}
+
 		if keyName == "" || keyProvider == "" {
 			logging.Logger.Fatal().Msg("flags --name and --provider are required")
 		}
@@ -169,9 +229,9 @@ var keysListCmd = &cobra.Command{
 					timeStr = "Unknown"
 				}
 
-				activeStr := "❌"
+				activeStr := "✗"
 				if meta.Active == "true" {
-					activeStr = "✅"
+					activeStr = "✓"
 				}
 
 				rows = append(rows, []string{displayHash, meta.Name, meta.Provider, timeStr, activeStr})
@@ -192,15 +252,50 @@ var keysListCmd = &cobra.Command{
 var keysRevokeCmd = &cobra.Command{
 	Use:   "revoke [hash]",
 	Short: "Revoke a proxy key",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		hash := args[0]
+		var hash string
+		if len(args) > 0 {
+			hash = args[0]
+		}
 
 		redisClient, err := getRedisClient()
 		if err != nil {
+			if ui.IsInteractive() && len(args) == 0 {
+				ui.Error("Failed to connect to Redis. Ensure it is running.")
+				return
+			}
 			logging.Logger.Fatal().Err(err).Msg("failed to connect to redis")
 		}
 		defer redisClient.Close()
+
+		if hash == "" && ui.IsInteractive() {
+			ui.PrintLogo()
+			options, err := fetchActiveKeys(redisClient)
+			if err != nil {
+				ui.Error(fmt.Sprintf("Failed to fetch keys: %v", err))
+				return
+			}
+			if len(options) == 0 {
+				ui.Error("No active keys found to revoke")
+				return
+			}
+
+			err = huh.NewSelect[string]().
+				Title("Select Key to Revoke").
+				Options(options...).
+				Value(&hash).
+				WithTheme(ui.GetHuhTheme()).
+				Run()
+
+			if err != nil {
+				return
+			}
+		}
+
+		if hash == "" {
+			logging.Logger.Fatal().Msg("hash argument is required")
+		}
 
 		ctx := context.Background()
 		rdb := redisClient.GetUnderlyingClient()
@@ -228,15 +323,77 @@ var budgetCmd = &cobra.Command{
 var budgetSetCmd = &cobra.Command{
 	Use:   "set [hash]",
 	Short: "Set daily, hourly, weekly, monthly, and minute budgets for a key hash",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		hash := args[0]
+		var hash string
+		if len(args) > 0 {
+			hash = args[0]
+		}
 
 		redisClient, err := getRedisClient()
 		if err != nil {
+			if ui.IsInteractive() && len(args) == 0 {
+				ui.Error("Failed to connect to Redis. Ensure it is running.")
+				return
+			}
 			logging.Logger.Fatal().Err(err).Msg("failed to connect to redis")
 		}
 		defer redisClient.Close()
+
+		if hash == "" && ui.IsInteractive() {
+			ui.PrintLogo()
+			options, err := fetchActiveKeys(redisClient)
+			if err != nil {
+				ui.Error(fmt.Sprintf("Failed to fetch keys: %v", err))
+				return
+			}
+			if len(options) == 0 {
+				ui.Error("No active keys found")
+				return
+			}
+
+			err = huh.NewSelect[string]().
+				Title("Select Key").
+				Options(options...).
+				Value(&hash).
+				WithTheme(ui.GetHuhTheme()).
+				Run()
+
+			if err != nil {
+				return
+			}
+		}
+
+		if hash == "" {
+			logging.Logger.Fatal().Msg("hash argument is required")
+		}
+
+		if (minuteLimit == "" && hourlyLimit == "" && dailyLimit == "" && weeklyLimit == "" && monthlyLimit == "") && ui.IsInteractive() {
+			validateFloat := func(s string) error {
+				if s == "" {
+					return nil
+				}
+				v, err := strconv.ParseFloat(s, 64)
+				if err != nil || v < 0 {
+					return fmt.Errorf("must be a valid positive number")
+				}
+				return nil
+			}
+
+			err := huh.NewForm(
+				huh.NewGroup(
+					huh.NewInput().Title("Minute Limit (USD)").Value(&minuteLimit).Validate(validateFloat),
+					huh.NewInput().Title("Hourly Limit (USD)").Value(&hourlyLimit).Validate(validateFloat),
+					huh.NewInput().Title("Daily Limit (USD)").Value(&dailyLimit).Validate(validateFloat),
+					huh.NewInput().Title("Weekly Limit (USD)").Value(&weeklyLimit).Validate(validateFloat),
+					huh.NewInput().Title("Monthly Limit (USD)").Value(&monthlyLimit).Validate(validateFloat),
+				),
+			).WithTheme(ui.GetHuhTheme()).Run()
+
+			if err != nil {
+				return
+			}
+		}
 
 		ctx := context.Background()
 		rdb := redisClient.GetUnderlyingClient()
@@ -281,15 +438,50 @@ var budgetSetCmd = &cobra.Command{
 var budgetStatusCmd = &cobra.Command{
 	Use:   "status [hash]",
 	Short: "Get budget status for a key hash",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		hash := args[0]
+		var hash string
+		if len(args) > 0 {
+			hash = args[0]
+		}
 
 		redisClient, err := getRedisClient()
 		if err != nil {
+			if ui.IsInteractive() && len(args) == 0 {
+				ui.Error("Failed to connect to Redis. Ensure it is running.")
+				return
+			}
 			logging.Logger.Fatal().Err(err).Msg("failed to connect to redis")
 		}
 		defer redisClient.Close()
+
+		if hash == "" && ui.IsInteractive() {
+			ui.PrintLogo()
+			options, err := fetchActiveKeys(redisClient)
+			if err != nil {
+				ui.Error(fmt.Sprintf("Failed to fetch keys: %v", err))
+				return
+			}
+			if len(options) == 0 {
+				ui.Error("No active keys found")
+				return
+			}
+
+			err = huh.NewSelect[string]().
+				Title("Select Key to View").
+				Options(options...).
+				Value(&hash).
+				WithTheme(ui.GetHuhTheme()).
+				Run()
+
+			if err != nil {
+				return
+			}
+		}
+
+		if hash == "" {
+			logging.Logger.Fatal().Msg("hash argument is required")
+		}
 
 		ctx := context.Background()
 		rdb := redisClient.GetUnderlyingClient()
@@ -327,55 +519,61 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Interactively initialize Loopers configuration",
 	Run: func(cmd *cobra.Command, args []string) {
-		reader := bufio.NewReader(os.Stdin)
-
-		ui.PrintHeader("🔒 Loopers Setup Wizard\nConfigure your AI cost firewall")
+		ui.PrintLogo()
+		ui.PrintHeader("Loopers Setup Wizard\nConfigure your AI cost firewall")
 		fmt.Println()
 
-		// 1. Providers
-		fmt.Println("  Step 1 of 4 — Providers")
-		fmt.Println("  Which AI providers will you use?")
-		fmt.Println("  Available: openai, anthropic, gemini, bedrock, azure, mistral, groq, cohere, deepseek, together")
-		fmt.Print("  › [openai, anthropic]: ")
-		providersInput, _ := reader.ReadString('\n')
-		providersInput = strings.TrimSpace(providersInput)
-		if providersInput == "" {
-			providersInput = "openai, anthropic"
+		providersInput := "openai, anthropic"
+		dailyInput := "10.00"
+		hourlyInput := "2.00"
+		redisInput := "localhost:6379"
+
+		if ui.IsInteractive() {
+			err := huh.NewForm(
+				huh.NewGroup(
+					huh.NewInput().
+						Title("Providers").
+						Description("Available: openai, anthropic, gemini, bedrock, azure, mistral, groq, cohere, deepseek, together").
+						Value(&providersInput),
+					huh.NewInput().
+						Title("Daily Budget (USD)").
+						Description("Default daily spend limit").
+						Value(&dailyInput).
+						Validate(func(s string) error {
+							v, err := strconv.ParseFloat(s, 64)
+							if err != nil || v <= 0 {
+								return fmt.Errorf("must be a valid number > 0")
+							}
+							return nil
+						}),
+					huh.NewInput().
+						Title("Hourly Budget (USD)").
+						Description("Default hourly spend limit").
+						Value(&hourlyInput).
+						Validate(func(s string) error {
+							v, err := strconv.ParseFloat(s, 64)
+							if err != nil || v <= 0 {
+								return fmt.Errorf("must be a valid number > 0")
+							}
+							return nil
+						}),
+					huh.NewInput().
+						Title("Redis URL").
+						Description("Where is your Redis instance running?").
+						Value(&redisInput).
+						Validate(func(s string) error {
+							if !strings.Contains(s, ":") {
+								return fmt.Errorf("must match host:port format")
+							}
+							return nil
+						}),
+				),
+			).WithTheme(ui.GetHuhTheme()).Run()
+
+			if err != nil {
+				return
+			}
 		}
-		fmt.Println()
-
-		// 2. Daily Limit
-		fmt.Println("  Step 2 of 4 — Daily Budget")
-		fmt.Println("  Default daily spend limit in USD")
-		fmt.Print("  › [10.00]: ")
-		dailyInput, _ := reader.ReadString('\n')
-		dailyInput = strings.TrimSpace(dailyInput)
-		if dailyInput == "" {
-			dailyInput = "10.00"
-		}
-		fmt.Println()
-
-		// 3. Hourly Limit
-		fmt.Println("  Step 3 of 4 — Hourly Budget")
-		fmt.Println("  Default hourly spend limit in USD")
-		fmt.Print("  › [2.00]: ")
-		hourlyInput, _ := reader.ReadString('\n')
-		hourlyInput = strings.TrimSpace(hourlyInput)
-		if hourlyInput == "" {
-			hourlyInput = "2.00"
-		}
-		fmt.Println()
-
-		// 4. Redis URL
-		fmt.Println("  Step 4 of 4 — Redis URL")
-		fmt.Println("  Where is your Redis instance running?")
-		fmt.Print("  › [localhost:6379]: ")
-		redisInput, _ := reader.ReadString('\n')
-		redisInput = strings.TrimSpace(redisInput)
-		if redisInput == "" {
-			redisInput = "localhost:6379"
-		}
-		fmt.Println()
 
 		// Generate loopers.yaml
 		yamlContent := fmt.Sprintf(`server:

@@ -16,7 +16,8 @@ var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Diagnose Loopers configuration and connectivity",
 	Run: func(cmd *cobra.Command, args []string) {
-		ui.PrintHeader("🔍 Loopers Diagnostics")
+		ui.PrintLogo()
+		ui.PrintHeader("◎ Loopers Diagnostics")
 		fmt.Println()
 
 		issues := 0
