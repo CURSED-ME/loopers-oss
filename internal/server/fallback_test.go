@@ -9,21 +9,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/loopers-oss/loopers/internal/budget"
 	"github.com/loopers-oss/loopers/internal/keyring"
 	"github.com/loopers-oss/loopers/internal/pricing"
 )
 
 func TestFallbackRouting(t *testing.T) {
-	redisAddr := os.Getenv("REDIS_TEST_ADDR")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
-	}
-
-	redisClient, err := budget.NewClient(redisAddr, "", 0)
+	mr, err := miniredis.Run()
 	if err != nil {
-		t.Skip("Skipping test: Redis not running")
-		return
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	defer mr.Close()
+
+	redisClient, err := budget.NewClient(mr.Addr(), "", 0)
+	if err != nil {
+		t.Fatalf("Failed to create redis client: %v", err)
 	}
 	defer redisClient.Close()
 
@@ -87,7 +88,7 @@ providers:
 	req.Header.Set("Authorization", "Bearer "+rawKey)
 	req.Header.Set("X-Loopers-Provider-Key", "dummy")
 
-	w := httptest.NewRecorder()
+	w := newCloseNotifierRecorder()
 	s.GetRouter().ServeHTTP(w, req)
 
 	// The request should have been routed to the fallback, successfully reserved, and returned 200 OK
@@ -97,6 +98,6 @@ providers:
 
 	// Verify the fallback header is set
 	if w.Header().Get("X-Loopers-Fallback") != "cheap-model" {
-		t.Errorf("Expected X-Loopers-Fallback header to be cheap-model, got %s", w.Header().Get("X-Loopers-Fallback"))
+		t.Errorf("Expected X-Loopers-Fallback header to be cheap-model, got %s. All headers: %v", w.Header().Get("X-Loopers-Fallback"), w.Header())
 	}
 }

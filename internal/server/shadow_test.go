@@ -3,12 +3,14 @@ package server
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/loopers-oss/loopers/internal/budget"
 	"github.com/loopers-oss/loopers/internal/keyring"
 	"github.com/loopers-oss/loopers/internal/pricing"
@@ -24,6 +26,12 @@ func (m *mockProvider) BaseURL() string                                  { retur
 func (m *mockProvider) InjectAuth(req *http.Request, providerKey string) {}
 func (m *mockProvider) RewritePath(originalPath string) string           { return originalPath }
 func (m *mockProvider) ParseRequest(req *http.Request, body []byte) (string, bool, int, []byte, error) {
+	var payload map[string]interface{}
+	if err := json.Unmarshal(body, &payload); err == nil {
+		if model, ok := payload["model"].(string); ok {
+			return model, false, 100, body, nil
+		}
+	}
 	return "mock-model", false, 100, body, nil
 }
 func (m *mockProvider) RewriteModel(req *http.Request, body []byte, fallbackModel string) ([]byte, error) {
@@ -43,15 +51,15 @@ func (m *mockProvider) FormatBudgetExceededSSE() []byte {
 }
 
 func TestShadowMode(t *testing.T) {
-	redisAddr := os.Getenv("REDIS_TEST_ADDR")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
-	}
-
-	redisClient, err := budget.NewClient(redisAddr, "", 0)
+	mr, err := miniredis.Run()
 	if err != nil {
-		t.Skip("Skipping test: Redis not running")
-		return
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	defer mr.Close()
+
+	redisClient, err := budget.NewClient(mr.Addr(), "", 0)
+	if err != nil {
+		t.Fatalf("Failed to create redis client: %v", err)
 	}
 	defer redisClient.Close()
 
@@ -118,12 +126,12 @@ providers:
 	req.Header.Set("Authorization", "Bearer "+rawKey)
 	req.Header.Set("X-Loopers-Provider-Key", "dummy")
 
-	w := httptest.NewRecorder()
+	w := newCloseNotifierRecorder()
 	s.GetRouter().ServeHTTP(w, req)
 
 	// In shadow mode, it should proceed to upstream and return 200 OK
 	if w.Code != http.StatusOK {
-		t.Errorf("Expected 200 OK due to shadow mode, got %d. Body: %s", w.Code, w.Body.String())
+		t.Fatalf("Expected 200 OK due to shadow mode, got %d. Body: %s", w.Code, w.Body.String())
 	}
 
 	// Verify metric incremented
@@ -138,7 +146,7 @@ providers:
 	req.Header.Set("Authorization", "Bearer "+rawKey)
 	req.Header.Set("X-Loopers-Provider-Key", "dummy")
 
-	w = httptest.NewRecorder()
+	w = newCloseNotifierRecorder()
 	s.GetRouter().ServeHTTP(w, req)
 
 	if w.Code != http.StatusTooManyRequests {

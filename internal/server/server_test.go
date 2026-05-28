@@ -5,26 +5,42 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
 	"github.com/loopers-oss/loopers/internal/budget"
 	"github.com/loopers-oss/loopers/internal/keyring"
 	"github.com/loopers-oss/loopers/internal/pricing"
 )
 
-func TestHealthEndpoint(t *testing.T) {
-	redisAddr := os.Getenv("REDIS_TEST_ADDR")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
-	}
+type closeNotifierRecorder struct {
+	*httptest.ResponseRecorder
+	closed chan bool
+}
 
-	redisClient, err := budget.NewClient(redisAddr, "", 0)
+func newCloseNotifierRecorder() *closeNotifierRecorder {
+	return &closeNotifierRecorder{
+		ResponseRecorder: httptest.NewRecorder(),
+		closed:           make(chan bool, 1),
+	}
+}
+
+func (c *closeNotifierRecorder) CloseNotify() <-chan bool {
+	return c.closed
+}
+
+func TestHealthEndpoint(t *testing.T) {
+	mr, err := miniredis.Run()
 	if err != nil {
-		t.Skip("Skipping health test: Redis not running")
-		return
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	defer mr.Close()
+
+	redisClient, err := budget.NewClient(mr.Addr(), "", 0)
+	if err != nil {
+		t.Fatalf("Failed to create redis client: %v", err)
 	}
 	defer redisClient.Close()
 
@@ -37,7 +53,7 @@ func TestHealthEndpoint(t *testing.T) {
 	r := s.GetRouter()
 
 	req, _ := http.NewRequest("GET", "/health", nil)
-	w := httptest.NewRecorder()
+	w := newCloseNotifierRecorder()
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -55,15 +71,15 @@ func TestHealthEndpoint(t *testing.T) {
 }
 
 func TestBudgetStatusEndpoint(t *testing.T) {
-	redisAddr := os.Getenv("REDIS_TEST_ADDR")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
-	}
-
-	redisClient, err := budget.NewClient(redisAddr, "", 0)
+	mr, err := miniredis.Run()
 	if err != nil {
-		t.Skip("Skipping budget status test: Redis not running")
-		return
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	defer mr.Close()
+
+	redisClient, err := budget.NewClient(mr.Addr(), "", 0)
+	if err != nil {
+		t.Fatalf("Failed to create redis client: %v", err)
 	}
 	defer redisClient.Close()
 
@@ -79,7 +95,7 @@ func TestBudgetStatusEndpoint(t *testing.T) {
 
 	// 1. Unauthenticated request should fail with 401
 	req, _ := http.NewRequest("GET", "/budget/status", nil)
-	w := httptest.NewRecorder()
+	w := newCloseNotifierRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("Expected unauthorized status 401, got %d", w.Code)
@@ -88,7 +104,7 @@ func TestBudgetStatusEndpoint(t *testing.T) {
 	// 2. Request with invalid key format should fail with 401
 	req, _ = http.NewRequest("GET", "/budget/status", nil)
 	req.Header.Set("Authorization", "Bearer invalid-format")
-	w = httptest.NewRecorder()
+	w = newCloseNotifierRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("Expected unauthorized status 401, got %d", w.Code)
@@ -101,7 +117,7 @@ func TestBudgetStatusEndpoint(t *testing.T) {
 	}
 	req, _ = http.NewRequest("GET", "/budget/status", nil)
 	req.Header.Set("Authorization", "Bearer "+rawKey)
-	w = httptest.NewRecorder()
+	w = newCloseNotifierRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("Expected unauthorized status 401, got %d", w.Code)
@@ -124,7 +140,7 @@ func TestBudgetStatusEndpoint(t *testing.T) {
 
 	req, _ = http.NewRequest("GET", "/budget/status", nil)
 	req.Header.Set("Authorization", "Bearer "+rawKey)
-	w = httptest.NewRecorder()
+	w = newCloseNotifierRecorder()
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
