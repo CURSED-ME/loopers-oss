@@ -10,8 +10,8 @@
   <img src="https://img.shields.io/badge/license-MIT-black.svg?style=for-the-badge" alt="License" />
   <img src="https://img.shields.io/badge/go-1.26.3-black.svg?style=for-the-badge" alt="Go Version" />
   <img src="https://img.shields.io/badge/providers-10%20Supported-black.svg?style=for-the-badge" alt="Providers" />
-  <a href="https://github.com/loopers-oss/loopers/actions/workflows/ci.yml"><img src="https://github.com/loopers-oss/loopers/actions/workflows/ci.yml/badge.svg" alt="Build Status" /></a>
-  <a href="https://securityscorecards.dev/viewer/?uri=github.com/loopers-oss/loopers"><img src="https://api.securityscorecards.dev/projects/github.com/loopers-oss/loopers/badge?style=for-the-badge" alt="OpenSSF Scorecard" /></a>
+  <a href="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml"><img src="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml/badge.svg" alt="Build Status" /></a>
+  <a href="https://securityscorecards.dev/viewer/?uri=github.com/CURSED-ME/loopers-oss"><img src="https://api.securityscorecards.dev/projects/github.com/CURSED-ME/loopers-oss/badge?style=for-the-badge" alt="OpenSSF Scorecard" /></a>
 </p>
 
 Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It intercepts requests to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
