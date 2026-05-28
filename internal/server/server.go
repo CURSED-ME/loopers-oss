@@ -268,8 +268,16 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	providerKeyStr, _ := providerKey.(string)
 
 	// 2. Parse request body for model, max_tokens, and streaming
-	bodyBytes, _ := c.Get(RequestBodyCtx)
-	body := bodyBytes.([]byte)
+	bodyBytes, exists := c.Get(RequestBodyCtx)
+	if !exists {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "RequestBodyCtx missing - did BodyBuffer run?"})
+		return
+	}
+	body, ok := bodyBytes.([]byte)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "RequestBodyCtx is not a byte slice"})
+		return
+	}
 
 	model, isStream, maxTokensVal, mutatedBody, err := prov.ParseRequest(c.Request, body)
 	if err != nil {

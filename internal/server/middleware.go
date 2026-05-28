@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -46,6 +47,8 @@ func Recovery() gin.HandlerFunc {
 					Interface("panic", err).
 					Str("request_id", reqID).
 					Msg("panic recovered")
+				fmt.Printf("PANIC: %v\n", err)
+				debug.PrintStack()
 				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 					"error": gin.H{
 						"message": "Internal server error",
