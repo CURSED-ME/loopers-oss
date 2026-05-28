@@ -7,3 +7,5 @@ graphify-out/
 bin/
 *.exe
 .agents/
+loopers.yaml
+docker-compose.yml
