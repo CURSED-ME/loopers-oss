@@ -29,14 +29,14 @@ var doctorCmd = &cobra.Command{
 		} else {
 			ui.Success(fmt.Sprintf("redis.addr: %s", viper.GetString("redis.addr")))
 		}
-		
+
 		if !viper.IsSet("server.port") {
 			ui.Error("server.port missing")
 			issues++
 		} else {
 			ui.Success(fmt.Sprintf("server.port: %s", viper.GetString("server.port")))
 		}
-		
+
 		pricingPath := viper.GetString("pricing_path")
 		if pricingPath == "" {
 			pricingPath = "./pricing.yaml"

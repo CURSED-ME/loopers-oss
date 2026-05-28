@@ -148,14 +148,14 @@ var keysListCmd = &cobra.Command{
 		rdb := redisClient.GetUnderlyingClient()
 
 		iter := rdb.Scan(ctx, 0, "loopers:key:*", 0).Iterator()
-		
+
 		headers := []string{"Hash", "Name", "Provider", "Created At", "Active"}
 		var rows [][]string
 
 		for iter.Next(ctx) {
 			redisKey := iter.Val()
 			hash := redisKey[len("loopers:key:"):]
-			
+
 			displayHash := hash
 			if len(displayHash) > 12 {
 				displayHash = displayHash[:12] + "..."
@@ -168,7 +168,7 @@ var keysListCmd = &cobra.Command{
 				if meta.CreatedAt == "" {
 					timeStr = "Unknown"
 				}
-				
+
 				activeStr := "❌"
 				if meta.Active == "true" {
 					activeStr = "✅"
@@ -181,7 +181,7 @@ var keysListCmd = &cobra.Command{
 		if err := iter.Err(); err != nil {
 			logging.Logger.Fatal().Err(err).Msg("failed scanning keys")
 		}
-		
+
 		fmt.Printf("  Keys (%d total)\n", len(rows))
 		if len(rows) > 0 {
 			ui.PrintTable(headers, rows)
@@ -308,13 +308,13 @@ var budgetStatusCmd = &cobra.Command{
 		if len(displayHash) > 12 {
 			displayHash = displayHash[:12] + "..."
 		}
-		
+
 		keyConfig, _ := rdb.HGetAll(ctx, fmt.Sprintf("loopers:key:%s", hash)).Result()
 		name := keyConfig["name"]
 		provider := keyConfig["provider"]
 
 		fmt.Printf("  Budget Status  ›  %s  (%s / %s)\n\n", displayHash, name, provider)
-		
+
 		windowsOrdered := []string{"minute", "hourly", "daily", "weekly", "monthly"}
 		for _, w := range windowsOrdered {
 			s := status[w]
@@ -448,7 +448,7 @@ networks:
 			return
 		}
 		ui.Success("docker-compose.yml written")
-		
+
 		fmt.Println()
 		fmt.Println("  Next steps:")
 		fmt.Println("    1. docker-compose up -d")

@@ -50,16 +50,16 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(colorBorderStrong).
 			Padding(1, 2)
-			
+
 	styleSummaryPass = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(colorGreen).
-			Padding(0, 1)
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(colorGreen).
+				Padding(0, 1)
 
 	styleSummaryFail = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(colorRed).
-			Padding(0, 1)
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(colorRed).
+				Padding(0, 1)
 )
 
 func PrintHeader(title string) {
@@ -153,7 +153,7 @@ func PrintBudgetBar(name string, spend, limit float64) {
 	bar := barStyle.Render(strings.Repeat("█", filled)) + emptyStyle.Render(strings.Repeat("░", empty))
 
 	stats := fmt.Sprintf("$%.2f / $%.2f  (%.0f%%)", spend, limit, pct)
-	
+
 	msg := fmt.Sprintf("  %-8s %s  %s", name, bar, stats)
 	if pct > 100 {
 		msg += styleError.Render(" ⚠ OVER LIMIT")
@@ -166,13 +166,13 @@ func PrintBudgetBar(name string, spend, limit float64) {
 
 func PrintKeyCard(name, provider, rawKey, hash string) {
 	var sb strings.Builder
-	
+
 	sb.WriteString(styleSuccess.Render("✅  Key Created Successfully") + "\n\n")
 	sb.WriteString(fmt.Sprintf("%s%s\n", styleLabel.Render("Name"), name))
 	sb.WriteString(fmt.Sprintf("%s%s\n\n", styleLabel.Render("Provider"), provider))
 	sb.WriteString(fmt.Sprintf("%s%s\n", styleLabel.Render("Raw Key"), lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true).Render(rawKey)))
 	sb.WriteString(fmt.Sprintf("%s%s\n\n", styleLabel.Render("Hash"), hash))
-	
+
 	warnLines := "⚠  Copy the raw key now. It won't be\n   shown again."
 	sb.WriteString(styleWarn.Render(warnLines))
 
@@ -187,5 +187,3 @@ func PrintSummary(pass bool, issues int) {
 		fmt.Println(styleSummaryFail.Render(msg))
 	}
 }
-
-
