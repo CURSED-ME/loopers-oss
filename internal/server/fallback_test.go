@@ -59,10 +59,7 @@ providers:
 	defer upstream.Close()
 
 	s := NewServer(redisClient, pricingStore)
-	s.registry.Register(&mockProvider{baseURL: upstream.URL})
-	s.router.POST("/mock/*path", func(c *gin.Context) {
-		s.handleProxy(c, "mock")
-	})
+	s.RegisterProviderRoute(&mockProvider{baseURL: upstream.URL})
 
 	ctx := context.Background()
 	rdb := redisClient.GetUnderlyingClient()

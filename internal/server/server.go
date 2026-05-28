@@ -90,6 +90,7 @@ type Server struct {
 	registry   *provider.Registry
 	alerter    *alerting.Alerter
 	shadowMode bool
+	proxyGroup *gin.RouterGroup // exposed so tests can register routes with BodyBuffer applied
 }
 
 // NewServer initializes and builds the HTTP server with middlewares and ReverseProxy configuration.
@@ -146,15 +147,25 @@ func (s *Server) setupRoutes() {
 	s.router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	s.router.GET("/budget/status", s.handleBudgetStatus)
 
-	proxyGroup := s.router.Group("/")
-	proxyGroup.Use(BodyBuffer())
+	s.proxyGroup = s.router.Group("/")
+	s.proxyGroup.Use(BodyBuffer())
 
 	for _, p := range s.registry.All() {
 		providerName := p.Name()
-		proxyGroup.POST("/"+providerName+"/*path", func(c *gin.Context) {
+		s.proxyGroup.POST("/"+providerName+"/*path", func(c *gin.Context) {
 			s.handleProxy(c, providerName)
 		})
 	}
+}
+
+// RegisterProviderRoute registers a provider and adds its route to the proxy group (with BodyBuffer applied).
+// This is intended for use in tests only.
+func (s *Server) RegisterProviderRoute(p provider.Provider) {
+	s.registry.Register(p)
+	providerName := p.Name()
+	s.proxyGroup.POST("/"+providerName+"/*path", func(c *gin.Context) {
+		s.handleProxy(c, providerName)
+	})
 }
 
 func (s *Server) handleHealth(c *gin.Context) {

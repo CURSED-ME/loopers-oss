@@ -85,12 +85,8 @@ providers:
 
 	s := NewServer(redisClient, pricingStore)
 
-	// Register mock provider
-	s.registry.Register(&mockProvider{baseURL: upstream.URL})
-	// Setup route for mock provider manually since setupRoutes already ran
-	s.router.POST("/mock/*path", func(c *gin.Context) {
-		s.handleProxy(c, "mock")
-	})
+	// Register mock provider through the helper so BodyBuffer middleware is correctly applied
+	s.RegisterProviderRoute(&mockProvider{baseURL: upstream.URL})
 
 	ctx := context.Background()
 	rdb := redisClient.GetUnderlyingClient()
