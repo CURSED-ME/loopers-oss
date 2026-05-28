@@ -20,10 +20,10 @@ type mockProvider struct {
 	baseURL string
 }
 
-func (m *mockProvider) Name() string { return "mock" }
-func (m *mockProvider) BaseURL() string { return m.baseURL }
+func (m *mockProvider) Name() string                                     { return "mock" }
+func (m *mockProvider) BaseURL() string                                  { return m.baseURL }
 func (m *mockProvider) InjectAuth(req *http.Request, providerKey string) {}
-func (m *mockProvider) RewritePath(originalPath string) string { return originalPath }
+func (m *mockProvider) RewritePath(originalPath string) string           { return originalPath }
 func (m *mockProvider) ParseRequest(req *http.Request, body []byte) (string, bool, int, []byte, error) {
 	return "mock-model", false, 100, body, nil
 }
@@ -66,7 +66,7 @@ func TestShadowMode(t *testing.T) {
 	defer upstream.Close()
 
 	s := NewServer(redisClient, pricingStore)
-	
+
 	// Register mock provider
 	s.registry.Register(&mockProvider{baseURL: upstream.URL})
 	// Setup route for mock provider manually since setupRoutes already ran
@@ -104,7 +104,7 @@ func TestShadowMode(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/mock/v1/chat", bytes.NewBuffer(reqBody))
 	req.Header.Set("Authorization", "Bearer "+rawKey)
 	req.Header.Set("X-Loopers-Provider-Key", "dummy")
-	
+
 	w := httptest.NewRecorder()
 	s.GetRouter().ServeHTTP(w, req)
 
@@ -124,7 +124,7 @@ func TestShadowMode(t *testing.T) {
 	req, _ = http.NewRequest("POST", "/mock/v1/chat", bytes.NewBuffer(reqBody))
 	req.Header.Set("Authorization", "Bearer "+rawKey)
 	req.Header.Set("X-Loopers-Provider-Key", "dummy")
-	
+
 	w = httptest.NewRecorder()
 	s.GetRouter().ServeHTTP(w, req)
 

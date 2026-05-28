@@ -77,7 +77,7 @@ func (az *AzureProvider) RewriteModel(req *http.Request, body []byte, fallbackMo
 	if err != nil {
 		return body, err
 	}
-	
+
 	// Rewrite URL path /deployments/{deployment}/ -> /deployments/{fallbackModel}/
 	path := req.URL.Path
 	idx := strings.Index(path, "/deployments/")
@@ -88,7 +88,7 @@ func (az *AzureProvider) RewriteModel(req *http.Request, body []byte, fallbackMo
 			req.URL.Path = path[:start] + fallbackModel + path[start+end:]
 		}
 	}
-	
+
 	return newBody, nil
 }
 

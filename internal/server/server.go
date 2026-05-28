@@ -83,10 +83,10 @@ const (
 
 // Server coordinates the proxy operations and HTTP routing.
 type Server struct {
-	router   *gin.Engine
-	redis    *budget.Client
-	pricing  *pricing.Store
-	proxy    *proxy.Proxy
+	router     *gin.Engine
+	redis      *budget.Client
+	pricing    *pricing.Store
+	proxy      *proxy.Proxy
 	registry   *provider.Registry
 	alerter    *alerting.Alerter
 	shadowMode bool
@@ -329,10 +329,10 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 					Float64("current_spend", budgetErr.CurrentSpend).
 					Msg("shadow_blocked")
 				shadowBlockedTotal.WithLabelValues(providerName, budgetErr.WindowName).Inc()
-				
-				// In shadow mode, we didn't reserve the budget (it rolled back), so we set estimatedCost to 0 
+
+				// In shadow mode, we didn't reserve the budget (it rolled back), so we set estimatedCost to 0
 				// so that Reconcile() later adds the full actual cost to the current spend.
-				estimatedCost = 0 
+				estimatedCost = 0
 			} else {
 				if s.alerter != nil {
 					go s.alerter.TriggerBlockAlert(keyHash, meta.Name, providerName, model, budgetErr.WindowName, budgetErr.CurrentSpend, budgetErr.Limit, estimatedCost)

@@ -89,4 +89,3 @@ func (s *Store) GetFallback(provider, model string) string {
 
 	return modelPrice.Fallback
 }
-

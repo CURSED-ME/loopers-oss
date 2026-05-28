@@ -22,7 +22,7 @@ func NewCohereProvider() *CohereProvider {
 
 var _ provider.Provider = (*CohereProvider)(nil)
 
-func (c *CohereProvider) Name() string { return "cohere" }
+func (c *CohereProvider) Name() string    { return "cohere" }
 func (c *CohereProvider) BaseURL() string { return "https://api.cohere.com/v1" }
 
 func (c *CohereProvider) InjectAuth(req *http.Request, providerKey string) {

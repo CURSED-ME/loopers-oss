@@ -90,7 +90,7 @@ providers:
 	req, _ := http.NewRequest("POST", "/mock/v1/chat", bytes.NewBuffer(reqBody))
 	req.Header.Set("Authorization", "Bearer "+rawKey)
 	req.Header.Set("X-Loopers-Provider-Key", "dummy")
-	
+
 	w := httptest.NewRecorder()
 	s.GetRouter().ServeHTTP(w, req)
 
