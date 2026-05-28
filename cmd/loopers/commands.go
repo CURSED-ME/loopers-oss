@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"text/tabwriter"
 	"time"
 
+	"github.com/loopers-oss/loopers/cmd/loopers/ui"
 	"github.com/loopers-oss/loopers/internal/budget"
 	"github.com/loopers-oss/loopers/internal/keyring"
 	"github.com/loopers-oss/loopers/internal/logging"
@@ -130,10 +130,7 @@ var keysCreateCmd = &cobra.Command{
 			logging.Logger.Fatal().Err(err).Msg("failed to store key in redis")
 		}
 
-		fmt.Println("Key created successfully!")
-		fmt.Printf("Raw Key:  %s\n", rawKey)
-		fmt.Printf("Key Hash: %s\n", hash)
-		fmt.Println("WARNING: Please copy the raw key now. It will not be shown again.")
+		ui.PrintKeyCard(keyName, keyProvider, rawKey, hash)
 	},
 }
 
@@ -151,23 +148,44 @@ var keysListCmd = &cobra.Command{
 		rdb := redisClient.GetUnderlyingClient()
 
 		iter := rdb.Scan(ctx, 0, "loopers:key:*", 0).Iterator()
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "HASH\tNAME\tPROVIDER\tCREATED AT\tACTIVE")
+		
+		headers := []string{"Hash", "Name", "Provider", "Created At", "Active"}
+		var rows [][]string
 
 		for iter.Next(ctx) {
 			redisKey := iter.Val()
 			hash := redisKey[len("loopers:key:"):]
+			
+			displayHash := hash
+			if len(displayHash) > 12 {
+				displayHash = displayHash[:12] + "..."
+			}
 
 			var meta keyring.KeyMetadata
 			if err := rdb.HGetAll(ctx, redisKey).Scan(&meta); err == nil {
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", hash, meta.Name, meta.Provider, meta.CreatedAt, meta.Active)
+				t, _ := time.Parse(time.RFC3339, meta.CreatedAt)
+				timeStr := t.Format("2006-01-02 15:04 UTC")
+				if meta.CreatedAt == "" {
+					timeStr = "Unknown"
+				}
+				
+				activeStr := "❌"
+				if meta.Active == "true" {
+					activeStr = "✅"
+				}
+
+				rows = append(rows, []string{displayHash, meta.Name, meta.Provider, timeStr, activeStr})
 			}
 		}
 
 		if err := iter.Err(); err != nil {
 			logging.Logger.Fatal().Err(err).Msg("failed scanning keys")
 		}
-		w.Flush()
+		
+		fmt.Printf("  Keys (%d total)\n", len(rows))
+		if len(rows) > 0 {
+			ui.PrintTable(headers, rows)
+		}
 	},
 }
 
@@ -198,7 +216,7 @@ var keysRevokeCmd = &cobra.Command{
 			logging.Logger.Fatal().Err(err).Msg("failed to revoke key")
 		}
 
-		fmt.Println("Key revoked successfully.")
+		ui.Success("Key revoked successfully.")
 	},
 }
 
@@ -256,7 +274,7 @@ var budgetSetCmd = &cobra.Command{
 			logging.Logger.Fatal().Err(err).Msg("failed to set budget")
 		}
 
-		fmt.Println("Budget set successfully.")
+		ui.Success("Budget set successfully.")
 	},
 }
 
@@ -286,16 +304,21 @@ var budgetStatusCmd = &cobra.Command{
 			logging.Logger.Fatal().Err(err).Msg("failed to get budget status")
 		}
 
-		fmt.Printf("Budget Status for key hash %s:\n", hash)
+		displayHash := hash
+		if len(displayHash) > 12 {
+			displayHash = displayHash[:12] + "..."
+		}
+		
+		keyConfig, _ := rdb.HGetAll(ctx, fmt.Sprintf("loopers:key:%s", hash)).Result()
+		name := keyConfig["name"]
+		provider := keyConfig["provider"]
+
+		fmt.Printf("  Budget Status  ›  %s  (%s / %s)\n\n", displayHash, name, provider)
+		
 		windowsOrdered := []string{"minute", "hourly", "daily", "weekly", "monthly"}
-		for _, name := range windowsOrdered {
-			s := status[name]
-			limStr := "none"
-			if s.Limit > 0 {
-				limStr = fmt.Sprintf("%.4f USD", s.Limit)
-			}
-			fmt.Printf("  %-8s Limit: %-15s (Current Spend: %.4f USD)\n",
-				name+":", limStr, s.CurrentSpend)
+		for _, w := range windowsOrdered {
+			s := status[w]
+			ui.PrintBudgetBar(w, s.CurrentSpend, s.Limit)
 		}
 	},
 }
@@ -306,42 +329,53 @@ var initCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		reader := bufio.NewReader(os.Stdin)
 
-		fmt.Println("Welcome to Loopers! Let's set up your AI cost firewall.")
+		ui.PrintHeader("🔒 Loopers Setup Wizard\nConfigure your AI cost firewall")
 		fmt.Println()
 
 		// 1. Providers
-		fmt.Println("Which providers will you use? (comma-separated list)")
-		fmt.Println("Available: openai, anthropic, gemini, bedrock, azure, mistral")
-		fmt.Print("Providers [openai, anthropic]: ")
+		fmt.Println("  Step 1 of 4 — Providers")
+		fmt.Println("  Which AI providers will you use?")
+		fmt.Println("  Available: openai, anthropic, gemini, bedrock, azure, mistral, groq, cohere, deepseek, together")
+		fmt.Print("  › [openai, anthropic]: ")
 		providersInput, _ := reader.ReadString('\n')
 		providersInput = strings.TrimSpace(providersInput)
 		if providersInput == "" {
 			providersInput = "openai, anthropic"
 		}
+		fmt.Println()
 
 		// 2. Daily Limit
-		fmt.Print("Default Daily budget limit (USD) [10.00]: ")
+		fmt.Println("  Step 2 of 4 — Daily Budget")
+		fmt.Println("  Default daily spend limit in USD")
+		fmt.Print("  › [10.00]: ")
 		dailyInput, _ := reader.ReadString('\n')
 		dailyInput = strings.TrimSpace(dailyInput)
 		if dailyInput == "" {
 			dailyInput = "10.00"
 		}
+		fmt.Println()
 
 		// 3. Hourly Limit
-		fmt.Print("Default Hourly budget limit (USD) [2.00]: ")
+		fmt.Println("  Step 3 of 4 — Hourly Budget")
+		fmt.Println("  Default hourly spend limit in USD")
+		fmt.Print("  › [2.00]: ")
 		hourlyInput, _ := reader.ReadString('\n')
 		hourlyInput = strings.TrimSpace(hourlyInput)
 		if hourlyInput == "" {
 			hourlyInput = "2.00"
 		}
+		fmt.Println()
 
 		// 4. Redis URL
-		fmt.Print("Redis URL [localhost:6379]: ")
+		fmt.Println("  Step 4 of 4 — Redis URL")
+		fmt.Println("  Where is your Redis instance running?")
+		fmt.Print("  › [localhost:6379]: ")
 		redisInput, _ := reader.ReadString('\n')
 		redisInput = strings.TrimSpace(redisInput)
 		if redisInput == "" {
 			redisInput = "localhost:6379"
 		}
+		fmt.Println()
 
 		// Generate loopers.yaml
 		yamlContent := fmt.Sprintf(`server:
@@ -367,10 +401,10 @@ alerting:
 
 		err := os.WriteFile("loopers.yaml", []byte(yamlContent), 0644)
 		if err != nil {
-			fmt.Printf("Error writing loopers.yaml: %v\n", err)
+			ui.Error(fmt.Sprintf("Error writing loopers.yaml: %v", err))
 			return
 		}
-		fmt.Println("✅ Generated loopers.yaml")
+		ui.Success("loopers.yaml written")
 
 		// Generate docker-compose.yml
 		composeContent := `version: '3.8'
@@ -410,16 +444,16 @@ networks:
 `
 		err = os.WriteFile("docker-compose.yml", []byte(composeContent), 0644)
 		if err != nil {
-			fmt.Printf("Error writing docker-compose.yml: %v\n", err)
+			ui.Error(fmt.Sprintf("Error writing docker-compose.yml: %v", err))
 			return
 		}
-		fmt.Println("✅ Generated docker-compose.yml")
+		ui.Success("docker-compose.yml written")
+		
 		fmt.Println()
-		fmt.Println("Initialization complete!")
-		fmt.Println("Run 'docker-compose up -d' to start your Loopers firewall.")
-		fmt.Printf("After starting, you can configure your first key daily budget of $%s with:\n", dailyInput)
-		fmt.Printf("  loopers keys create --name my-app --provider openai\n")
-		fmt.Printf("  loopers budget set <hash> --daily %s --hourly %s\n", dailyInput, hourlyInput)
+		fmt.Println("  Next steps:")
+		fmt.Println("    1. docker-compose up -d")
+		fmt.Println("    2. loopers keys create --name my-app --provider openai")
+		fmt.Printf("    3. loopers budget set <hash> --daily %s --hourly %s\n", dailyInput, hourlyInput)
 	},
 }
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/loopers-oss/loopers/cmd/loopers/ui"
 	"github.com/loopers-oss/loopers/internal/pricing"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -15,60 +16,67 @@ var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Diagnose Loopers configuration and connectivity",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Running Loopers Diagnostics...")
+		ui.PrintHeader("🔍 Loopers Diagnostics")
 		fmt.Println()
 
-		allPass := true
+		issues := 0
 
 		// 1. Check loopers.yaml config
-		hasConfigError := false
+		fmt.Println("  Config")
 		if !viper.IsSet("redis.addr") {
-			fmt.Println("❌ loopers.yaml missing field: redis.addr")
-			hasConfigError = true
+			ui.Error("redis.addr missing")
+			issues++
+		} else {
+			ui.Success(fmt.Sprintf("redis.addr: %s", viper.GetString("redis.addr")))
 		}
+		
 		if !viper.IsSet("server.port") {
-			fmt.Println("❌ loopers.yaml missing field: server.port")
-			hasConfigError = true
+			ui.Error("server.port missing")
+			issues++
+		} else {
+			ui.Success(fmt.Sprintf("server.port: %s", viper.GetString("server.port")))
+		}
+		
+		pricingPath := viper.GetString("pricing_path")
+		if pricingPath == "" {
+			pricingPath = "./pricing.yaml"
 		}
 		if !viper.IsSet("pricing_path") {
-			fmt.Println("❌ loopers.yaml missing field: pricing_path")
-			hasConfigError = true
+			ui.Error("pricing_path missing")
+			issues++
+		} else {
+			ui.Success(fmt.Sprintf("pricing_path: %s", pricingPath))
 		}
 
-		if hasConfigError {
-			allPass = false
-		} else {
-			fmt.Println("✅ loopers.yaml schema valid")
-		}
+		fmt.Println()
+		fmt.Println("  Connectivity")
 
 		// 2. Check Redis Connectivity
 		start := time.Now()
 		redisClient, err := getRedisClient()
 		if err != nil {
-			fmt.Printf("❌ Redis connection failed: %v\n", err)
-			allPass = false
+			ui.Error(fmt.Sprintf("Redis: connection failed (%v)", err))
+			issues++
 		} else {
 			err = redisClient.Ping(context.Background())
 			if err != nil {
-				fmt.Printf("❌ Redis ping failed: %v\n", err)
-				allPass = false
+				ui.Error(fmt.Sprintf("Redis: ping failed (%v)", err))
+				issues++
 			} else {
 				latency := time.Since(start).Milliseconds()
-				fmt.Printf("✅ Redis connection OK (%dms)\n", latency)
+				ui.Success(fmt.Sprintf("Redis: OK (%dms)", latency))
 			}
 		}
 
 		// 3. Validate pricing.yaml
-		pricingPath := viper.GetString("pricing_path")
-		if pricingPath == "" {
-			pricingPath = "./pricing.yaml"
-		}
+		fmt.Println()
+		fmt.Println("  Data")
 		_, err = pricing.LoadStore(pricingPath)
 		if err != nil {
-			fmt.Printf("❌ pricing.yaml validation failed: %v\n", err)
-			allPass = false
+			ui.Error(fmt.Sprintf("Pricing: validation failed (%v)", err))
+			issues++
 		} else {
-			fmt.Println("✅ pricing.yaml loaded successfully")
+			ui.Success("Pricing: loaded successfully")
 		}
 
 		// 4. Check that at least one key exists and has budgets
@@ -79,14 +87,14 @@ var doctorCmd = &cobra.Command{
 			// Check if keys exist
 			keys, _ := rdb.Keys(ctx, "loopers:key:*").Result()
 			if len(keys) == 0 {
-				fmt.Println("⚠️  No keys found. Run 'loopers keys create' to create one.")
+				ui.Warn("No keys found. Run 'loopers keys create' to create one.")
 			} else {
 				// Check if any budgets exist
 				budgets, _ := rdb.Keys(ctx, "loopers:budget:*:config").Result()
 				if len(budgets) == 0 {
-					fmt.Println("⚠️  Keys exist, but no budgets configured. Run 'loopers budget set' to configure limits.")
+					ui.Warn("Keys exist, but no budgets configured. Run 'loopers budget set'.")
 				} else {
-					fmt.Printf("✅ %d keys found, budgets configured\n", len(keys))
+					ui.Success(fmt.Sprintf("%d keys found, budgets configured", len(keys)))
 				}
 			}
 		}
@@ -98,24 +106,20 @@ var doctorCmd = &cobra.Command{
 		}
 		resp, err := http.Get(fmt.Sprintf("http://localhost:%s/health", port))
 		if err != nil {
-			fmt.Printf("❌ Proxy not responding on localhost:%s — is it running?\n", port)
-			allPass = false
+			ui.Error(fmt.Sprintf("Proxy: not responding on :%s", port))
+			issues++
 		} else {
 			defer resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
-				fmt.Printf("✅ Proxy is running and healthy on port %s\n", port)
+				ui.Success(fmt.Sprintf("Proxy: running on :%s", port))
 			} else {
-				fmt.Printf("❌ Proxy returned status %d on /health\n", resp.StatusCode)
-				allPass = false
+				ui.Error(fmt.Sprintf("Proxy: returned status %d on /health", resp.StatusCode))
+				issues++
 			}
 		}
 
 		fmt.Println()
-		if allPass {
-			fmt.Println("All systems go! Loopers is correctly configured and running.")
-		} else {
-			fmt.Println("Diagnostics completed with errors. Please fix the issues above.")
-		}
+		ui.PrintSummary(issues == 0, issues)
 	},
 }
 
