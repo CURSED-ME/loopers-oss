@@ -9,9 +9,9 @@
 <p align="left">
   <img src="https://img.shields.io/badge/license-MIT-black.svg?style=for-the-badge" alt="License" />
   <img src="https://img.shields.io/badge/go-1.26.3-black.svg?style=for-the-badge" alt="Go Version" />
-  <img src="https://img.shields.io/badge/providers-6%20Supported-black.svg?style=for-the-badge" alt="Providers" />
-  <a href="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml"><img src="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml/badge.svg" alt="Build Status" /></a>
-  <a href="https://securityscorecards.dev/viewer/?uri=github.com/CURSED-ME/loopers-oss"><img src="https://api.securityscorecards.dev/projects/github.com/CURSED-ME/loopers-oss/badge?style=for-the-badge" alt="OpenSSF Scorecard" /></a>
+  <img src="https://img.shields.io/badge/providers-10%20Supported-black.svg?style=for-the-badge" alt="Providers" />
+  <a href="https://github.com/loopers-oss/loopers/actions/workflows/ci.yml"><img src="https://github.com/loopers-oss/loopers/actions/workflows/ci.yml/badge.svg" alt="Build Status" /></a>
+  <a href="https://securityscorecards.dev/viewer/?uri=github.com/loopers-oss/loopers"><img src="https://api.securityscorecards.dev/projects/github.com/loopers-oss/loopers/badge?style=for-the-badge" alt="OpenSSF Scorecard" /></a>
 </p>
 
 Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It intercepts requests to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
@@ -54,6 +54,10 @@ Loopers is engineered specifically as a high-performance infrastructure-level ci
 | **AWS Bedrock** | Claude/Llama on Bedrock | Supported | Supported | Supported | Supported (Model Tokenizer) |
 | **Azure OpenAI** | GPT models on Azure | Supported | Supported | Supported | Supported (tiktoken) |
 | **Mistral AI** | `mistral-large`, etc. | Supported | Supported | Supported | Supported (tiktoken) |
+| **Groq** | Llama 3 on Groq, etc. | Supported | Supported | Supported | Supported (tiktoken) |
+| **Cohere** | `command-r`, etc. | Supported | Supported | Supported | Supported (Model Tokenizer) |
+| **DeepSeek** | `deepseek-chat`, etc. | Supported | Supported | Supported | Supported (tiktoken) |
+| **Together** | Llama 3 on Together, etc. | Supported | Supported | Supported | Supported (tiktoken) |
 
 ---
 
@@ -113,7 +117,7 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 |---|---|
 | `loopers init` | Interactive wizard — generates `loopers.yaml` and `docker-compose.yml` |
 | `loopers serve` | Start the proxy server |
-| `loopers keys create --name <n> --provider <p>` | Create a new proxy key (providers: `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`) |
+| `loopers keys create --name <n> --provider <p>` | Create a new proxy key (providers: `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`) |
 | `loopers keys list` | List all proxy keys with metadata |
 | `loopers keys revoke <hash>` | Revoke a key by hash |
 | `loopers budget set <hash> [flags]` | Set budget limits (`--minute`, `--hourly`, `--daily`, `--weekly`, `--monthly`) |
@@ -207,7 +211,7 @@ The OSS version is the full circuit-breaker engine — everything you need to se
 | Feature | OSS (Self-Hosted) | [Loopers Cloud](https://tryloopers.com) |
 |---|:---:|:---:|
 | Pre-call budget enforcement | ✅ | ✅ |
-| 6 provider support (OpenAI, Anthropic, Gemini, Bedrock, Azure, Mistral) | ✅ | ✅ |
+| 10 provider support (OpenAI, Anthropic, Gemini, Bedrock, Azure, Mistral, Groq, Cohere, DeepSeek, Together) | ✅ | ✅ |
 | 5 budget windows (minute / hourly / daily / weekly / monthly) | ✅ | ✅ |
 | Mid-stream SSE cutoff | ✅ | ✅ |
 | Fail-closed Redis guarantee | ✅ | ✅ |

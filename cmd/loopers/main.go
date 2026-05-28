@@ -3,13 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
-	"github.com/charmbracelet/huh"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/loopers-oss/loopers/cmd/loopers/ui"
 	"github.com/loopers-oss/loopers/internal/logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"strings"
 )
 
 var (
@@ -27,28 +27,20 @@ var rootCmd = &cobra.Command{
 			return
 		}
 
-		ui.PrintLogo()
-
-		var action string
-		err := huh.NewSelect[string]().
-			Title("Main Menu").
-			Options(
-				huh.NewOption("Run Diagnostics", "doctor"),
-				huh.NewOption("Initialize Workspace", "init"),
-				huh.NewOption("Create Key", "keys create"),
-				huh.NewOption("List Keys", "keys list"),
-				huh.NewOption("Revoke Key", "keys revoke"),
-				huh.NewOption("Set Budget", "budget set"),
-				huh.NewOption("Budget Status", "budget status"),
-				huh.NewOption("Start Proxy Server", "serve"),
-			).
-			Value(&action).
-			WithTheme(ui.GetHuhTheme()).
-			Run()
-
+		app := ui.NewApp()
+		p := tea.NewProgram(app, tea.WithAltScreen())
+		m, err := p.Run()
 		if err != nil {
-			return // User aborted
+			fmt.Fprintf(os.Stderr, "Error running UI: %v\n", err)
+			return
 		}
+
+		appModel, ok := m.(ui.AppModel)
+		if !ok || appModel.Action == "" {
+			return // User aborted or exited
+		}
+
+		action := appModel.Action
 
 		// Dispatch to existing commands
 		parts := strings.Split(action, " ")
@@ -60,6 +52,10 @@ var rootCmd = &cobra.Command{
 
 		if subCmd.Run != nil {
 			subCmd.Run(subCmd, []string{})
+		} else if subCmd.RunE != nil {
+			if err := subCmd.RunE(subCmd, []string{}); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			}
 		}
 	},
 }

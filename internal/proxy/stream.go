@@ -74,10 +74,24 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 	// Upstream reader goroutine with slow-client detection
 	go func() {
 		defer close(chunks)
+		timer := time.NewTimer(5 * time.Second)
+		defer timer.Stop()
+
 		for scanner.Scan() {
+			b := scanner.Bytes()
+			cp := make([]byte, len(b))
+			copy(cp, b)
+
 			select {
-			case chunks <- scanner.Bytes():
-			case <-time.After(5 * time.Second):
+			case chunks <- cp:
+				if !timer.Stop() {
+					select {
+					case <-timer.C:
+					default:
+					}
+				}
+				timer.Reset(5 * time.Second)
+			case <-timer.C:
 				logging.Logger.Warn().Msg("Slow client detected; aborting upstream streaming reader")
 				cancel()
 				return
