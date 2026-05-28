@@ -9,43 +9,46 @@ import (
 )
 
 var (
-	// Colors
+	// Brand Colors (tryloopers.com aesthetic)
+	colorTextPrimary   = lipgloss.Color("#ffffff")
+	colorTextSecondary = lipgloss.Color("#a0a0a0")
+	colorTextTertiary  = lipgloss.Color("#666666")
+	colorBorderStrong  = lipgloss.Color("#333333")
+
+	// Semantic Colors
 	colorGreen  = lipgloss.Color("42")
 	colorRed    = lipgloss.Color("196")
 	colorYellow = lipgloss.Color("220")
-	colorCyan   = lipgloss.Color("51")
-	colorDim    = lipgloss.Color("240")
-	colorWhite  = lipgloss.Color("255")
 
 	// Base Styles
 	styleHeaderBorder = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
-				BorderForeground(colorDim).
+				BorderForeground(colorBorderStrong).
 				Padding(0, 1)
 
 	styleHeaderTitle = lipgloss.NewStyle().
-				Foreground(colorCyan).
+				Foreground(colorTextPrimary).
 				Bold(true)
 
 	styleSuccess = lipgloss.NewStyle().Foreground(colorGreen).Bold(true)
 	styleError   = lipgloss.NewStyle().Foreground(colorRed).Bold(true)
 	styleWarn    = lipgloss.NewStyle().Foreground(colorYellow)
-	styleInfo    = lipgloss.NewStyle().Foreground(colorDim)
-	styleLabel   = lipgloss.NewStyle().Width(12)
+	styleInfo    = lipgloss.NewStyle().Foreground(colorTextTertiary)
+	styleLabel   = lipgloss.NewStyle().Foreground(colorTextSecondary).Width(12)
 
 	styleTableBorder = lipgloss.NewStyle().
 				Border(lipgloss.NormalBorder()).
-				BorderForeground(colorDim)
+				BorderForeground(colorBorderStrong)
 
 	styleTableHdr = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), false, false, true, false).
-			BorderForeground(colorDim).
-			Foreground(colorCyan).
+			BorderForeground(colorBorderStrong).
+			Foreground(colorTextPrimary).
 			Bold(true)
 
 	styleCardBorder = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(colorDim).
+			BorderForeground(colorBorderStrong).
 			Padding(1, 2)
 			
 	styleSummaryPass = lipgloss.NewStyle().
@@ -145,7 +148,7 @@ func PrintBudgetBar(name string, spend, limit float64) {
 	}
 
 	barStyle := lipgloss.NewStyle().Foreground(barColor)
-	emptyStyle := lipgloss.NewStyle().Foreground(colorDim)
+	emptyStyle := lipgloss.NewStyle().Foreground(colorTextTertiary)
 
 	bar := barStyle.Render(strings.Repeat("█", filled)) + emptyStyle.Render(strings.Repeat("░", empty))
 
@@ -167,7 +170,7 @@ func PrintKeyCard(name, provider, rawKey, hash string) {
 	sb.WriteString(styleSuccess.Render("✅  Key Created Successfully") + "\n\n")
 	sb.WriteString(fmt.Sprintf("%s%s\n", styleLabel.Render("Name"), name))
 	sb.WriteString(fmt.Sprintf("%s%s\n\n", styleLabel.Render("Provider"), provider))
-	sb.WriteString(fmt.Sprintf("%s%s\n", styleLabel.Render("Raw Key"), lipgloss.NewStyle().Foreground(colorWhite).Bold(true).Render(rawKey)))
+	sb.WriteString(fmt.Sprintf("%s%s\n", styleLabel.Render("Raw Key"), lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true).Render(rawKey)))
 	sb.WriteString(fmt.Sprintf("%s%s\n\n", styleLabel.Render("Hash"), hash))
 	
 	warnLines := "⚠  Copy the raw key now. It won't be\n   shown again."
