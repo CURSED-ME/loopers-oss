@@ -333,6 +333,7 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				// In shadow mode, we didn't reserve the budget (it rolled back), so we set estimatedCost to 0
 				// so that Reconcile() later adds the full actual cost to the current spend.
 				estimatedCost = 0
+				goto sessionCheck
 			} else {
 				if s.alerter != nil {
 					go s.alerter.TriggerBlockAlert(keyHash, meta.Name, providerName, model, budgetErr.WindowName, budgetErr.CurrentSpend, budgetErr.Limit, estimatedCost)
