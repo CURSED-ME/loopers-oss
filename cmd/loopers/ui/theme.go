@@ -65,7 +65,7 @@ func GetHuhTheme() *huh.Theme {
 	// Apply our monochrome palette
 	t.Focused.Base = t.Focused.Base.BorderForeground(colorBorderStrong).MarginLeft(2)
 	t.Blurred.Base = t.Blurred.Base.MarginLeft(2)
-	
+
 	t.Focused.Title = lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true)
 	t.Focused.TextInput.Cursor = lipgloss.NewStyle().Foreground(colorTextPrimary)
 	t.Focused.TextInput.Prompt = lipgloss.NewStyle().Foreground(colorTextPrimary)

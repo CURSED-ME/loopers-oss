@@ -8,8 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-
-
 func PrintHeader(title string) {
 	fmt.Println(styleHeaderBorder.Render(styleHeaderTitle.Render(title)))
 }

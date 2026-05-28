@@ -11,10 +11,10 @@ import (
 type AppModel struct {
 	width, height int
 	cursor        int
-	screen        string     // "menu" | "diagnostics" | "create-key" | ...
-	form          *huh.Form  // non-nil when a sub-form is active
-	result        string     // last action output to display
-	
+	screen        string    // "menu" | "diagnostics" | "create-key" | ...
+	form          *huh.Form // non-nil when a sub-form is active
+	result        string    // last action output to display
+
 	// Exported so main.go can read the user's selection
 	Action string
 }
@@ -102,7 +102,7 @@ func (m AppModel) View() string {
 			cursor = "  > "
 			style = lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true)
 		}
-		
+
 		line := cursor + item.label
 		// Pad to align the hints
 		padLen := 40 - lipgloss.Width(line)
@@ -110,7 +110,7 @@ func (m AppModel) View() string {
 			padLen = 0
 		}
 		line += strings.Repeat(" ", padLen)
-		
+
 		sb.WriteString(style.Render(line))
 
 		// Hints
