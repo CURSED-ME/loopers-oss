@@ -33,14 +33,14 @@ var rootCmd = &cobra.Command{
 		err := huh.NewSelect[string]().
 			Title("Main Menu").
 			Options(
-				huh.NewOption("◎  Run Diagnostics", "doctor"),
-				huh.NewOption("⊙  Initialize Workspace", "init"),
-				huh.NewOption("⊕  Create Key", "keys create"),
-				huh.NewOption("≡  List Keys", "keys list"),
-				huh.NewOption("⊖  Revoke Key", "keys revoke"),
-				huh.NewOption("◈  Set Budget", "budget set"),
-				huh.NewOption("▤  Budget Status", "budget status"),
-				huh.NewOption("▶  Start Proxy Server", "serve"),
+				huh.NewOption("Run Diagnostics", "doctor"),
+				huh.NewOption("Initialize Workspace", "init"),
+				huh.NewOption("Create Key", "keys create"),
+				huh.NewOption("List Keys", "keys list"),
+				huh.NewOption("Revoke Key", "keys revoke"),
+				huh.NewOption("Set Budget", "budget set"),
+				huh.NewOption("Budget Status", "budget status"),
+				huh.NewOption("Start Proxy Server", "serve"),
 			).
 			Value(&action).
 			WithTheme(ui.GetHuhTheme()).
@@ -85,7 +85,6 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		// Log will be initialized properly in serve command, but let's initialize a basic logger here
 		logging.InitLogger("info")
-		logging.Logger.Info().Msgf("Using config file: %s", viper.ConfigFileUsed())
 	} else {
 		logging.InitLogger("info")
 	}

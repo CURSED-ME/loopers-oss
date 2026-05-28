@@ -190,18 +190,28 @@ func PrintSummary(pass bool, issues int) {
 }
 
 func PrintLogo() {
-	mark := "█ ·\n█ █"
-	logo := lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true).Render(mark)
-	text := lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true).PaddingLeft(2).PaddingTop(1).Render("LOOPERS")
+	block := lipgloss.NewStyle().Background(colorTextPrimary).Render("  ")
+	gap := " "
+	dot := lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true).Render("· ")
 
-	fmt.Println("\n" + lipgloss.JoinHorizontal(lipgloss.Top, logo, text) + "\n")
+	row1 := block + gap + dot
+	row2 := block + gap + block
+
+	logo := lipgloss.JoinVertical(lipgloss.Left, row1, row2)
+	text := lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true).PaddingLeft(2).Render("LOOPERS")
+
+	// Add margin around the logo so it breathes
+	container := lipgloss.NewStyle().Margin(1, 0, 1, 2).Render(lipgloss.JoinHorizontal(lipgloss.Center, logo, text))
+	fmt.Println(container)
 }
 
 func GetHuhTheme() *huh.Theme {
 	t := huh.ThemeBase()
 
 	// Apply our monochrome palette
-	t.Focused.Base = t.Focused.Base.BorderForeground(colorBorderStrong)
+	t.Focused.Base = t.Focused.Base.BorderForeground(colorBorderStrong).MarginLeft(2)
+	t.Blurred.Base = t.Blurred.Base.MarginLeft(2)
+	
 	t.Focused.Title = lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true)
 	t.Focused.TextInput.Cursor = lipgloss.NewStyle().Foreground(colorTextPrimary)
 	t.Focused.TextInput.Prompt = lipgloss.NewStyle().Foreground(colorTextPrimary)
