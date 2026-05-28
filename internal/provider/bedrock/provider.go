@@ -133,6 +133,19 @@ func (b *BedrockProvider) ParseRequest(req *http.Request, body []byte) (model st
 	return model, isStream, maxTokens, body, nil
 }
 
+func (b *BedrockProvider) RewriteModel(req *http.Request, body []byte, fallbackModel string) ([]byte, error) {
+	path := req.URL.Path
+	idx := strings.Index(path, "/model/")
+	if idx != -1 {
+		start := idx + len("/model/")
+		end := strings.Index(path[start:], "/invoke")
+		if end != -1 {
+			req.URL.Path = path[:start] + fallbackModel + path[start+end:]
+		}
+	}
+	return body, nil
+}
+
 func (b *BedrockProvider) CountInputTokens(ctx context.Context, model string, body []byte, providerKey string) (int, error) {
 	return countBedrockTokensFallback(body)
 }

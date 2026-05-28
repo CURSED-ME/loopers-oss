@@ -44,6 +44,10 @@ func (m *MistralProvider) ParseRequest(req *http.Request, body []byte) (model st
 	return m.openAI.ParseRequest(req, body)
 }
 
+func (m *MistralProvider) RewriteModel(req *http.Request, body []byte, fallbackModel string) ([]byte, error) {
+	return m.openAI.RewriteModel(req, body, fallbackModel)
+}
+
 func (m *MistralProvider) CountInputTokens(ctx context.Context, model string, body []byte, providerKey string) (int, error) {
 	return m.openAI.CountInputTokens(ctx, model, body, providerKey)
 }

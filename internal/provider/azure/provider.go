@@ -71,6 +71,27 @@ func (az *AzureProvider) ParseRequest(req *http.Request, body []byte) (model str
 	return az.openAI.ParseRequest(req, body)
 }
 
+func (az *AzureProvider) RewriteModel(req *http.Request, body []byte, fallbackModel string) ([]byte, error) {
+	// Rewrite JSON body
+	newBody, err := az.openAI.RewriteModel(req, body, fallbackModel)
+	if err != nil {
+		return body, err
+	}
+	
+	// Rewrite URL path /deployments/{deployment}/ -> /deployments/{fallbackModel}/
+	path := req.URL.Path
+	idx := strings.Index(path, "/deployments/")
+	if idx != -1 {
+		start := idx + len("/deployments/")
+		end := strings.Index(path[start:], "/")
+		if end != -1 {
+			req.URL.Path = path[:start] + fallbackModel + path[start+end:]
+		}
+	}
+	
+	return newBody, nil
+}
+
 func (az *AzureProvider) CountInputTokens(ctx context.Context, model string, body []byte, providerKey string) (int, error) {
 	return az.openAI.CountInputTokens(ctx, model, body, providerKey)
 }

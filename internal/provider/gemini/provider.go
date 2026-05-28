@@ -71,6 +71,21 @@ func (g *GeminiProvider) ParseRequest(req *http.Request, body []byte) (model str
 	return model, isStream, maxTokens, body, nil
 }
 
+func (g *GeminiProvider) RewriteModel(req *http.Request, body []byte, fallbackModel string) ([]byte, error) {
+	path := req.URL.Path
+	idx := strings.Index(path, "models/")
+	if idx != -1 {
+		start := idx + len("models/")
+		end := strings.Index(path[start:], ":")
+		if end != -1 {
+			req.URL.Path = path[:start] + fallbackModel + path[start+end:]
+		} else {
+			req.URL.Path = path[:start] + fallbackModel
+		}
+	}
+	return body, nil
+}
+
 func (g *GeminiProvider) CountInputTokens(ctx context.Context, model string, body []byte, providerKey string) (int, error) {
 	// 1. Try Gemini's countTokens API
 	tokens, err := callGeminiCountTokensAPI(ctx, model, body, providerKey)

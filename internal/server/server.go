@@ -19,9 +19,13 @@ import (
 	"github.com/loopers-oss/loopers/internal/provider/anthropic"
 	"github.com/loopers-oss/loopers/internal/provider/azure"
 	"github.com/loopers-oss/loopers/internal/provider/bedrock"
+	"github.com/loopers-oss/loopers/internal/provider/cohere"
+	"github.com/loopers-oss/loopers/internal/provider/deepseek"
 	"github.com/loopers-oss/loopers/internal/provider/gemini"
+	"github.com/loopers-oss/loopers/internal/provider/groq"
 	"github.com/loopers-oss/loopers/internal/provider/mistral"
 	"github.com/loopers-oss/loopers/internal/provider/openai"
+	"github.com/loopers-oss/loopers/internal/provider/together"
 	"github.com/loopers-oss/loopers/internal/proxy"
 	"github.com/loopers-oss/loopers/pkg/api"
 	"github.com/prometheus/client_golang/prometheus"
@@ -39,6 +43,11 @@ var (
 	budgetBlocksTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "loopers_budget_blocks_total",
 		Help: "Total number of AI requests blocked by Loopers budget enforcement",
+	}, []string{"provider", "window"})
+
+	shadowBlockedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "loopers_shadow_blocked_total",
+		Help: "Total number of AI requests shadow blocked by Loopers budget enforcement",
 	}, []string{"provider", "window"})
 
 	spendUSDTotal = promauto.NewCounterVec(prometheus.CounterOpts{
@@ -78,8 +87,9 @@ type Server struct {
 	redis    *budget.Client
 	pricing  *pricing.Store
 	proxy    *proxy.Proxy
-	registry *provider.Registry
-	alerter  *alerting.Alerter
+	registry   *provider.Registry
+	alerter    *alerting.Alerter
+	shadowMode bool
 }
 
 // NewServer initializes and builds the HTTP server with middlewares and ReverseProxy configuration.
@@ -94,6 +104,10 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 	reg.Register(bedrock.NewBedrockProvider())
 	reg.Register(azure.NewAzureProvider())
 	reg.Register(mistral.NewMistralProvider())
+	reg.Register(groq.NewGroqProvider())
+	reg.Register(cohere.NewCohereProvider())
+	reg.Register(deepseek.NewDeepSeekProvider())
+	reg.Register(together.NewTogetherProvider())
 
 	var alertingCfg alerting.AlertingConfig
 	var alerter *alerting.Alerter
@@ -103,12 +117,15 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		}
 	}
 
+	shadowMode := viper.GetBool("server.shadow_mode")
+
 	s := &Server{
-		router:   r,
-		redis:    redisClient,
-		pricing:  pricingStore,
-		registry: reg,
-		alerter:  alerter,
+		router:     r,
+		redis:      redisClient,
+		pricing:    pricingStore,
+		registry:   reg,
+		alerter:    alerter,
+		shadowMode: shadowMode,
 	}
 
 	// Setup custom ReverseProxy with modifyResponse callback
@@ -274,14 +291,58 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	err = s.redis.CheckAndReserve(c.Request.Context(), keyHash, estimatedCost)
 	if err != nil {
 		if budgetErr, ok := err.(*budget.BudgetExceededError); ok {
-			if s.alerter != nil {
-				go s.alerter.TriggerBlockAlert(keyHash, meta.Name, providerName, model, budgetErr.WindowName, budgetErr.CurrentSpend, budgetErr.Limit, estimatedCost)
+			originalPath := c.Request.URL.Path
+			fallbackModel := s.pricing.GetFallback(providerName, model)
+			if fallbackModel != "" && fallbackModel != model {
+				fallbackInputPrice, fallbackOutputPrice, _ := s.pricing.GetModelPrice(providerName, fallbackModel)
+				fallbackMutatedBody, rewriteErr := prov.RewriteModel(c.Request, mutatedBody, fallbackModel)
+				if rewriteErr == nil {
+					fallbackInputTokens, countErr := prov.CountInputTokens(c.Request.Context(), fallbackModel, fallbackMutatedBody, providerKeyStr)
+					if countErr == nil {
+						fallbackCost := pricing.EstimateCost(fallbackInputTokens, maxTokensVal, fallbackInputPrice, fallbackOutputPrice)
+						fallbackErr := s.redis.CheckAndReserve(c.Request.Context(), keyHash, fallbackCost)
+						if fallbackErr == nil {
+							logging.Logger.Info().Str("key_hash", keyHash).Str("original_model", model).Str("fallback_model", fallbackModel).Msg("fallback_routing_successful")
+							estimatedCost = fallbackCost
+							model = fallbackModel
+							inputPrice = fallbackInputPrice
+							outputPrice = fallbackOutputPrice
+							inputTokens = fallbackInputTokens
+							mutatedBody = fallbackMutatedBody
+							c.Request.Body = io.NopCloser(bytes.NewReader(mutatedBody))
+							c.Request.ContentLength = int64(len(mutatedBody))
+							c.Writer.Header().Set("X-Loopers-Fallback", fallbackModel)
+							goto sessionCheck
+						}
+					}
+				}
+				// Restore original URL path if fallback failed or was rejected
+				c.Request.URL.Path = originalPath
 			}
-			requestsTotal.WithLabelValues(providerName, model, "429").Inc()
-			budgetBlocksTotal.WithLabelValues(providerName, budgetErr.WindowName).Inc()
-			resp := api.NewBudgetExceededResponse(budgetErr.WindowName, budgetErr.Limit, budgetErr.CurrentSpend, estimatedCost)
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, resp)
-			return
+
+			if s.shadowMode {
+				logging.Logger.Warn().
+					Str("key_hash", keyHash).
+					Str("window", budgetErr.WindowName).
+					Float64("cost", estimatedCost).
+					Float64("limit", budgetErr.Limit).
+					Float64("current_spend", budgetErr.CurrentSpend).
+					Msg("shadow_blocked")
+				shadowBlockedTotal.WithLabelValues(providerName, budgetErr.WindowName).Inc()
+				
+				// In shadow mode, we didn't reserve the budget (it rolled back), so we set estimatedCost to 0 
+				// so that Reconcile() later adds the full actual cost to the current spend.
+				estimatedCost = 0 
+			} else {
+				if s.alerter != nil {
+					go s.alerter.TriggerBlockAlert(keyHash, meta.Name, providerName, model, budgetErr.WindowName, budgetErr.CurrentSpend, budgetErr.Limit, estimatedCost)
+				}
+				requestsTotal.WithLabelValues(providerName, model, "429").Inc()
+				budgetBlocksTotal.WithLabelValues(providerName, budgetErr.WindowName).Inc()
+				resp := api.NewBudgetExceededResponse(budgetErr.WindowName, budgetErr.Limit, budgetErr.CurrentSpend, estimatedCost)
+				c.AbortWithStatusJSON(http.StatusTooManyRequests, resp)
+				return
+			}
 		}
 		logging.Logger.Error().Err(err).Msg("Budget check failed closed due to backend connection error")
 		requestsTotal.WithLabelValues(providerName, model, "503").Inc()
@@ -295,6 +356,7 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 		return
 	}
 
+sessionCheck:
 	// 6.5 Session budget and step limits check (if X-Loopers-Session-ID is present)
 	sessionID := c.GetHeader("X-Loopers-Session-ID")
 	var sessionBudget float64
@@ -325,26 +387,46 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 		}
 
 		if !allowed {
-			// Refund key budget reservation
-			_ = s.redis.Reconcile(c.Request.Context(), keyHash, estimatedCost, 0)
-
 			windowName := "session_budget"
 			if status == "session_steps_exceeded" {
 				windowName = "session_steps"
 			}
-			if s.alerter != nil {
-				go s.alerter.TriggerBlockAlert(keyHash, meta.Name, providerName, model, windowName, val1, val2, estimatedCost)
-			}
 
-			requestsTotal.WithLabelValues(providerName, model, "429").Inc()
-			budgetBlocksTotal.WithLabelValues(providerName, windowName).Inc()
+			if s.shadowMode {
+				logging.Logger.Warn().
+					Str("key_hash", keyHash).
+					Str("session_id", sessionID).
+					Str("window", windowName).
+					Float64("cost", estimatedCost).
+					Float64("limit", val2).
+					Float64("current_spend", val1).
+					Msg("shadow_blocked")
+				shadowBlockedTotal.WithLabelValues(providerName, windowName).Inc()
 
-			if status == "session_budget_exceeded" {
-				c.AbortWithStatusJSON(http.StatusTooManyRequests, api.NewSessionBudgetExceededResponse(sessionID, val2, val1, estimatedCost))
+				// Manually commit the session reservation since the script blocked it
+				sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
+				sessionStepsKey := fmt.Sprintf("loopers:session:%s:steps", sessionID)
+				rdb := s.redis.GetUnderlyingClient()
+				rdb.IncrByFloat(c.Request.Context(), sessionSpendKey, estimatedCost)
+				rdb.IncrBy(c.Request.Context(), sessionStepsKey, 1)
 			} else {
-				c.AbortWithStatusJSON(http.StatusTooManyRequests, api.NewSessionStepsExceededResponse(sessionID, int(val2), int(val1)))
+				// Refund key budget reservation
+				_ = s.redis.Reconcile(c.Request.Context(), keyHash, estimatedCost, 0)
+
+				if s.alerter != nil {
+					go s.alerter.TriggerBlockAlert(keyHash, meta.Name, providerName, model, windowName, val1, val2, estimatedCost)
+				}
+
+				requestsTotal.WithLabelValues(providerName, model, "429").Inc()
+				budgetBlocksTotal.WithLabelValues(providerName, windowName).Inc()
+
+				if status == "session_budget_exceeded" {
+					c.AbortWithStatusJSON(http.StatusTooManyRequests, api.NewSessionBudgetExceededResponse(sessionID, val2, val1, estimatedCost))
+				} else {
+					c.AbortWithStatusJSON(http.StatusTooManyRequests, api.NewSessionStepsExceededResponse(sessionID, int(val2), int(val1)))
+				}
+				return
 			}
-			return
 		}
 	}
 

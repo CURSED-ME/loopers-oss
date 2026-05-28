@@ -76,6 +76,15 @@ func (o *OpenAIProvider) ParseRequest(req *http.Request, body []byte) (model str
 	return model, isStream, maxTokens, body, nil
 }
 
+func (o *OpenAIProvider) RewriteModel(req *http.Request, body []byte, fallbackModel string) ([]byte, error) {
+	var reqMap map[string]interface{}
+	if err := json.Unmarshal(body, &reqMap); err != nil {
+		return body, err
+	}
+	reqMap["model"] = fallbackModel
+	return json.Marshal(reqMap)
+}
+
 func (o *OpenAIProvider) CountInputTokens(ctx context.Context, model string, body []byte, providerKey string) (int, error) {
 	return countOpenAIRequestTokens(model, body)
 }

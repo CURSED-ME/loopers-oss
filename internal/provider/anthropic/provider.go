@@ -57,6 +57,15 @@ func (a *AnthropicProvider) ParseRequest(req *http.Request, body []byte) (model 
 	return reqPayload.Model, reqPayload.Stream, maxTokensVal, body, nil
 }
 
+func (a *AnthropicProvider) RewriteModel(req *http.Request, body []byte, fallbackModel string) ([]byte, error) {
+	var reqMap map[string]interface{}
+	if err := json.Unmarshal(body, &reqMap); err != nil {
+		return body, err
+	}
+	reqMap["model"] = fallbackModel
+	return json.Marshal(reqMap)
+}
+
 func (a *AnthropicProvider) CountInputTokens(ctx context.Context, model string, body []byte, providerKey string) (int, error) {
 	return countAnthropicRequestTokens(ctx, model, body, providerKey)
 }

@@ -115,3 +115,43 @@ providers:
       "_fallback":
         input_per_1m: 30.00
         output_per_1m: 180.00
+
+  groq:
+    default_max_output_tokens: 8192
+    models:
+      "llama3-70b-8192":
+        input_per_1m: 0.59
+        output_per_1m: 0.79
+      "_fallback":
+        input_per_1m: 1.00
+        output_per_1m: 1.00
+
+  cohere:
+    default_max_output_tokens: 4096
+    models:
+      "command-r-plus":
+        input_per_1m: 3.00
+        output_per_1m: 15.00
+      "_fallback":
+        input_per_1m: 3.00
+        output_per_1m: 15.00
+
+  deepseek:
+    default_max_output_tokens: 8192
+    models:
+      "deepseek-chat":
+        input_per_1m: 0.14
+        output_per_1m: 0.28
+      "_fallback":
+        input_per_1m: 0.14
+        output_per_1m: 0.28
+
+  together:
+    default_max_output_tokens: 8192
+    models:
+      "meta-llama/Llama-3-70b-chat-hf":
+        input_per_1m: 0.90
+        output_per_1m: 0.90
+      "_fallback":
+        input_per_1m: 0.90
+        output_per_1m: 0.90

@@ -11,6 +11,7 @@ import (
 type ModelPrice struct {
 	InputPer1M  float64 `mapstructure:"input_per_1m"`
 	OutputPer1M float64 `mapstructure:"output_per_1m"`
+	Fallback    string  `mapstructure:"fallback"`
 }
 
 // ProviderConfig holds the pricing config for a specific provider.
@@ -70,3 +71,22 @@ func (s *Store) GetModelPrice(provider, model string) (inputPer1M, outputPer1M f
 
 	return modelPrice.InputPer1M, modelPrice.OutputPer1M, defaultMaxOutputTokens
 }
+
+// GetFallback returns the configured fallback model for the given provider and model, or empty string if none configured.
+func (s *Store) GetFallback(provider, model string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	provConf, hasProv := s.config.Providers[provider]
+	if !hasProv {
+		return ""
+	}
+
+	modelPrice, hasModel := provConf.Models[model]
+	if !hasModel {
+		return ""
+	}
+
+	return modelPrice.Fallback
+}
+

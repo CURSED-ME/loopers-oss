@@ -24,6 +24,10 @@ type Provider interface {
 	// ParseRequest extracts model name, streaming flag, and max_tokens from the request/body.
 	ParseRequest(req *http.Request, body []byte) (model string, isStream bool, maxTokens int, mutatedBody []byte, err error)
 
+	// RewriteModel rewrites the request to use a fallback model.
+	// It modifies req in-place if needed (e.g. Gemini/Azure URL) and returns the modified JSON body.
+	RewriteModel(req *http.Request, body []byte, fallbackModel string) ([]byte, error)
+
 	// CountInputTokens returns the estimated input token count for the request.
 	// ctx and providerKey are passed for providers that require API-based counting (Gemini, Anthropic).
 	CountInputTokens(ctx context.Context, model string, body []byte, providerKey string) (int, error)

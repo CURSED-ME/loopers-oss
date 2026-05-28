@@ -95,8 +95,12 @@ var keysCreateCmd = &cobra.Command{
 		if keyName == "" || keyProvider == "" {
 			logging.Logger.Fatal().Msg("flags --name and --provider are required")
 		}
-		if keyProvider != "openai" && keyProvider != "anthropic" && keyProvider != "gemini" && keyProvider != "bedrock" && keyProvider != "azure" && keyProvider != "mistral" {
-			logging.Logger.Fatal().Msg("provider must be one of: openai, anthropic, gemini, bedrock, azure, mistral")
+		validProviders := map[string]bool{
+			"openai": true, "anthropic": true, "gemini": true, "bedrock": true, "azure": true, "mistral": true,
+			"groq": true, "cohere": true, "deepseek": true, "together": true,
+		}
+		if !validProviders[keyProvider] {
+			logging.Logger.Fatal().Msg("provider must be one of: openai, anthropic, gemini, bedrock, azure, mistral, groq, cohere, deepseek, together")
 		}
 
 		rawKey, err := keyring.GenerateRawKey()
