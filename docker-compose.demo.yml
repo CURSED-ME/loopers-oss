@@ -55,7 +55,7 @@ services:
           exit 1
         fi
 
-        /app/loopers budget set "$$HASH" --minute 0.001
+        /app/loopers budget set "$$HASH" --minute 0.0001
 
         echo ""
         echo "=== DEMO READY ==="
@@ -63,14 +63,14 @@ services:
         echo ""
         echo "Run this to test budget enforcement:"
         echo ""
-        echo "  # This request will SUCCEED (within \$$0.001 budget):"
+        echo "  # This request will SUCCEED (within \$$0.0001 budget):"
         echo "  curl -X POST http://localhost:8080/openai/v1/chat/completions \\"
         echo "    -H 'Authorization: Bearer $$RAW_KEY' \\"
         echo "    -H 'X-Loopers-Provider-Key: sk-demo-key-not-real' \\"
         echo "    -H 'Content-Type: application/json' \\"
-        echo "    -d '{\"model\":\"gpt-4o-mini\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}'"
+        echo "    -d '{\"model\":\"gpt-4o-mini\",\"max_tokens\":100,\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}'"
         echo ""
-        echo "  # Run it a second time to see the 429 BUDGET EXCEEDED response."
+        echo "  # Run it with max_tokens:200 to see the 429 BUDGET EXCEEDED response."
 
         # Keep container alive so user can read logs
         sleep 3600
