@@ -57,7 +57,7 @@ jobs:
 
     - name: Install dependencies
       working-directory: ./sdk/ts
-      run: npm install
+      run: npm ci
 
     - name: Build TypeScript
       working-directory: ./sdk/ts
