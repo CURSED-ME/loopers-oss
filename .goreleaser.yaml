@@ -48,7 +48,6 @@ changelog:
 
 sboms:
   - artifacts: archive
-    documents: true
 
 brews:
   - name: loopers
