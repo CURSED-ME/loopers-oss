@@ -49,6 +49,19 @@ changelog:
 sboms:
   - artifacts: archive
 
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sig"
+    certificate: "${artifact}.pem"
+    args:
+      - sign-blob
+      - "--output-signature=${signature}"
+      - "--output-certificate=${certificate}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
+
 # Homebrew tap publishing is disabled until the homebrew-tap repository is created.
 # To re-enable, create a public repo at https://github.com/CURSED-ME/homebrew-tap
 # and uncomment the block below:

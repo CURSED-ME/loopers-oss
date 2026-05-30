@@ -9,3 +9,11 @@ bin/
 .agents/
 loopers.yaml
 docker-compose.yml
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Node
+node_modules/
+dist/
