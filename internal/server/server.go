@@ -455,6 +455,7 @@ sessionCheck:
 	ctx = context.WithValue(ctx, startTimeCtx, startTime)
 	ctx = context.WithValue(ctx, proxy.ProxyKeyHashCtx, keyHash)
 	ctx = context.WithValue(ctx, proxy.RequestCostCtx, estimatedCost)
+	ctx = context.WithValue(ctx, proxy.ProviderKeyCtx, providerKeyStr)
 	ctx = context.WithValue(ctx, proxy.ProviderCtx, providerName)
 	ctx = context.WithValue(ctx, proxy.ProviderInstanceCtx, prov)
 	ctx = context.WithValue(ctx, proxy.ModelCtx, model)
