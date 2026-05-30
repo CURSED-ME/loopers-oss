@@ -622,7 +622,7 @@ services:
       - loopers-net
 
   loopers:
-    build: .
+    image: ghcr.io/cursed-me/loopers:latest
     container_name: loopers-proxy
     ports:
       - "8080:8080"

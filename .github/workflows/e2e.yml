@@ -1,0 +1,70 @@
+name: E2E Smoke Test
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build local image
+        run: docker build -t ghcr.io/cursed-me/loopers:latest .
+        
+      - name: Start demo stack
+        run: docker compose -f docker-compose.demo.yml up -d
+        
+      - name: Wait for services and bootstrap
+        run: sleep 10
+        
+      - name: Run E2E Test
+        run: |
+          set -e
+          
+          echo "Fetching keys from bootstrap container..."
+          OUTPUT=$(docker compose -f docker-compose.demo.yml exec -T bootstrap cat /tmp/output.txt)
+          RAW_KEY=$(echo "$OUTPUT" | grep -o 'lp-[A-Za-z0-9]*' | head -1)
+
+          if [ -z "$RAW_KEY" ]; then
+            echo "Failed to extract Raw Key. Output was:"
+            echo "$OUTPUT"
+            exit 1
+          fi
+          
+          echo "Sending first request (should succeed)..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8080/openai/v1/chat/completions \
+            -H "Authorization: Bearer $RAW_KEY" \
+            -H "X-Loopers-Provider-Key: sk-demo" \
+            -H "Content-Type: application/json" \
+            -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}]}')
+            
+          if [ "$STATUS" != "200" ]; then
+            echo "First request failed with status $STATUS"
+            docker compose -f docker-compose.demo.yml logs loopers
+            exit 1
+          fi
+          
+          echo "Sending second request (might succeed or fail depending on token counting)..."
+          curl -s -o /dev/null -X POST http://localhost:8080/openai/v1/chat/completions \
+            -H "Authorization: Bearer $RAW_KEY" \
+            -H "X-Loopers-Provider-Key: sk-demo" \
+            -H "Content-Type: application/json" \
+            -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}]}'
+            
+          echo "Sending third request (should definitely 429)..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8080/openai/v1/chat/completions \
+            -H "Authorization: Bearer $RAW_KEY" \
+            -H "X-Loopers-Provider-Key: sk-demo" \
+            -H "Content-Type: application/json" \
+            -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}]}')
+            
+          if [ "$STATUS" != "429" ]; then
+            echo "Third request failed to block! Expected 429, got $STATUS"
+            docker compose -f docker-compose.demo.yml logs loopers
+            exit 1
+          fi
+          
+          echo "Smoke test passed successfully!"

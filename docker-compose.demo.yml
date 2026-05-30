@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    networks: [loopers-demo]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 5
+
+  mock-openai:
+    image: nginx:alpine
+    volumes:
+      - ./demo/mock-openai.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./demo/mock-response.json:/usr/share/nginx/html/mock-response.json:ro
+    networks: [loopers-demo]
+
+  loopers:
+    image: ghcr.io/cursed-me/loopers:latest
+    environment:
+      - REDIS_ADDR=redis:6379
+      - SERVER_PORT=8080
+      - LOG_LEVEL=info
+      - PRICING_PATH=/app/pricing.yaml
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [loopers-demo]
+
+  bootstrap:
+    image: ghcr.io/cursed-me/loopers:latest
+    environment:
+      - REDIS_ADDR=redis:6379
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 3
+        echo "Running demo seed..."
+
+        # Capture raw CLI output (no TTY = no ANSI codes from lipgloss)
+        /app/loopers keys create --name demo-key --provider openai > /tmp/output.txt 2>&1
+        cat /tmp/output.txt
+
+        # The raw key always starts with lp- ; extract it without relying on column headers
+        RAW_KEY=$$(grep -o 'lp-[A-Za-z0-9]*' /tmp/output.txt | head -1)
+        # The hash is a 64-char hex string printed after the raw key line
+        HASH=$$(grep -oE '[0-9a-f]{64}' /tmp/output.txt | head -1)
+
+        if [ -z "$$RAW_KEY" ] || [ -z "$$HASH" ]; then
+          echo "ERROR: Failed to extract key or hash from output above."
+          exit 1
+        fi
+
+        /app/loopers budget set "$$HASH" --minute 0.001
+
+        echo ""
+        echo "=== DEMO READY ==="
+        echo "Raw Key: $$RAW_KEY"
+        echo ""
+        echo "Run this to test budget enforcement:"
+        echo ""
+        echo "  # This request will SUCCEED (within \$$0.001 budget):"
+        echo "  curl -X POST http://localhost:8080/openai/v1/chat/completions \\"
+        echo "    -H 'Authorization: Bearer $$RAW_KEY' \\"
+        echo "    -H 'X-Loopers-Provider-Key: sk-demo-key-not-real' \\"
+        echo "    -H 'Content-Type: application/json' \\"
+        echo "    -d '{\"model\":\"gpt-4o-mini\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}'"
+        echo ""
+        echo "  # Run it a second time to see the 429 BUDGET EXCEEDED response."
+
+        # Keep container alive so user can read logs
+        sleep 3600
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [loopers-demo]
+
+networks:
+  loopers-demo:
+    driver: bridge

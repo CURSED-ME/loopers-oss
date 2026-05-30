@@ -61,19 +61,42 @@ Loopers is engineered specifically as a high-performance infrastructure-level ci
 
 ---
 
-## Quickstart (Under 2 Minutes)
+## Try It In 60 Seconds (No Go Required)
 
-### Step 1: Initialize Configuration
-Run the onboarding wizard to automatically generate `loopers.yaml` and `docker-compose.yml`:
+Want to see Loopers block a runaway request before touching your real API keys? Start the self-contained demo:
 
 ```bash
-# Start the interactive wizard
+git clone https://github.com/CURSED-ME/loopers-oss.git
+cd loopers-oss
+docker-compose -f docker-compose.demo.yml up
+```
+
+Check the `bootstrap` container logs for the ready curl commands. The demo uses a mock OpenAI server so you won't spend any real credits.
+
+---
+
+## Quickstart (Production Setup)
+
+### Step 1: Download the Binary
+
+**macOS / Linux (one-liner):**
+```bash
+curl -sSL https://github.com/CURSED-ME/loopers-oss/releases/latest/download/loopers_Linux_x86_64.tar.gz | tar -xz && sudo mv loopers /usr/local/bin/
+```
+
+**Or pull the Docker image directly:**
+```bash
+docker pull ghcr.io/cursed-me/loopers:latest
+```
+
+**Or initialize via the wizard** (requires Go):
+```bash
 go run github.com/loopers-oss/loopers/cmd/loopers init
 ```
 
-### Step 2: Spin Up the Firewall
+### Step 2: Spin Up the Proxy
 ```bash
-docker-compose up -d --build
+docker-compose up -d
 ```
 
 ### Step 3: Create a Key and Configure a Budget

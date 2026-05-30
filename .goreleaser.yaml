@@ -62,6 +62,32 @@ signs:
     artifacts: checksum
     output: true
 
+dockers:
+  - image_templates:
+      - "ghcr.io/cursed-me/loopers:{{ .Tag }}-amd64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .Commit }}"
+  - image_templates:
+      - "ghcr.io/cursed-me/loopers:{{ .Tag }}-arm64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/arm64"
+
+docker_manifests:
+  - name_template: "ghcr.io/cursed-me/loopers:{{ .Tag }}"
+    image_templates:
+      - "ghcr.io/cursed-me/loopers:{{ .Tag }}-amd64"
+      - "ghcr.io/cursed-me/loopers:{{ .Tag }}-arm64"
+  - name_template: "ghcr.io/cursed-me/loopers:latest"
+    image_templates:
+      - "ghcr.io/cursed-me/loopers:{{ .Tag }}-amd64"
+      - "ghcr.io/cursed-me/loopers:{{ .Tag }}-arm64"
+
 # Homebrew tap publishing is disabled until the homebrew-tap repository is created.
 # To re-enable, create a public repo at https://github.com/CURSED-ME/homebrew-tap
 # and uncomment the block below:

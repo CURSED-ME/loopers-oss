@@ -76,7 +76,14 @@ func initConfig() {
 		viper.SetConfigName("loopers")
 	}
 
+	viper.SetEnvPrefix("LOOPERS")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
+
+	viper.BindEnv("redis.addr", "REDIS_ADDR")
+	viper.BindEnv("server.port", "SERVER_PORT")
+	viper.BindEnv("pricing_path", "PRICING_PATH")
+	viper.BindEnv("log.level", "LOG_LEVEL")
 
 	if err := viper.ReadInConfig(); err == nil {
 		// Log will be initialized properly in serve command, but let's initialize a basic logger here

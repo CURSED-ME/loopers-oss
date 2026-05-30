@@ -45,13 +45,13 @@ func Recovery() gin.HandlerFunc {
 				}
 				logging.Logger.Error().
 					Interface("panic", err).
+					Str("stack", string(debug.Stack())).
 					Str("request_id", reqID).
 					Msg("panic recovered")
-				fmt.Printf("PANIC: %v\n", err)
-				debug.PrintStack()
+
 				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 					"error": gin.H{
-						"message": fmt.Sprintf("Internal server error: %v\n%s", err, string(debug.Stack())),
+						"message": "An internal error occurred. Check server logs.",
 						"type":    "internal_server_error",
 						"code":    "internal_error",
 					},
