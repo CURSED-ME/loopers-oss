@@ -20,7 +20,7 @@ function createLoopersFetch(
 ) {
   const originalFetch = customFetch || (typeof fetch !== 'undefined' ? fetch : undefined);
   if (!originalFetch) {
-    throw new Error('A global fetch function is not available. Please pass a custom fetch implementation.');
+    throw new Error('A global fetch function is not available. Please pass a custom fetch implementation (e.g. node-fetch) or use Node.js 18+.');
   }
 
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
