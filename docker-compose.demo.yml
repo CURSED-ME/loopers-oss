@@ -26,6 +26,7 @@ services:
       - SERVER_PORT=8080
       - LOG_LEVEL=info
       - PRICING_PATH=/app/pricing.yaml
+      - OPENAI_BASE_URL=http://mock-openai
     depends_on:
       redis:
         condition: service_healthy

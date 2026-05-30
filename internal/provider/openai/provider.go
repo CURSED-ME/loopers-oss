@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/loopers-oss/loopers/internal/provider"
@@ -25,6 +26,9 @@ func (o *OpenAIProvider) Name() string {
 }
 
 func (o *OpenAIProvider) BaseURL() string {
+	if override := os.Getenv("OPENAI_BASE_URL"); override != "" {
+		return override
+	}
 	return "https://api.openai.com"
 }
 
