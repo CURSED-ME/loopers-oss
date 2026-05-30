@@ -35,14 +35,18 @@ jobs:
           fi
           
           echo "Sending first request (should succeed)..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8080/openai/v1/chat/completions \
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/openai/v1/chat/completions \
             -H "Authorization: Bearer $RAW_KEY" \
             -H "X-Loopers-Provider-Key: sk-demo" \
             -H "Content-Type: application/json" \
             -d '{"model":"gpt-4o-mini","max_tokens":100,"messages":[{"role":"user","content":"hi"}]}')
             
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          STATUS=$(echo "$RESPONSE" | tail -n 1)
+
           if [ "$STATUS" != "200" ]; then
             echo "First request failed with status $STATUS"
+            echo "Response body: $BODY"
             docker compose -f docker-compose.demo.yml logs loopers
             exit 1
           fi
