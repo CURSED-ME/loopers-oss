@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "loopers-client"
-version = "0.4.1"
+version = "0.4.2"
 description = "A premium Python client wrapper for the Loopers AI budget & rate-limit proxy."
 readme = "README.md"
 requires-python = ">=3.7"

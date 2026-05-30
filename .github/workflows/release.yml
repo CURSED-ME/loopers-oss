@@ -17,23 +17,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Setup Go
-        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
+        uses: actions/setup-go@v5
         with:
           go-version: '1.26.x'
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@59acb623e2b699277a83530009de973714f9d557 # v3.5.0
+        uses: sigstore/cosign-installer@v3.5.0
 
       - name: Install Syft
-        uses: anchore/sbom-action/download-syft@61117185cc6b5302c34be5cf6f2eeec8dfd2c4e1 # v0.16.0
+        uses: anchore/sbom-action/download-syft@v0.16.0
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@57ed77ae391eb1590fc5f407c68284abd9f4f13a # v5.0.0
+        uses: goreleaser/goreleaser-action@v5.0.0
         with:
           distribution: goreleaser
           version: latest
