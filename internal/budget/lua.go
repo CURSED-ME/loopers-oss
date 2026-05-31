@@ -22,11 +22,11 @@ var reconcileAllScriptSource string
 var sessionCheckScriptSource string
 
 var (
-	checkScript          *redis.Script
-	checkAllScript       *redis.Script
-	reconcileScript      *redis.Script
-	reconcileAllScript   *redis.Script
-	sessionCheckScript   *redis.Script
+	checkScript        *redis.Script
+	checkAllScript     *redis.Script
+	reconcileScript    *redis.Script
+	reconcileAllScript *redis.Script
+	sessionCheckScript *redis.Script
 )
 
 func init() {
