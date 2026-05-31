@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -320,12 +319,7 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	estimatedCost := pricing.EstimateCost(inputTokens, maxTokensVal, inputPrice, outputPrice)
 
 	// 6. Check and reserve budget (fail-closed on Redis failure)
-	if os.Getenv("LOOPERS_SKIP_BUDGET_CHECK") == "true" {
-		err = nil
-	} else {
-		err = s.redis.CheckAndReserve(c.Request.Context(), keyHash, estimatedCost)
-	}
-
+	err = s.redis.CheckAndReserve(c.Request.Context(), keyHash, estimatedCost)
 	if err != nil {
 		if budgetErr, ok := err.(*budget.BudgetExceededError); ok {
 			originalPath := c.Request.URL.Path
@@ -337,12 +331,7 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 					fallbackInputTokens, countErr := prov.CountInputTokens(c.Request.Context(), fallbackModel, fallbackMutatedBody, providerKeyStr)
 					if countErr == nil {
 						fallbackCost := pricing.EstimateCost(fallbackInputTokens, maxTokensVal, fallbackInputPrice, fallbackOutputPrice)
-						var fallbackErr error
-						if os.Getenv("LOOPERS_SKIP_BUDGET_CHECK") == "true" {
-							fallbackErr = nil
-						} else {
-							fallbackErr = s.redis.CheckAndReserve(c.Request.Context(), keyHash, fallbackCost)
-						}
+						fallbackErr := s.redis.CheckAndReserve(c.Request.Context(), keyHash, fallbackCost)
 						if fallbackErr == nil {
 							logging.Logger.Info().Str("key_hash", keyHash).Str("original_model", model).Str("fallback_model", fallbackModel).Msg("fallback_routing_successful")
 							estimatedCost = fallbackCost
