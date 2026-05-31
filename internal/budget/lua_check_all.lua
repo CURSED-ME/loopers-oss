@@ -1,22 +1,21 @@
 -- lua_check_all.lua
 -- Atomic budget check + reservation for multiple windows.
--- KEYS[1]: config key (loopers:budget:{hash}:config)
--- KEYS[2..N+1]: spend keys
+-- KEYS[1..N]: spend keys
 -- ARGV[1]: estimated_cost as string (e.g., "0.0125")
 -- ARGV[2..N+1]: window names
--- ARGV[N+2..2N+1]: window TTLs in seconds
+-- ARGV[N+2..2N+1]: limits
+-- ARGV[2N+2..3N+1]: window TTLs in seconds
 
-local config_key = KEYS[1]
 local est_cost = tonumber(ARGV[1])
-local num_windows = #KEYS - 1
+local num_windows = #KEYS
 
 -- First pass: check limits for all windows
 for i = 1, num_windows do
-    local spend_key = KEYS[i+1]
+    local spend_key = KEYS[i]
     local window_name = ARGV[i+1]
+    local limit_str = ARGV[i + 1 + num_windows]
     
-    local limit_str = redis.call('HGET', config_key, window_name)
-    if limit_str and limit_str ~= "" then
+    if limit_str and limit_str ~= "" and limit_str ~= "0" then
         local limit = tonumber(limit_str)
         local current_str = redis.call('GET', spend_key)
         local current = 0
@@ -34,8 +33,8 @@ end
 
 -- Second pass: RESERVE for all windows
 for i = 1, num_windows do
-    local spend_key = KEYS[i+1]
-    local window_ttl = tonumber(ARGV[i + 1 + num_windows])
+    local spend_key = KEYS[i]
+    local window_ttl = tonumber(ARGV[i + 1 + (num_windows * 2)])
     redis.call('INCRBYFLOAT', spend_key, est_cost)
     redis.call('EXPIRE', spend_key, window_ttl)
 end

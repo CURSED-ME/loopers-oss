@@ -5,7 +5,11 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/loopers-oss/loopers/internal/cache"
 )
+
+var configCache = cache.NewTTLCache(30 * time.Second)
 
 // BudgetExceededError is returned when a budget limit is reached.
 type BudgetExceededError struct {
@@ -19,8 +23,7 @@ func (e *BudgetExceededError) Error() string {
 	return fmt.Sprintf("budget exceeded for %s window: limit %f, current spend %f", e.WindowName, e.Limit, e.CurrentSpend)
 }
 
-// CheckAndReserve checks the daily and hourly budgets in Redis and reserves the estimated cost.
-// If either check fails, the transaction fails closed.
+// WindowInfo holds information about a specific time window for budgeting.
 type WindowInfo struct {
 	Name string
 	Key  string
@@ -90,6 +93,20 @@ func getWindowConfigs(keyHash string, now time.Time) []WindowInfo {
 	return configs
 }
 
+func (c *Client) getBudgetConfig(ctx context.Context, configKey string) (map[string]string, error) {
+	if val, ok := configCache.Get(configKey); ok {
+		return val.(map[string]string), nil
+	}
+
+	limits, err := c.rdb.HGetAll(ctx, configKey).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	configCache.Set(configKey, limits)
+	return limits, nil
+}
+
 // CheckAndReserve checks the configured budgets in Redis and reserves the estimated cost.
 // It checks all windows atomically in a single Redis roundtrip.
 func (c *Client) CheckAndReserve(ctx context.Context, keyHash string, estCost float64) error {
@@ -97,7 +114,12 @@ func (c *Client) CheckAndReserve(ctx context.Context, keyHash string, estCost fl
 	configKey := fmt.Sprintf("loopers:budget:%s:config", keyHash)
 	windows := getWindowConfigs(keyHash, now)
 
-	keys := []string{configKey}
+	limits, err := c.getBudgetConfig(ctx, configKey)
+	if err != nil {
+		return fmt.Errorf("failed to get budget config: %w", err)
+	}
+
+	var keys []string
 	args := []interface{}{strconv.FormatFloat(estCost, 'f', -1, 64)}
 
 	for _, w := range windows {
@@ -105,6 +127,13 @@ func (c *Client) CheckAndReserve(ctx context.Context, keyHash string, estCost fl
 	}
 	for _, w := range windows {
 		args = append(args, w.Name)
+	}
+	for _, w := range windows {
+		limitStr := "0"
+		if val, exists := limits[w.Name]; exists && val != "" {
+			limitStr = val
+		}
+		args = append(args, limitStr)
 	}
 	for _, w := range windows {
 		args = append(args, strconv.Itoa(w.TTL))

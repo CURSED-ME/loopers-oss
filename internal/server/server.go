@@ -151,7 +151,7 @@ func (s *Server) setupRoutes() {
 
 	maxInflight := viper.GetInt("server.max_inflight")
 	if maxInflight <= 0 {
-		maxInflight = 200
+		maxInflight = 2000
 	}
 	s.proxyGroup.Use(ConcurrencyLimiter(maxInflight))
 	s.proxyGroup.Use(BodyBuffer())
