@@ -138,10 +138,13 @@ func TestBudgetWindowExpansion(t *testing.T) {
 		t.Errorf("expected reconcile to succeed, got: %v", err)
 	}
 
-	// Spend is now 0.05. Third request: reserve 0.10 -> should succeed (0.05 + 0.10 = 0.15 <= 0.20)
+	// Wait for async batched reconcile to flush (100ms batch interval)
+	time.Sleep(150 * time.Millisecond)
+
+	// 3. Third request ($0.06): Should now succeed because $0.05 was refunded
 	err = client.CheckAndReserve(ctx, keyHash, 0.10)
 	if err != nil {
-		t.Errorf("expected third request to succeed after reconciliation, got: %v", err)
+		t.Fatalf("expected third request to succeed after reconciliation, got: %v", err)
 	}
 }
 

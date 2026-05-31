@@ -117,9 +117,9 @@ func (c *Client) getBudgetConfig(ctx context.Context, configKey string) (map[str
 	return v.(map[string]string), nil
 }
 
-// CheckAndReserve checks the configured budgets in Redis and reserves the estimated cost.
+// checkAndReserveRedis checks the configured budgets in Redis and reserves the estimated cost.
 // It checks all windows atomically in a single Redis roundtrip.
-func (c *Client) CheckAndReserve(ctx context.Context, keyHash string, estCost float64) error {
+func (c *Client) checkAndReserveRedis(ctx context.Context, keyHash string, estCost float64) error {
 	now := time.Now().UTC()
 	configKey := fmt.Sprintf("loopers:budget:%s:config", keyHash)
 	windows := getWindowConfigs(keyHash, now)
@@ -151,26 +151,24 @@ func (c *Client) CheckAndReserve(ctx context.Context, keyHash string, estCost fl
 
 	res, err := checkAllScript.Run(ctx, c.rdb, keys, args...).Result()
 	if err != nil {
-		return fmt.Errorf("redis error during unified budget check: %w", err) // fail-closed
+		return fmt.Errorf("redis check script failed: %w", err)
 	}
 
-	slice, ok := res.([]interface{})
-	if !ok || len(slice) < 4 {
-		return fmt.Errorf("unexpected response from checkAll script: %v", res)
+	resSlice, ok := res.([]interface{})
+	if !ok || len(resSlice) == 0 {
+		return fmt.Errorf("unexpected script response type")
 	}
 
-	allowed, _ := slice[0].(int64)
-	if allowed == 0 {
-		currentStr, _ := slice[1].(string)
-		limitStr, _ := slice[2].(string)
-		windowName, _ := slice[3].(string)
-
-		current, _ := strconv.ParseFloat(currentStr, 64)
-		limit, _ := strconv.ParseFloat(limitStr, 64)
+	status := resSlice[0].(int64)
+	if status == 0 {
+		// Budget exceeded
+		currentSpend, _ := strconv.ParseFloat(resSlice[1].(string), 64)
+		limit, _ := strconv.ParseFloat(resSlice[2].(string), 64)
+		windowName := resSlice[3].(string)
 
 		return &BudgetExceededError{
 			WindowName:   windowName,
-			CurrentSpend: current,
+			CurrentSpend: currentSpend,
 			Limit:        limit,
 			Status:       "budget_exceeded",
 		}
@@ -179,8 +177,8 @@ func (c *Client) CheckAndReserve(ctx context.Context, keyHash string, estCost fl
 	return nil
 }
 
-// Reconcile reconciles the actual spend after request/stream completion.
-func (c *Client) Reconcile(ctx context.Context, keyHash string, reservedCost, actualCost float64) error {
+// reconcileRedis refunds unused budget back to Redis.
+func (c *Client) reconcileRedis(ctx context.Context, keyHash string, reservedCost, actualCost float64) error {
 	now := time.Now().UTC()
 	windows := getWindowConfigs(keyHash, now)
 

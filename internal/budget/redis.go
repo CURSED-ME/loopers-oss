@@ -3,6 +3,7 @@ package budget
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -10,7 +11,11 @@ import (
 
 // Client is a wrapper around the go-redis client.
 type Client struct {
-	rdb *redis.Client
+	rdb              *redis.Client
+	batchMu          sync.Mutex
+	reserveBatches   map[string][]reserveReq
+	reconcileMu      sync.Mutex
+	reconcileBatches map[string]reconcileReq
 }
 
 // NewClient initializes and returns a Client.
