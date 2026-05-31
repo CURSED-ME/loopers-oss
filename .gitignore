@@ -5,6 +5,7 @@ docs/launch/show-hn.md
 docs/launch/blog-post-llmjacking.md
 internal/budget/budget-leak-test-results.md
 loopers-oom-crash-report.md
+throughput test results.md
 graphify-out/
 bin/
 *.exe

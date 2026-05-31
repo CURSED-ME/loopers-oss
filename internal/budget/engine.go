@@ -91,44 +91,40 @@ func getWindowConfigs(keyHash string, now time.Time) []WindowInfo {
 }
 
 // CheckAndReserve checks the configured budgets in Redis and reserves the estimated cost.
-// If any check fails, the transaction fails closed and previously reserved windows are rolled back.
+// It checks all windows atomically in a single Redis roundtrip.
 func (c *Client) CheckAndReserve(ctx context.Context, keyHash string, estCost float64) error {
 	now := time.Now().UTC()
 	configKey := fmt.Sprintf("loopers:budget:%s:config", keyHash)
 	windows := getWindowConfigs(keyHash, now)
 
-	var checked []WindowInfo
+	keys := []string{configKey}
+	args := []interface{}{strconv.FormatFloat(estCost, 'f', -1, 64)}
+
 	for _, w := range windows {
-		err := c.checkAndReserveWindow(ctx, w.Key, configKey, estCost, w.Name, w.TTL)
-		if err != nil {
-			// Rollback already reserved windows
-			for _, prev := range checked {
-				_, _ = c.rdb.IncrByFloat(ctx, prev.Key, -estCost).Result()
-			}
-			return err
-		}
-		checked = append(checked, w)
+		keys = append(keys, w.Key)
+	}
+	for _, w := range windows {
+		args = append(args, w.Name)
+	}
+	for _, w := range windows {
+		args = append(args, strconv.Itoa(w.TTL))
 	}
 
-	return nil
-}
-
-func (c *Client) checkAndReserveWindow(ctx context.Context, spendKey, configKey string, estCost float64, windowName string, ttlSeconds int) error {
-	res, err := checkScript.Run(ctx, c.rdb, []string{spendKey, configKey}, strconv.FormatFloat(estCost, 'f', -1, 64), windowName, ttlSeconds).Result()
+	res, err := checkAllScript.Run(ctx, c.rdb, keys, args...).Result()
 	if err != nil {
-		return fmt.Errorf("redis error during budget check: %w", err) // fail-closed
+		return fmt.Errorf("redis error during unified budget check: %w", err) // fail-closed
 	}
 
 	slice, ok := res.([]interface{})
 	if !ok || len(slice) < 4 {
-		return fmt.Errorf("unexpected response from check script: %v", res)
+		return fmt.Errorf("unexpected response from checkAll script: %v", res)
 	}
 
 	allowed, _ := slice[0].(int64)
 	if allowed == 0 {
 		currentStr, _ := slice[1].(string)
 		limitStr, _ := slice[2].(string)
-		status, _ := slice[3].(string)
+		windowName, _ := slice[3].(string)
 
 		current, _ := strconv.ParseFloat(currentStr, 64)
 		limit, _ := strconv.ParseFloat(limitStr, 64)
@@ -137,7 +133,7 @@ func (c *Client) checkAndReserveWindow(ctx context.Context, spendKey, configKey 
 			WindowName:   windowName,
 			CurrentSpend: current,
 			Limit:        limit,
-			Status:       status,
+			Status:       "budget_exceeded",
 		}
 	}
 
@@ -149,20 +145,25 @@ func (c *Client) Reconcile(ctx context.Context, keyHash string, reservedCost, ac
 	now := time.Now().UTC()
 	windows := getWindowConfigs(keyHash, now)
 
-	var lastErr error
+	var keys []string
 	for _, w := range windows {
-		err := c.reconcileWindow(ctx, w.Key, reservedCost, actualCost, w.TTL)
-		if err != nil {
-			lastErr = fmt.Errorf("failed to reconcile %s spend: %w", w.Name, err)
-		}
+		keys = append(keys, w.Key)
 	}
 
-	return lastErr
-}
+	args := []interface{}{
+		strconv.FormatFloat(reservedCost, 'f', -1, 64),
+		strconv.FormatFloat(actualCost, 'f', -1, 64),
+	}
+	for _, w := range windows {
+		args = append(args, strconv.Itoa(w.TTL))
+	}
 
-func (c *Client) reconcileWindow(ctx context.Context, spendKey string, reservedCost, actualCost float64, ttlSeconds int) error {
-	_, err := reconcileScript.Run(ctx, c.rdb, []string{spendKey}, strconv.FormatFloat(reservedCost, 'f', -1, 64), strconv.FormatFloat(actualCost, 'f', -1, 64), ttlSeconds).Result()
-	return err
+	_, err := reconcileAllScript.Run(ctx, c.rdb, keys, args...).Result()
+	if err != nil {
+		return fmt.Errorf("failed to reconcile spend: %w", err)
+	}
+
+	return nil
 }
 
 // WindowStatus represents the status of a specific budget window.

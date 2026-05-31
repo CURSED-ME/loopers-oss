@@ -19,6 +19,8 @@ func NewClient(addr, password string, db int) (*Client, error) {
 		Addr:            addr,
 		Password:        password,
 		DB:              db,
+		PoolSize:        1000,
+		MinIdleConns:    50,
 		MaxRetries:      3,
 		MinRetryBackoff: 8 * time.Millisecond,
 		MaxRetryBackoff: 512 * time.Millisecond,
