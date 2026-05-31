@@ -32,7 +32,8 @@ type Proxy struct {
 // NewProxy creates a new ReverseProxy wrapper with highly-optimized production settings.
 func NewProxy(modifyResponse func(*http.Response) error) *Proxy {
 	transport := &http.Transport{
-		MaxIdleConnsPerHost:   100,
+		MaxIdleConns:          4000,
+		MaxIdleConnsPerHost:   4000,
 		ForceAttemptHTTP2:     true,
 		IdleConnTimeout:       90 * time.Second,
 		ResponseHeaderTimeout: 30 * time.Second,
