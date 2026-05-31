@@ -138,7 +138,7 @@ var bufferPool = sync.Pool{
 func ConcurrencyLimiter(maxInflight int) gin.HandlerFunc {
 	sema := make(chan struct{}, maxInflight)
 	return func(c *gin.Context) {
-		sema <- struct{}{} // Acquire slot
+		sema <- struct{}{}        // Acquire slot
 		defer func() { <-sema }() // Release slot when request finishes (after c.Next() completes)
 		c.Next()
 	}
@@ -154,7 +154,7 @@ func BodyBuffer() gin.HandlerFunc {
 
 		buf := bufferPool.Get().(*bytes.Buffer)
 		buf.Reset()
-		
+
 		// Ensure buffer is returned to the pool after the request completes
 		defer bufferPool.Put(buf)
 

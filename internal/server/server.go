@@ -148,7 +148,7 @@ func (s *Server) setupRoutes() {
 	s.router.GET("/budget/status", s.handleBudgetStatus)
 
 	s.proxyGroup = s.router.Group("/")
-	
+
 	maxInflight := viper.GetInt("server.max_inflight")
 	if maxInflight <= 0 {
 		maxInflight = 200
