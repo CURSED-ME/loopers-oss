@@ -8,8 +8,21 @@ import (
 	"github.com/pkoukk/tiktoken-go"
 )
 
+func init() {
+	// Pre-load encodings on startup to prevent massive memory spikes
+	// from concurrent initializations when multiple requests hit the server.
+	_, _ = tiktoken.GetEncoding("cl100k_base")
+	_, _ = tiktoken.GetEncoding("o200k_base")
+}
+
+var tokenizationSema = make(chan struct{}, 4)
+
 // countOpenAIRequestTokens parses the OpenAI body and counts prompt tokens.
 func countOpenAIRequestTokens(model string, body []byte) (int, error) {
+	// Acquire semaphore slot to prevent massive memory spikes from concurrent regexp2 executions in tiktoken
+	tokenizationSema <- struct{}{}
+	defer func() { <-tokenizationSema }()
+
 	var req api.ChatCompletionRequest
 	if err := json.Unmarshal(body, &req); err != nil {
 		return 0, err
