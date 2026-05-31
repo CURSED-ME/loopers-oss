@@ -568,6 +568,10 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 		if err != nil {
 			return err
 		}
+
+		// Close original body to prevent connection and goroutine leaks in the ReverseProxy
+		resp.Body.Close()
+
 		resp.Body = io.NopCloser(bytes.NewReader(respBodyBytes))
 
 		var totalInputTokens int
