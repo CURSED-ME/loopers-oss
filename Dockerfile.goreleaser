@@ -1,0 +1,20 @@
+FROM alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+
+RUN apk --no-cache add ca-certificates && \
+    addgroup -S loopers && adduser -S loopers -G loopers
+
+WORKDIR /app
+
+# GoReleaser automatically copies the compiled binary for the target architecture into the build context
+COPY loopers .
+COPY pricing.yaml .
+
+# Set permissions
+RUN chown -R loopers:loopers /app
+
+USER loopers
+
+EXPOSE 8080
+
+ENTRYPOINT ["/app/loopers"]
+CMD ["serve"]

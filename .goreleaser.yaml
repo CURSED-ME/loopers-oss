@@ -65,16 +65,20 @@ signs:
 dockers:
   - image_templates:
       - "ghcr.io/cursed-me/loopers:{{ .Tag }}-amd64"
-    dockerfile: Dockerfile
+    dockerfile: Dockerfile.goreleaser
     use: buildx
+    extra_files:
+      - pricing.yaml
     build_flag_templates:
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .Commit }}"
   - image_templates:
       - "ghcr.io/cursed-me/loopers:{{ .Tag }}-arm64"
-    dockerfile: Dockerfile
+    dockerfile: Dockerfile.goreleaser
     use: buildx
+    extra_files:
+      - pricing.yaml
     build_flag_templates:
       - "--platform=linux/arm64"
 
