@@ -245,8 +245,14 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	keyHash := keyring.HashKey(rawKeyStr)
 	meta, err := keyring.GetKeyMetadata(c.Request.Context(), s.redis.GetUnderlyingClient(), keyHash)
 	if err != nil {
-		requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
+		if err.Error() == "key does not exist" {
+			requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
+		} else {
+			logging.Logger.Error().Err(err).Msg("failed to get key metadata")
+			requestsTotal.WithLabelValues(providerName, "unknown", "503").Inc()
+			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "Service Unavailable: internal error"})
+		}
 		return
 	}
 	if meta.Active != "true" {

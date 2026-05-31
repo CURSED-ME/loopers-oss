@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/loopers-oss/loopers/internal/cache"
+	"golang.org/x/sync/singleflight"
 )
 
 var configCache = cache.NewTTLCache(30 * time.Second)
+var configGroup singleflight.Group
 
 // BudgetExceededError is returned when a budget limit is reached.
 type BudgetExceededError struct {
@@ -98,13 +100,21 @@ func (c *Client) getBudgetConfig(ctx context.Context, configKey string) (map[str
 		return val.(map[string]string), nil
 	}
 
-	limits, err := c.rdb.HGetAll(ctx, configKey).Result()
+	v, err, _ := configGroup.Do(configKey, func() (interface{}, error) {
+		limits, err := c.rdb.HGetAll(ctx, configKey).Result()
+		if err != nil {
+			return nil, err
+		}
+
+		configCache.Set(configKey, limits)
+		return limits, nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
 
-	configCache.Set(configKey, limits)
-	return limits, nil
+	return v.(map[string]string), nil
 }
 
 // CheckAndReserve checks the configured budgets in Redis and reserves the estimated cost.
