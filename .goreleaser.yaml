@@ -92,15 +92,15 @@ docker_manifests:
       - "ghcr.io/cursed-me/loopers:{{ .Tag }}-amd64"
       - "ghcr.io/cursed-me/loopers:{{ .Tag }}-arm64"
 
-# Homebrew tap publishing is temporarily disabled to prevent CI failures
-# brews:
-#   - name: loopers
-#     repository:
-#       owner: CURSED-ME
-#       name: homebrew-tap
-#     directory: Formula
-#     homepage: "https://tryloopers.com"
-#     description: "The Circuit Breaker for AI API Billing"
-#     license: "MIT"
-#     install: |
-#       bin.install "loopers"
+# Homebrew tap publishing is enabled.
+brews:
+  - name: loopers
+    repository:
+      owner: CURSED-ME
+      name: homebrew-tap
+    directory: Formula
+    homepage: "https://tryloopers.com"
+    description: "The Circuit Breaker for AI API Billing"
+    license: "MIT"
+    install: |
+      bin.install "loopers"
