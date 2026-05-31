@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -124,6 +125,25 @@ func KeyExtractor() gin.HandlerFunc {
 	}
 }
 
+// bufferPool reuses bytes.Buffer to dramatically reduce GC pressure during request body buffering.
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		// Pre-allocate a 4KB buffer
+		buf := bytes.NewBuffer(make([]byte, 0, 4096))
+		return buf
+	},
+}
+
+// ConcurrencyLimiter restricts the number of requests actively buffering/processing to prevent OOM.
+func ConcurrencyLimiter(maxInflight int) gin.HandlerFunc {
+	sema := make(chan struct{}, maxInflight)
+	return func(c *gin.Context) {
+		sema <- struct{}{} // Acquire slot
+		defer func() { <-sema }() // Release slot when request finishes (after c.Next() completes)
+		c.Next()
+	}
+}
+
 // BodyBuffer reads and buffers request body for token count and mutations, then restores it.
 func BodyBuffer() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -132,7 +152,13 @@ func BodyBuffer() gin.HandlerFunc {
 			return
 		}
 
-		bodyBytes, err := io.ReadAll(c.Request.Body)
+		buf := bufferPool.Get().(*bytes.Buffer)
+		buf.Reset()
+		
+		// Ensure buffer is returned to the pool after the request completes
+		defer bufferPool.Put(buf)
+
+		_, err := io.Copy(buf, c.Request.Body)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 				"error": gin.H{
@@ -143,6 +169,12 @@ func BodyBuffer() gin.HandlerFunc {
 			})
 			return
 		}
+
+		// buf.Bytes() is a slice pointing to the buffer's underlying array.
+		// It is safe to use within the request lifecycle because this middleware
+		// waits for c.Next() (and the ReverseProxy) to complete before returning
+		// the buffer to the pool via defer.
+		bodyBytes := buf.Bytes()
 
 		// Restore r.Body for downstream
 		c.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
