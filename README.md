@@ -6,6 +6,8 @@
 
 > **Break the loop before it breaks your budget.**
 
+> **AI Agent or LLM?** Read our AI-optimized [AGENT_README.md](./AGENT_README.md) for dense technical context.
+
 <p align="left">
   <img src="https://img.shields.io/badge/license-MIT-black.svg?style=for-the-badge" alt="License" />
   <img src="https://img.shields.io/badge/go-1.26.3-black.svg?style=for-the-badge" alt="Go Version" />
@@ -77,7 +79,7 @@ Check the `bootstrap` container logs for the ready curl commands. The demo uses 
 
 ## Quickstart (Production Setup)
 
-### Step 1: Download the Binary
+- [ ] **Step 1: Download the Binary**
 
 **macOS / Linux (one-liner):**
 ```bash
@@ -94,12 +96,12 @@ docker pull ghcr.io/cursed-me/loopers:latest
 go run github.com/loopers-oss/loopers/cmd/loopers init
 ```
 
-### Step 2: Spin Up the Proxy
+- [ ] **Step 2: Spin Up the Proxy**
 ```bash
 docker-compose up -d
 ```
 
-### Step 3: Create a Key and Configure a Budget
+- [ ] **Step 3: Create a Key and Configure a Budget**
 Generate an API proxy key for OpenAI:
 ```bash
 docker-compose exec loopers /app/loopers keys create --name my-app-key --provider openai
@@ -118,7 +120,7 @@ docker-compose exec loopers /app/loopers budget set <KEY_HASH> \
 
 All five windows (`--minute`, `--hourly`, `--daily`, `--weekly`, `--monthly`) are optional and can be combined freely. The first limit hit wins and blocks the request.
 
-### Step 4: Route Your Requests
+- [ ] **Step 4: Route Your Requests**
 Make API calls through the Loopers proxy using one of our official SDKs or raw cURL:
 
 ```bash
@@ -192,32 +194,9 @@ For full details, see the [Python SDK documentation](./sdk/python/README.md) and
 
 ## Architecture
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Client as Application Client
-    participant Proxy as Loopers Proxy
-    participant Redis as Redis Cache
-    participant LLM as Upstream LLM Provider
+Loopers acts as a transparent reverse proxy between your application clients and the upstream LLM providers, utilizing Redis for atomic budget reservation and transaction management.
 
-    Client->>Proxy: POST /openai/... (Authorization, X-Loopers-Provider-Key)
-    Proxy->>Redis: Check & Reserve estimated budget
-    alt Budget Exceeded or Redis Down (Fail-Closed)
-        Proxy-->>Client: 429 Too Many Requests (or 503 Service Unavailable)
-    else Budget Check OK
-        Proxy->>LLM: Forward Request with Provider API Key
-        LLM-->>Proxy: Stream response chunks (SSE)
-        Loop Stream Chunk Processing
-            Proxy->>Proxy: Count output tokens & calculate running cost
-            alt Cost exceeds reserved budget
-                Proxy-->>Client: Send mid-stream budget cut event & terminate
-            else Cost OK
-                Proxy-->>Client: Forward raw SSE chunk
-            end
-        end
-        Proxy->>Redis: Reconcile actual spend (refund unused reservation)
-    end
-```
+For a detailed system overview and sequence diagram, please see our [Architecture Documentation](./docs/architecture.md).
 
 ---
 
