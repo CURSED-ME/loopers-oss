@@ -367,7 +367,7 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 					go s.alerter.TriggerBlockAlert(keyHash, meta.Name, providerName, model, "budget", 0, 0, estimatedCost)
 				}
 				requestsTotal.WithLabelValues(providerName, model, "429").Inc()
-			
+
 				// We don't have the exact window in the new simple ErrBudgetExceeded, so just log generically
 				logging.Logger.Warn().Str("key_hash", keyHash).Float64("cost", estimatedCost).Msg("Budget exceeded")
 

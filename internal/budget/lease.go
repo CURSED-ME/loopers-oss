@@ -96,7 +96,7 @@ func (lm *LeaseManager) Acquire(ctx context.Context, keyHash string, estCostUSD 
 	}
 
 	grantedNano := ToNano(grantedUSD)
-	
+
 	// If the granted amount isn't even enough for this single request (depletion mode edge case),
 	// we must fail it and refund the tiny amount back to the lease.
 	if grantedNano < costNano {
@@ -106,11 +106,11 @@ func (lm *LeaseManager) Acquire(ctx context.Context, keyHash string, estCostUSD 
 
 	// We have enough. Deduct the cost from the granted chunk.
 	netAddition := grantedNano - costNano
-	
+
 	// Add the net addition to the local lease
 	lease.RemainingNano.Add(netAddition)
 	lease.SpentNano.Add(costNano)
-	
+
 	if lease.LeaseID != "" && lease.LeaseID != newLeaseID {
 		// Edge case: if we already had a lease ID, we should technically tell the heartbeat manager
 		// to flush the old lease ID's spent amount before adopting the new one.
@@ -118,10 +118,10 @@ func (lm *LeaseManager) Acquire(ctx context.Context, keyHash string, estCostUSD 
 		// A cleaner way is just to maintain ONE lease ID, but Redis gave us a new one.
 	}
 	lease.LeaseID = newLeaseID
-	
+
 	// Register the new lease with the heartbeat manager (to be implemented)
 	// RegisterLeaseHeartbeat(newLeaseID, keyHash)
-	
+
 	return nil
 }
 
@@ -133,10 +133,10 @@ func (lm *LeaseManager) ReconcileSpend(keyHash string, estCostUSD float64, actua
 	if deltaUSD == 0 {
 		return
 	}
-	
+
 	deltaNano := ToNano(deltaUSD)
 	lease := lm.getOrCreateLease(keyHash)
-	
+
 	// If delta is positive (refund), we add to remaining, subtract from spent.
 	// If delta is negative (overspend), we subtract from remaining, add to spent.
 	lease.RemainingNano.Add(deltaNano)

@@ -32,7 +32,7 @@ func (lm *LeaseManager) sendHeartbeats(ctx context.Context) {
 	// Iterate through all active local leases
 	lm.leases.Range(func(key, value interface{}) bool {
 		lease := value.(*LocalLease)
-		
+
 		leaseID := lease.LeaseID
 		if leaseID == "" {
 			return true // No active lease ID yet

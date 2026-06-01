@@ -16,8 +16,8 @@ type Client struct {
 	reserveBatches   map[string][]reserveReq
 	reconcileMu      sync.Mutex
 	reconcileBatches map[string]reconcileReq
-	
-	LeaseManager     *LeaseManager
+
+	LeaseManager *LeaseManager
 }
 
 // NewClient initializes and returns a Client.

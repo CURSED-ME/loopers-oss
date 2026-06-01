@@ -58,7 +58,7 @@ func TestStreamingCut_RefundsUnusedReservation(t *testing.T) {
 	// Actual cost so far: $0.03
 	// Then a big chunk comes in that costs $0.08. Total cost = $0.11 (> budget $0.10).
 	// The proxy would call TryAcquireFast(0.08)
-	
+
 	// Wait, the total remaining in the local lease should be $0.10 - $0.05 = $0.05
 	// If we try to TryAcquireFast 0.03, it succeeds.
 	success := lm.TryAcquireFast(keyHash, 0.03)
@@ -82,7 +82,7 @@ func TestStreamingCut_RefundsUnusedReservation(t *testing.T) {
 	// The spent amount locally is tracked in SpentNano.
 	// Let's force a heartbeat to flush SpentNano to Redis.
 	lease := lm.getOrCreateLease(keyHash)
-	
+
 	// Wait, the worker flushes it. We can manually call the lua script or just sleep for heartbeat interval.
 	// For testing, let's just inspect the local lease directly.
 	spentNano := lease.SpentNano.Load()
@@ -133,10 +133,10 @@ func TestMicroBatcher_Accuracy(t *testing.T) {
 	// Verify local lease spent amount
 	lease := lm.getOrCreateLease(keyHash)
 	spentNano := lease.SpentNano.Load()
-	
+
 	// Convert spentNano to USD
 	spentUSD := float64(spentNano) / 1e9
-	
+
 	// We expect total spent across goroutines to be approximately equal to lease's SpentNano
 	// Note: float precision can cause tiny diffs, but we use integer math internally.
 	if math.Abs(spentUSD-total) > 0.001 {

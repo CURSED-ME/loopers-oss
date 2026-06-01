@@ -45,18 +45,18 @@ func (c *Client) AcquireLeaseRedis(ctx context.Context, keyHash string, maxChunk
 		if !ok || limitStr == "" {
 			continue // No limit for this window type
 		}
-		
+
 		limitUSD, err := strconv.ParseFloat(limitStr, 64)
 		if err != nil || limitUSD <= 0 {
 			continue
 		}
-		
+
 		args = append(args, w.Key)
 		args = append(args, fmt.Sprintf("%f", limitUSD))
 		args = append(args, strconv.Itoa(w.TTL))
 		numWindows++
 	}
-	
+
 	args[2] = numWindows // Update actual window count
 
 	if numWindows == 0 {
