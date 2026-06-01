@@ -19,10 +19,12 @@ if spend_amount > 0 then
     end
     
     if spend_amount > 0 then
-        redis.call('DECRBYFLOAT', amt_key, spend_amount)
+        -- Use INCRBYFLOAT with a negative spend_amount
+        redis.call('INCRBYFLOAT', amt_key, -spend_amount)
         local keys = redis.call('SMEMBERS', 'loopers:lease:' .. lease_id .. ':keys')
         for _, spend_key in ipairs(keys) do
-            redis.call('DECRBYFLOAT', spend_key .. ':reserved', spend_amount)
+            -- Use INCRBYFLOAT with a negative spend_amount
+            redis.call('INCRBYFLOAT', spend_key .. ':reserved', -spend_amount)
             redis.call('INCRBYFLOAT', spend_key, spend_amount)
         end
     end
