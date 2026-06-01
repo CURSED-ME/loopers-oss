@@ -58,7 +58,7 @@ func TestBudgetRaceCondition(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			// Reserve $0.10. With $5.00 limit, exactly 50 requests should pass and 50 should fail.
-			err := client.CheckAndReserve(ctx, keyHash, 0.10)
+			err := client.LeaseManager.Acquire(ctx, keyHash, 0.10, 1.0)
 			if err == nil {
 				atomic.AddInt64(&allowed, 1)
 			} else {
@@ -119,30 +119,27 @@ func TestBudgetWindowExpansion(t *testing.T) {
 	defer rdb.Del(ctx, minuteKey, weeklyKey)
 
 	// First request: reserve 0.15 -> should succeed
-	err = client.CheckAndReserve(ctx, keyHash, 0.15)
+	err = client.LeaseManager.Acquire(ctx, keyHash, 0.15, 1.0)
 	if err != nil {
 		t.Errorf("expected first request to succeed, got: %v", err)
 	}
 
 	// Second request: reserve 0.10 -> should fail minute limit (0.15 + 0.10 = 0.25 > 0.20)
-	err = client.CheckAndReserve(ctx, keyHash, 0.10)
+	err = client.LeaseManager.Acquire(ctx, keyHash, 0.10, 1.0)
 	if err == nil {
 		t.Errorf("expected second request to fail minute limit")
-	} else if budgetErr, ok := err.(*BudgetExceededError); !ok || budgetErr.WindowName != "minute" {
-		t.Errorf("expected minute BudgetExceededError, got: %v", err)
+	} else if err != ErrBudgetExceeded {
+		t.Errorf("expected ErrBudgetExceeded, got: %v", err)
 	}
 
 	// Reconcile first request actual cost: 0.15 -> 0.05
-	err = client.Reconcile(ctx, keyHash, 0.15, 0.05)
-	if err != nil {
-		t.Errorf("expected reconcile to succeed, got: %v", err)
-	}
+	client.LeaseManager.ReconcileSpend(keyHash, 0.15, 0.05)
 
 	// Wait for async batched reconcile to flush (100ms batch interval)
 	time.Sleep(150 * time.Millisecond)
 
 	// 3. Third request ($0.06): Should now succeed because $0.05 was refunded
-	err = client.CheckAndReserve(ctx, keyHash, 0.10)
+	err = client.LeaseManager.Acquire(ctx, keyHash, 0.10, 1.0)
 	if err != nil {
 		t.Fatalf("expected third request to succeed after reconciliation, got: %v", err)
 	}

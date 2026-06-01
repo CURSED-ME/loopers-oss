@@ -92,6 +92,11 @@ var serveCmd = &cobra.Command{
 		}
 
 		s := server.NewServer(redisClient, pricingStore)
+		
+		// Start background lease workers
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		redisClient.LeaseManager.StartLeaseWorkers(ctx)
 
 		port := viper.GetString("server.port")
 		if port == "" {

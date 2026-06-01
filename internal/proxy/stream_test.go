@@ -26,7 +26,7 @@ func TestSSEFrameParsing(t *testing.T) {
 	reader := &mockReadCloser{Reader: strings.NewReader(part1 + part2)}
 
 	ctx := context.Background()
-	r := NewSSEStreamReader(ctx, reader, openai.NewOpenAIProvider(), 0.0, 0.0, 1.0, func(float64, int, int) {})
+	r := NewSSEStreamReader(ctx, reader, openai.NewOpenAIProvider(), 0.0, 0.0, func(cost float64) bool { return true }, func(float64, int, int, bool) {})
 	defer r.Close()
 
 	buf := new(bytes.Buffer)
@@ -47,7 +47,7 @@ func TestDONEHandling(t *testing.T) {
 
 	ctx := context.Background()
 	reconciled := false
-	r := NewSSEStreamReader(ctx, reader, openai.NewOpenAIProvider(), 0.0, 0.0, 1.0, func(actualCost float64, inTokens, outTokens int) {
+	r := NewSSEStreamReader(ctx, reader, openai.NewOpenAIProvider(), 0.0, 0.0, func(cost float64) bool { return true }, func(actualCost float64, inTokens, outTokens int, forcedCut bool) {
 		reconciled = true
 	})
 	defer r.Close()
@@ -69,7 +69,7 @@ func TestAnthropicEventParsing(t *testing.T) {
 
 	ctx := context.Background()
 	var actualRecorded float64
-	r := NewSSEStreamReader(ctx, reader, anthropic.NewAnthropicProvider(), 1.0, 2.0, 1.0, func(actualCost float64, inTokens, outTokens int) {
+	r := NewSSEStreamReader(ctx, reader, anthropic.NewAnthropicProvider(), 1.0, 2.0, func(cost float64) bool { return true }, func(actualCost float64, inTokens, outTokens int, forcedCut bool) {
 		actualRecorded = actualCost
 	})
 	defer r.Close()
@@ -90,7 +90,7 @@ func TestStreamBudgetCutoff(t *testing.T) {
 	reader := &mockReadCloser{Reader: strings.NewReader(stream)}
 
 	ctx := context.Background()
-	r := NewSSEStreamReader(ctx, reader, anthropic.NewAnthropicProvider(), 1.0, 2.0, 0.000005, func(actualCost float64, inTokens, outTokens int) {})
+	r := NewSSEStreamReader(ctx, reader, anthropic.NewAnthropicProvider(), 1.0, 2.0, func(cost float64) bool { return cost <= 0.000005 }, func(actualCost float64, inTokens, outTokens int, forcedCut bool) {})
 	defer r.Close()
 
 	buf := new(bytes.Buffer)

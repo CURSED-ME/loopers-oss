@@ -16,6 +16,8 @@ type Client struct {
 	reserveBatches   map[string][]reserveReq
 	reconcileMu      sync.Mutex
 	reconcileBatches map[string]reconcileReq
+	
+	LeaseManager     *LeaseManager
 }
 
 // NewClient initializes and returns a Client.
@@ -42,7 +44,9 @@ func NewClient(addr, password string, db int) (*Client, error) {
 		return nil, fmt.Errorf("failed to connect to Redis at %s: %w", addr, err)
 	}
 
-	return &Client{rdb: rdb}, nil
+	client := &Client{rdb: rdb}
+	client.LeaseManager = NewLeaseManager(client)
+	return client, nil
 }
 
 // Ping checks if the Redis server is reachable.

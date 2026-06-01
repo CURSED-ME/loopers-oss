@@ -318,10 +318,10 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	// 5. Estimate cost
 	estimatedCost := pricing.EstimateCost(inputTokens, maxTokensVal, inputPrice, outputPrice)
 
-	// 6. Check and reserve budget (fail-closed on Redis failure)
-	err = s.redis.CheckAndReserve(c.Request.Context(), keyHash, estimatedCost)
+	// 6. Check and reserve budget via Lease (fast path)
+	err = s.redis.LeaseManager.Acquire(c.Request.Context(), keyHash, estimatedCost, 1.0)
 	if err != nil {
-		if budgetErr, ok := err.(*budget.BudgetExceededError); ok {
+		if err == budget.ErrBudgetExceeded {
 			originalPath := c.Request.URL.Path
 			fallbackModel := s.pricing.GetFallback(providerName, model)
 			if fallbackModel != "" && fallbackModel != model {
@@ -331,7 +331,7 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 					fallbackInputTokens, countErr := prov.CountInputTokens(c.Request.Context(), fallbackModel, fallbackMutatedBody, providerKeyStr)
 					if countErr == nil {
 						fallbackCost := pricing.EstimateCost(fallbackInputTokens, maxTokensVal, fallbackInputPrice, fallbackOutputPrice)
-						fallbackErr := s.redis.CheckAndReserve(c.Request.Context(), keyHash, fallbackCost)
+						fallbackErr := s.redis.LeaseManager.Acquire(c.Request.Context(), keyHash, fallbackCost, 1.0)
 						if fallbackErr == nil {
 							logging.Logger.Info().Str("key_hash", keyHash).Str("original_model", model).Str("fallback_model", fallbackModel).Msg("fallback_routing_successful")
 							estimatedCost = fallbackCost
@@ -354,12 +354,9 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			if s.shadowMode {
 				logging.Logger.Warn().
 					Str("key_hash", keyHash).
-					Str("window", budgetErr.WindowName).
 					Float64("cost", estimatedCost).
-					Float64("limit", budgetErr.Limit).
-					Float64("current_spend", budgetErr.CurrentSpend).
 					Msg("shadow_blocked")
-				shadowBlockedTotal.WithLabelValues(providerName, budgetErr.WindowName).Inc()
+				shadowBlockedTotal.WithLabelValues(providerName, "budget").Inc()
 
 				// In shadow mode, we didn't reserve the budget (it rolled back), so we set estimatedCost to 0
 				// so that Reconcile() later adds the full actual cost to the current spend.
@@ -367,12 +364,17 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				goto sessionCheck
 			} else {
 				if s.alerter != nil {
-					go s.alerter.TriggerBlockAlert(keyHash, meta.Name, providerName, model, budgetErr.WindowName, budgetErr.CurrentSpend, budgetErr.Limit, estimatedCost)
+					go s.alerter.TriggerBlockAlert(keyHash, meta.Name, providerName, model, "budget", 0, 0, estimatedCost)
 				}
 				requestsTotal.WithLabelValues(providerName, model, "429").Inc()
-				budgetBlocksTotal.WithLabelValues(providerName, budgetErr.WindowName).Inc()
-				resp := api.NewBudgetExceededResponse(budgetErr.WindowName, budgetErr.Limit, budgetErr.CurrentSpend, estimatedCost)
-				c.AbortWithStatusJSON(http.StatusTooManyRequests, resp)
+			
+				// We don't have the exact window in the new simple ErrBudgetExceeded, so just log generically
+				logging.Logger.Warn().Str("key_hash", keyHash).Float64("cost", estimatedCost).Msg("Budget exceeded")
+
+				c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+					"error": "budget exceeded",
+					"type":  "budget_exceeded",
+				})
 				return
 			}
 		}
@@ -402,11 +404,12 @@ sessionCheck:
 		}
 
 		// Check session limits (1 hour TTL)
+		// For sessions, we fallback to strict checking for now
 		allowed, val1, val2, status, err := s.redis.CheckAndReserveSession(c.Request.Context(), sessionID, estimatedCost, sessionBudget, sessionMaxSteps, 3600)
 		if err != nil {
 			// Refund key budget reservation
-			_ = s.redis.Reconcile(c.Request.Context(), keyHash, estimatedCost, 0)
-			logging.Logger.Error().Err(err).Msg("Session budget check failed closed due to Redis error")
+			s.redis.LeaseManager.ReconcileSpend(keyHash, estimatedCost, 0)
+			logging.Logger.Error().Err(err).Msg("failed_session_reserve")
 			requestsTotal.WithLabelValues(providerName, model, "503").Inc()
 			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
 				"error": gin.H{
@@ -443,7 +446,7 @@ sessionCheck:
 				rdb.IncrBy(c.Request.Context(), sessionStepsKey, 1)
 			} else {
 				// Refund key budget reservation
-				_ = s.redis.Reconcile(c.Request.Context(), keyHash, estimatedCost, 0)
+				s.redis.LeaseManager.ReconcileSpend(keyHash, estimatedCost, 0)
 
 				if s.alerter != nil {
 					go s.alerter.TriggerBlockAlert(keyHash, meta.Name, providerName, model, windowName, val1, val2, estimatedCost)
@@ -504,7 +507,7 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 	sessionID, _ := ctx.Value(sessionIDCtx).(string)
 
 	if resp.StatusCode != http.StatusOK {
-		_ = s.redis.Reconcile(ctx, keyHash, reservedCost, 0)
+		s.redis.LeaseManager.ReconcileSpend(keyHash, reservedCost, 0)
 		if sessionID != "" {
 			sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
 			_, _ = s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, -reservedCost).Result()
@@ -538,37 +541,51 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 	}
 
 	if isStream {
-		resp.Body = proxy.NewSSEStreamReader(ctx, resp.Body, prov, inputPrice, outputPrice, reservedCost, func(actualCost float64, inTokens, outTokens int) {
-			_ = s.redis.Reconcile(ctx, keyHash, reservedCost, actualCost)
-			if sessionID != "" {
-				sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
-				_, _ = s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-reservedCost).Result()
-			}
+		var totalPaid float64 = reservedCost
 
-			// Instrument stream metrics upon completion
-			latency := time.Since(startTime)
-			requestDuration.WithLabelValues(provName).Observe(latency.Seconds())
-			requestsTotal.WithLabelValues(provName, model, "200").Inc()
-			spendUSDTotal.WithLabelValues(provName, keyHash).Add(actualCost)
-			tokensTotal.WithLabelValues(provName, "input").Add(float64(inTokens))
-			tokensTotal.WithLabelValues(provName, "output").Add(float64(outTokens))
+		resp.Body = proxy.NewSSEStreamReader(ctx, resp.Body, prov, inputPrice, outputPrice,
+			func(cost float64) bool {
+				delta := cost - totalPaid
+				if delta <= 0 {
+					return true
+				}
+				if s.redis.LeaseManager.TryAcquireFast(keyHash, delta) {
+					totalPaid += delta
+					return true
+				}
+				return false
+			},
+			func(actualCost float64, inTokens, outTokens int, forcedCut bool) {
+				s.redis.LeaseManager.ReconcileSpend(keyHash, totalPaid, actualCost)
+				if sessionID != "" {
+					sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
+					_, _ = s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-totalPaid).Result()
+				}
 
-			// Trigger alerts
-			if s.alerter != nil {
-				go func() {
-					statusMap, err := s.redis.GetBudgetStatus(context.Background(), keyHash)
-					if err == nil {
-						limits := make(map[string]float64)
-						spends := make(map[string]float64)
-						for k, v := range statusMap {
-							limits[k] = v.Limit
-							spends[k] = v.CurrentSpend
+				// Instrument stream metrics upon completion
+				latency := time.Since(startTime)
+				requestDuration.WithLabelValues(provName).Observe(latency.Seconds())
+				requestsTotal.WithLabelValues(provName, model, "200").Inc()
+				spendUSDTotal.WithLabelValues(provName, keyHash).Add(actualCost)
+				tokensTotal.WithLabelValues(provName, "input").Add(float64(inTokens))
+				tokensTotal.WithLabelValues(provName, "output").Add(float64(outTokens))
+
+				// Trigger alerts
+				if s.alerter != nil {
+					go func() {
+						statusMap, err := s.redis.GetBudgetStatus(context.Background(), keyHash)
+						if err == nil {
+							limits := make(map[string]float64)
+							spends := make(map[string]float64)
+							for k, v := range statusMap {
+								limits[k] = v.Limit
+								spends[k] = v.CurrentSpend
+							}
+							s.alerter.TriggerThresholdAlerts(context.Background(), keyHash, keyName, provName, spends, limits)
 						}
-						s.alerter.TriggerThresholdAlerts(context.Background(), keyHash, keyName, provName, spends, limits)
-					}
-				}()
-			}
-		})
+					}()
+				}
+			})
 	} else {
 		respBodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
@@ -588,7 +605,7 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 		}
 
 		actualCost := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-		_ = s.redis.Reconcile(ctx, keyHash, reservedCost, actualCost)
+		s.redis.LeaseManager.ReconcileSpend(keyHash, reservedCost, actualCost)
 		resp.Header.Set("X-Loopers-Request-Cost", fmt.Sprintf("%.6f", actualCost))
 
 		if sessionID != "" {

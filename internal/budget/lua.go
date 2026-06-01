@@ -21,12 +21,24 @@ var reconcileAllScriptSource string
 //go:embed lua_session_check.lua
 var sessionCheckScriptSource string
 
+//go:embed lua_lease_acquire.lua
+var leaseAcquireScriptSource string
+
+//go:embed lua_lease_heartbeat.lua
+var leaseHeartbeatScriptSource string
+
+//go:embed lua_lease_reclaim.lua
+var leaseReclaimScriptSource string
+
 var (
-	checkScript        *redis.Script
-	checkAllScript     *redis.Script
-	reconcileScript    *redis.Script
-	reconcileAllScript *redis.Script
-	sessionCheckScript *redis.Script
+	checkScript          *redis.Script
+	checkAllScript       *redis.Script
+	reconcileScript      *redis.Script
+	reconcileAllScript   *redis.Script
+	sessionCheckScript   *redis.Script
+	leaseAcquireScript   *redis.Script
+	leaseHeartbeatScript *redis.Script
+	leaseReclaimScript   *redis.Script
 )
 
 func init() {
@@ -35,4 +47,7 @@ func init() {
 	reconcileScript = redis.NewScript(reconcileScriptSource)
 	reconcileAllScript = redis.NewScript(reconcileAllScriptSource)
 	sessionCheckScript = redis.NewScript(sessionCheckScriptSource)
+	leaseAcquireScript = redis.NewScript(leaseAcquireScriptSource)
+	leaseHeartbeatScript = redis.NewScript(leaseHeartbeatScriptSource)
+	leaseReclaimScript = redis.NewScript(leaseReclaimScriptSource)
 }

@@ -118,7 +118,7 @@ providers:
 	s.shadowMode = true
 
 	// Initial metric count
-	initialShadowBlocks := testutil.ToFloat64(shadowBlockedTotal.WithLabelValues("mock", "minute"))
+	initialShadowBlocks := testutil.ToFloat64(shadowBlockedTotal.WithLabelValues("mock", "budget"))
 
 	// Make request
 	reqBody := []byte(`{"messages": []}`)
@@ -135,7 +135,7 @@ providers:
 	}
 
 	// Verify metric incremented
-	finalShadowBlocks := testutil.ToFloat64(shadowBlockedTotal.WithLabelValues("mock", "minute"))
+	finalShadowBlocks := testutil.ToFloat64(shadowBlockedTotal.WithLabelValues("mock", "budget"))
 	if finalShadowBlocks != initialShadowBlocks+1 {
 		t.Errorf("Expected shadowBlockedTotal metric to increment, got %v (was %v)", finalShadowBlocks, initialShadowBlocks)
 	}

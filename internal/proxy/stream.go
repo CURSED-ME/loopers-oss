@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"io"
 	"time"
-
-	"github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream"
 	"github.com/loopers-oss/loopers/internal/logging"
 	"github.com/loopers-oss/loopers/internal/provider"
 )
@@ -32,7 +30,7 @@ type SSEStreamReader struct {
 }
 
 // NewSSEStreamReader creates a new SSEStreamReader implementing io.ReadCloser.
-func NewSSEStreamReader(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice, reservedUSD float64, onReconcile func(float64, int, int)) io.ReadCloser {
+func NewSSEStreamReader(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice float64, checkBudget func(float64) bool, onStreamEnd func(float64, int, int, bool)) io.ReadCloser {
 	pr, pw := io.Pipe()
 
 	sr := &SSEStreamReader{
@@ -40,7 +38,7 @@ func NewSSEStreamReader(ctx context.Context, original io.ReadCloser, prov provid
 		pipeWriter: pw,
 	}
 
-	go sr.processStream(ctx, original, prov, inputPrice, outputPrice, reservedUSD, onReconcile)
+	go sr.processStream(ctx, original, prov, inputPrice, outputPrice, checkBudget, onStreamEnd)
 
 	return sr
 }
@@ -55,12 +53,12 @@ func (sr *SSEStreamReader) Close() error {
 	return sr.pipeReader.Close()
 }
 
-func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice, reservedUSD float64, onReconcile func(float64, int, int)) {
+func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice float64, checkBudget func(float64) bool, onStreamEnd func(float64, int, int, bool)) {
 	defer original.Close()
 	defer sr.pipeWriter.Close()
 
 	if prov.Name() == "bedrock" {
-		sr.processBedrockStream(ctx, original, prov, inputPrice, outputPrice, reservedUSD, onReconcile)
+		sr.processBedrockStream(ctx, original, prov, inputPrice, outputPrice, checkBudget, onStreamEnd)
 		return
 	}
 
@@ -108,7 +106,7 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 		select {
 		case <-ctx.Done():
 			actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-			onReconcile(actualUSD, totalInputTokens, totalOutputTokens)
+			onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, false)
 			return
 		case chunk, ok := <-chunks:
 			if !ok {
@@ -117,7 +115,7 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 					logging.Logger.Error().Err(err).Msg("SSE scanner error during read loop")
 				}
 				actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-				onReconcile(actualUSD, totalInputTokens, totalOutputTokens)
+				onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, false)
 				return
 			}
 
@@ -128,7 +126,7 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 			if err == nil {
 				if isDone {
 					actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-					onReconcile(actualUSD, totalInputTokens, totalOutputTokens)
+					onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, false)
 					_, _ = sr.pipeWriter.Write(outChunk)
 					return
 				}
@@ -142,9 +140,10 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 
 				if inTokens > 0 || outTokens > 0 {
 					cost := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-					if cost > reservedUSD {
+					// Check if we have enough budget
+					if !checkBudget(cost) {
 						_, _ = sr.pipeWriter.Write(prov.FormatBudgetExceededSSE())
-						onReconcile(cost, totalInputTokens, totalOutputTokens)
+						onStreamEnd(cost, totalInputTokens, totalOutputTokens, true)
 						return
 					}
 				}
@@ -155,7 +154,7 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 	}
 }
 
-func (sr *SSEStreamReader) processBedrockStream(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice, reservedUSD float64, onReconcile func(float64, int, int)) {
+func (sr *SSEStreamReader) processBedrockStream(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice float64, checkBudget func(float64) bool, onStreamEnd func(float64, int, int, bool)) {
 	var totalInputTokens int
 	var totalOutputTokens int
 
@@ -163,7 +162,7 @@ func (sr *SSEStreamReader) processBedrockStream(ctx context.Context, original io
 		select {
 		case <-ctx.Done():
 			actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-			onReconcile(actualUSD, totalInputTokens, totalOutputTokens)
+			onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, false)
 			return
 		default:
 			// Read one frame of binary event stream
@@ -171,25 +170,17 @@ func (sr *SSEStreamReader) processBedrockStream(ctx context.Context, original io
 			if err != nil {
 				if err == io.EOF {
 					actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-					onReconcile(actualUSD, totalInputTokens, totalOutputTokens)
+					onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, false)
 					return
 				}
 				logging.Logger.Error().Err(err).Msg("Error reading AWS Bedrock EventStream frame")
+				actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
+				onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, true)
 				return
 			}
 
-			// Decode the message using eventstream decoder to inspect payload
-			decoder := eventstream.NewDecoder()
-			msg, err := decoder.Decode(bytes.NewReader(frameBytes), nil)
-			if err != nil {
-				logging.Logger.Error().Err(err).Msg("Error decoding AWS Bedrock EventStream message")
-				// Even if decoding fails, forward the raw frame to avoid blocking client
-				_, _ = sr.pipeWriter.Write(frameBytes)
-				continue
-			}
-
-			// Inspect message payload for token count
-			inTokens, outTokens, isDone, err := prov.ParseStreamChunk(msg.Payload)
+			// We need to parse the tokens from the frame
+			inTokens, outTokens, isDone, err := prov.ParseStreamChunk(frameBytes)
 			if err == nil {
 				if inTokens > 0 {
 					totalInputTokens = inTokens
@@ -200,17 +191,17 @@ func (sr *SSEStreamReader) processBedrockStream(ctx context.Context, original io
 
 				if inTokens > 0 || outTokens > 0 {
 					cost := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-					if cost > reservedUSD {
+					if !checkBudget(cost) {
 						// Write exception frame and stop
 						_, _ = sr.pipeWriter.Write(prov.FormatBudgetExceededSSE())
-						onReconcile(cost, totalInputTokens, totalOutputTokens)
+						onStreamEnd(cost, totalInputTokens, totalOutputTokens, true)
 						return
 					}
 				}
 
 				if isDone {
 					actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-					onReconcile(actualUSD, totalInputTokens, totalOutputTokens)
+					onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, false)
 					_, _ = sr.pipeWriter.Write(frameBytes)
 					return
 				}
