@@ -1,11 +1,11 @@
 # Internal and sensitive documents
 Saas.md
 oss-plan.md
-docs/launch/show-hn.md
-docs/launch/blog-post-llmjacking.md
+docs/launch/
 internal/budget/budget-leak-test-results.md
 loopers-oom-crash-report.md
 throughput test results.md
+final_results.md
 graphify-out/
 bin/
 *.exe

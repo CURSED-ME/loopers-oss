@@ -46,6 +46,18 @@ Loopers is engineered specifically as a high-performance infrastructure-level ci
 
 ---
 
+## Performance Benchmarks (Episode 1)
+
+Loopers is engineered to handle massive concurrent traffic spikes without dropping the ball on budget enforcement. In our latest LLM Gateway benchmarks against Python/FastAPI alternatives like LiteLLM, Loopers demonstrated:
+
+- **Zero Budget Leaks:** Under a 1,000 concurrent user flood test against a strict budget limit, Loopers blocked exact requests with **0% leakage**, whereas LiteLLM leaked 215% of the budget due to TOCTOU race conditions.
+- **Massive Throughput:** Achieved **4,623 req/s** max throughput compared to 176.7 req/s for Python gateways.
+- **Tiny Footprint:** Runs in a **41MB memory footprint** compared to 1GB+ stacks.
+
+Read the full deep-dive in our [Final Benchmark Results](./final_results.md).
+
+---
+
 ## Supported Providers
 
 | Provider | Model Names | Streaming | Non-Streaming | Budget Enforcement | Token Counting |
