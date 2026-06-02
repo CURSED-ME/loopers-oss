@@ -50,7 +50,7 @@ Loopers is engineered specifically as a high-performance infrastructure-level ci
 
 Loopers is engineered to handle massive concurrent traffic spikes without dropping the ball on budget enforcement. In our latest LLM Gateway benchmarks against Python/FastAPI alternatives like LiteLLM, Loopers demonstrated:
 
-| Metric | Loopers (Go) | Python Alternatives | Delta |
+| Metric | Loopers (Go) | LiteLLM | Delta |
 | :--- | :--- | :--- | :--- |
 | **Budget Leakage** (1,000 req flood) | **0% ($0.00)** | 215% ($0.0215) | *Complete Protection* |
 | **Peak Throughput** (RPS) | **4,623 req/s** | ~176 req/s | *25x Faster* |
