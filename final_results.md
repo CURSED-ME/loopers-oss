@@ -99,6 +99,6 @@ We believe benchmarks must be fully open and reproducible. We have open-sourced 
 
 1. Ensure Docker and `k6` are installed.
 2. Clone the benchmark repository: `git clone https://github.com/CURSED-ME/llm-gateway-benchmark.git`
-3. Navigate to the Episode 1 test environment and start the stack: `cd llm-gateway-benchmark/ep01-litellm && docker-compose up -d`
+3. Navigate to the Episode 1 test environment and start the stack: `cd llm-gateway-benchmark/ep01-litellm ; docker-compose up -d`
 4. Seed the keys: `./seed.sh --leak`
 5. Run the load test: `k6 run -e PROXY=loopers -e VUS=1000 -e DURATION=10s ../shared/harness/budget_leak_test.js`
