@@ -95,9 +95,10 @@ Companies deploying LLM gateways do so to control costs, unify APIs, and track u
 ---
 
 ## Reproducibility
-We believe benchmarks must be fully open and reproducible. You can run this exact test suite on your own machine.
+We believe benchmarks must be fully open and reproducible. We have open-sourced the entire benchmark harness in a separate repository. You can run this exact test suite on your own machine:
 
 1. Ensure Docker and `k6` are installed.
-2. Navigate to this directory and start the stack: `docker-compose up -d`
-3. Seed the keys: `./seed.sh --leak`
-4. Run the load test: `k6 run -e PROXY=loopers -e VUS=1000 -e DURATION=10s ../shared/harness/budget_leak_test.js`
+2. Clone the benchmark repository: `git clone https://github.com/CURSED-ME/llm-gateway-benchmark.git` (or the respective URL)
+3. Navigate into the repository's test environment and start the stack: `docker-compose up -d`
+4. Seed the keys: `./seed.sh --leak`
+5. Run the load test: `k6 run -e PROXY=loopers -e VUS=1000 -e DURATION=10s ../shared/harness/budget_leak_test.js`
