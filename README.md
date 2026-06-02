@@ -50,11 +50,14 @@ Loopers is engineered specifically as a high-performance infrastructure-level ci
 
 Loopers is engineered to handle massive concurrent traffic spikes without dropping the ball on budget enforcement. In our latest LLM Gateway benchmarks against Python/FastAPI alternatives like LiteLLM, Loopers demonstrated:
 
-- **Zero Budget Leaks:** Under a 1,000 concurrent user flood test against a strict budget limit, Loopers blocked exact requests with **0% leakage**, whereas LiteLLM leaked 215% of the budget due to TOCTOU race conditions.
-- **Massive Throughput:** Achieved **4,623 req/s** max throughput compared to 176.7 req/s for Python gateways.
-- **Tiny Footprint:** Runs in a **41MB memory footprint** compared to 1GB+ stacks.
+| Metric | Loopers (Go) | Python Alternatives | Delta |
+| :--- | :--- | :--- | :--- |
+| **Budget Leakage** (1,000 req flood) | **0% ($0.00)** | 215% ($0.0215) | *Complete Protection* |
+| **Peak Throughput** (RPS) | **4,623 req/s** | ~176 req/s | *25x Faster* |
+| **Proxy Overhead** (P99 Latency) | **240.98 ms** | 46,812.60 ms | *190x Lower Latency* |
+| **Resource Footprint** (Idle RAM) | **41.58 MB** | 957.83 MB | *23x Lighter* |
 
-Read the full deep-dive in our [Final Benchmark Results](./final_results.md).
+Read the full deep-dive with raw data and methodology in our [Final Benchmark Results](./final_results.md).
 
 ---
 
