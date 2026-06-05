@@ -1,6 +1,6 @@
 {
   "name": "@loopers/client",
-  "version": "0.4.8",
+  "version": "1.0.0",
   "description": "A premium TypeScript client wrapper for the Loopers AI budget & rate-limit proxy.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

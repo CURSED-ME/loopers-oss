@@ -96,6 +96,21 @@ response = client.messages.create(
 print(response.loopers_cost)
 ```
 
+### Other Providers (Groq, Mistral, DeepSeek, Together)
+
+Because these providers are OpenAI-compatible, they share the exact same interface as `LoopersOpenAI`. Simply substitute the class name:
+
+```python
+from loopers_client import LoopersGroq, LoopersMistral, LoopersDeepSeek, LoopersTogether
+
+# Example using Groq
+client = LoopersGroq(
+    loopers_url="http://localhost:8080",
+    loopers_key="lp-xxx",
+    provider_key="gsk_xxx"
+)
+```
+
 ## License
 
 MIT

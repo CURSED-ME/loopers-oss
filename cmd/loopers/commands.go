@@ -148,6 +148,10 @@ var keysCreateCmd = &cobra.Command{
 							huh.NewOption("Cohere", "cohere"),
 							huh.NewOption("DeepSeek", "deepseek"),
 							huh.NewOption("Together", "together"),
+							huh.NewOption("Ollama", "ollama"),
+							huh.NewOption("Fireworks", "fireworks"),
+							huh.NewOption("xAI", "xai"),
+							huh.NewOption("vLLM", "vllm"),
 						).
 						Value(&keyProvider),
 				),
@@ -163,9 +167,10 @@ var keysCreateCmd = &cobra.Command{
 		validProviders := map[string]bool{
 			"openai": true, "anthropic": true, "gemini": true, "bedrock": true, "azure": true, "mistral": true,
 			"groq": true, "cohere": true, "deepseek": true, "together": true,
+			"ollama": true, "fireworks": true, "xai": true, "vllm": true,
 		}
 		if !validProviders[keyProvider] {
-			logging.Logger.Fatal().Msg("provider must be one of: openai, anthropic, gemini, bedrock, azure, mistral, groq, cohere, deepseek, together")
+			logging.Logger.Fatal().Msg("provider must be one of: openai, anthropic, gemini, bedrock, azure, mistral, groq, cohere, deepseek, together, ollama, fireworks, xai, vllm")
 		}
 
 		rawKey, err := keyring.GenerateRawKey()
@@ -667,7 +672,7 @@ func init() {
 
 	// Keys commands
 	keysCreateCmd.Flags().StringVar(&keyName, "name", "", "Name of the proxy key (required)")
-	keysCreateCmd.Flags().StringVar(&keyProvider, "provider", "", "Provider for the key (openai|anthropic|gemini|bedrock|azure|mistral) (required)")
+	keysCreateCmd.Flags().StringVar(&keyProvider, "provider", "", "Provider for the key (openai|anthropic|gemini|bedrock|azure|mistral|groq|cohere|deepseek|together|ollama|fireworks|xai|vllm) (required)")
 	keysCmd.AddCommand(keysCreateCmd)
 	keysCmd.AddCommand(keysListCmd)
 	keysCmd.AddCommand(keysRevokeCmd)

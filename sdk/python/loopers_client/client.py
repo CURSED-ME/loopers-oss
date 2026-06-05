@@ -83,7 +83,8 @@ if HAS_OPENAI:
             if "http_client" not in kwargs:
                 kwargs["http_client"] = httpx.Client(event_hooks=event_hooks)
 
-            base_url = f"{loopers_url.rstrip('/')}/openai/v1"
+            _provider_path = kwargs.pop("_provider_path", "openai/v1")
+            base_url = f"{loopers_url.rstrip('/')}/{_provider_path}"
 
             default_headers = kwargs.pop("default_headers", {})
             default_headers["Authorization"] = f"Bearer {loopers_key}"
@@ -132,7 +133,8 @@ if HAS_OPENAI:
             if "http_client" not in kwargs:
                 kwargs["http_client"] = httpx.AsyncClient(event_hooks=event_hooks)
 
-            base_url = f"{loopers_url.rstrip('/')}/openai/v1"
+            _provider_path = kwargs.pop("_provider_path", "openai/v1")
+            base_url = f"{loopers_url.rstrip('/')}/{_provider_path}"
 
             default_headers = kwargs.pop("default_headers", {})
             default_headers["Authorization"] = f"Bearer {loopers_key}"
@@ -157,6 +159,47 @@ if HAS_OPENAI:
             res = await super().request(*args, **kwargs)
             _attach_loopers_attributes(res)
             return res
+
+    class LoopersGroq(LoopersOpenAI):
+        def __init__(self, *args, **kwargs):
+            kwargs["_provider_path"] = "groq/v1"
+            super().__init__(*args, **kwargs)
+
+    class LoopersAsyncGroq(LoopersAsyncOpenAI):
+        def __init__(self, *args, **kwargs):
+            kwargs["_provider_path"] = "groq/v1"
+            super().__init__(*args, **kwargs)
+
+    class LoopersMistral(LoopersOpenAI):
+        def __init__(self, *args, **kwargs):
+            kwargs["_provider_path"] = "mistral/v1"
+            super().__init__(*args, **kwargs)
+
+    class LoopersAsyncMistral(LoopersAsyncOpenAI):
+        def __init__(self, *args, **kwargs):
+            kwargs["_provider_path"] = "mistral/v1"
+            super().__init__(*args, **kwargs)
+
+    class LoopersDeepSeek(LoopersOpenAI):
+        def __init__(self, *args, **kwargs):
+            kwargs["_provider_path"] = "deepseek/v1"
+            super().__init__(*args, **kwargs)
+
+    class LoopersAsyncDeepSeek(LoopersAsyncOpenAI):
+        def __init__(self, *args, **kwargs):
+            kwargs["_provider_path"] = "deepseek/v1"
+            super().__init__(*args, **kwargs)
+
+    class LoopersTogether(LoopersOpenAI):
+        def __init__(self, *args, **kwargs):
+            kwargs["_provider_path"] = "together/v1"
+            super().__init__(*args, **kwargs)
+
+    class LoopersAsyncTogether(LoopersAsyncOpenAI):
+        def __init__(self, *args, **kwargs):
+            kwargs["_provider_path"] = "together/v1"
+            super().__init__(*args, **kwargs)
+
 else:
     class LoopersOpenAI:
         def __init__(self, *args, **kwargs):

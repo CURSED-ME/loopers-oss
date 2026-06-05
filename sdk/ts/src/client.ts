@@ -108,6 +108,7 @@ export class LoopersOpenAI extends OpenAI {
       sessionId,
       sessionBudget,
       maxSteps,
+      _providerPath,
       ...openaiOptions
     } = options;
 
@@ -123,10 +124,34 @@ export class LoopersOpenAI extends OpenAI {
 
     super({
       ...openaiOptions,
-      baseURL: `${loopersUrl.replace(/\/$/, '')}/openai/v1`,
+      baseURL: `${loopersUrl.replace(/\/$/, '')}/${_providerPath || 'openai/v1'}`,
       apiKey: loopersKey,
       fetch: loopersFetch,
     });
+  }
+}
+
+export class LoopersGroq extends LoopersOpenAI {
+  constructor(options: LoopersClientOptions & { [key: string]: any }) {
+    super({ ...options, _providerPath: 'groq/v1' });
+  }
+}
+
+export class LoopersMistral extends LoopersOpenAI {
+  constructor(options: LoopersClientOptions & { [key: string]: any }) {
+    super({ ...options, _providerPath: 'mistral/v1' });
+  }
+}
+
+export class LoopersDeepSeek extends LoopersOpenAI {
+  constructor(options: LoopersClientOptions & { [key: string]: any }) {
+    super({ ...options, _providerPath: 'deepseek/v1' });
+  }
+}
+
+export class LoopersTogether extends LoopersOpenAI {
+  constructor(options: LoopersClientOptions & { [key: string]: any }) {
+    super({ ...options, _providerPath: 'together/v1' });
   }
 }
 

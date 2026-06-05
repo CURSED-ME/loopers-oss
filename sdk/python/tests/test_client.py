@@ -92,3 +92,30 @@ def test_anthropic_headers_and_url():
     assert str(request.url) == "http://localhost:8080/anthropic/v1/messages"
     assert request.headers.get("Authorization") == "Bearer lp-123"
     assert request.headers.get("X-Loopers-Provider-Key") == "sk-ant"
+
+@respx.mock
+def test_groq_headers_and_url():
+    # Arrange
+    respx.post("http://localhost:8080/groq/v1/chat/completions").mock(
+        return_value=httpx.Response(200, json={"id": "chatcmpl-123", "choices": [], "object": "chat.completion"})
+    )
+    
+    from loopers_client import LoopersGroq
+    client = LoopersGroq(
+        loopers_url="http://localhost:8080",
+        loopers_key="lp-123",
+        provider_key="gsk_123",
+    )
+    
+    # Act
+    client.chat.completions.create(
+        model="llama3-8b",
+        messages=[{"role": "user", "content": "hi"}]
+    )
+    
+    # Assert
+    assert len(respx.calls) == 1
+    request = respx.calls[0].request
+    assert str(request.url) == "http://localhost:8080/groq/v1/chat/completions"
+    assert request.headers.get("Authorization") == "Bearer lp-123"
+    assert request.headers.get("X-Loopers-Provider-Key") == "gsk_123"

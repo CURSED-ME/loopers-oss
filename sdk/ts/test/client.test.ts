@@ -99,3 +99,33 @@ describe('LoopersAnthropic', () => {
     expect(headers.get('X-Loopers-Provider-Key')).toBe('sk-ant');
   });
 });
+
+import { LoopersGroq } from '../src/client';
+
+describe('LoopersGroq', () => {
+  it('should override baseURL to groq/v1', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      json: async () => ({ id: 'chatcmpl-123' }),
+      text: async () => JSON.stringify({ id: 'chatcmpl-123' }),
+      headers: new Headers(),
+      ok: true,
+      status: 200,
+    });
+
+    const client = new LoopersGroq({
+      loopersUrl: 'http://localhost:8080',
+      loopersKey: 'lp-123',
+      providerKey: 'gsk_123',
+      fetch: mockFetch as any,
+    });
+
+    await client.chat.completions.create({
+      model: 'llama-3',
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url.toString()).toBe('http://localhost:8080/groq/v1/chat/completions');
+  });
+});

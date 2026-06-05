@@ -74,6 +74,21 @@ const response = await client.messages.create({
 console.log(`Request Cost: $${(response as any).loopers_cost} USD`);
 ```
 
+### Other Providers (Groq, Mistral, DeepSeek, Together)
+
+Because these providers are OpenAI-compatible, they share the exact same interface as `LoopersOpenAI`. Simply substitute the class name:
+
+```typescript
+import { LoopersGroq } from '@loopers/client';
+
+// Example using Groq
+const client = new LoopersGroq({
+  loopersUrl: 'http://localhost:8080',
+  loopersKey: 'lp-xxx',
+  providerKey: 'gsk_xxx'
+});
+```
+
 ## License
 
 MIT

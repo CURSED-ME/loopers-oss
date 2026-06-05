@@ -21,11 +21,15 @@ import (
 	"github.com/loopers-oss/loopers/internal/provider/bedrock"
 	"github.com/loopers-oss/loopers/internal/provider/cohere"
 	"github.com/loopers-oss/loopers/internal/provider/deepseek"
+	"github.com/loopers-oss/loopers/internal/provider/fireworks"
 	"github.com/loopers-oss/loopers/internal/provider/gemini"
 	"github.com/loopers-oss/loopers/internal/provider/groq"
 	"github.com/loopers-oss/loopers/internal/provider/mistral"
+	"github.com/loopers-oss/loopers/internal/provider/ollama"
 	"github.com/loopers-oss/loopers/internal/provider/openai"
 	"github.com/loopers-oss/loopers/internal/provider/together"
+	"github.com/loopers-oss/loopers/internal/provider/vllm"
+	"github.com/loopers-oss/loopers/internal/provider/xai"
 	"github.com/loopers-oss/loopers/internal/proxy"
 	"github.com/loopers-oss/loopers/pkg/api"
 	"github.com/prometheus/client_golang/prometheus"
@@ -109,6 +113,10 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 	reg.Register(cohere.NewCohereProvider())
 	reg.Register(deepseek.NewDeepSeekProvider())
 	reg.Register(together.NewTogetherProvider())
+	reg.Register(ollama.NewOllamaProvider())
+	reg.Register(fireworks.NewFireworksProvider())
+	reg.Register(xai.NewXAIProvider())
+	reg.Register(vllm.NewVLLMProvider())
 
 	var alertingCfg alerting.AlertingConfig
 	var alerter *alerting.Alerter

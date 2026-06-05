@@ -11,12 +11,12 @@
 <p align="left">
   <img src="https://img.shields.io/badge/license-MIT-black.svg?style=for-the-badge" alt="License" />
   <img src="https://img.shields.io/badge/go-1.26.3-black.svg?style=for-the-badge" alt="Go Version" />
-  <img src="https://img.shields.io/badge/providers-10%20Supported-black.svg?style=for-the-badge" alt="Providers" />
+  <img src="https://img.shields.io/badge/providers-14%20Supported-black.svg?style=for-the-badge" alt="Providers" />
   <a href="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml"><img src="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml/badge.svg" alt="Build Status" /></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/CURSED-ME/loopers-oss"><img src="https://api.securityscorecards.dev/projects/github.com/CURSED-ME/loopers-oss/badge?style=for-the-badge" alt="OpenSSF Scorecard" /></a>
 </p>
 
-Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It intercepts requests to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
+Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It intercepts requests across **14 different AI providers** (OpenAI, Anthropic, Gemini, Groq, Ollama, vLLM, and more) to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
 
 ---
 
@@ -157,11 +157,31 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 |---|---|
 | `loopers init` | Interactive wizard — generates `loopers.yaml` and `docker-compose.yml` |
 | `loopers serve` | Start the proxy server |
-| `loopers keys create --name <n> --provider <p>` | Create a new proxy key (providers: `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`) |
+| `loopers keys create --name <n> --provider <p>` | Create a new proxy key (providers: `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`, `ollama`, `fireworks`, `xai`, `vllm`) |
 | `loopers keys list` | List all proxy keys with metadata |
 | `loopers keys revoke <hash>` | Revoke a key by hash |
 | `loopers budget set <hash> [flags]` | Set budget limits (`--minute`, `--hourly`, `--daily`, `--weekly`, `--monthly`) |
 | `loopers budget status <hash>` | View current spend vs. limits for a key |
+
+---
+
+## Zero-SDK Integration
+
+If you cannot use our SDK wrappers, you can use any standard OpenAI-compatible client by configuring it to point to Loopers and injecting the required HTTP headers using the `default_headers` parameter available in most SDKs.
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8080/openai/v1", # Route through Loopers proxy
+    api_key="lp-xxx", # Your Loopers proxy key
+    default_headers={
+        "X-Loopers-Provider-Key": os.environ.get("OPENAI_API_KEY"),
+        "X-Loopers-Session-ID": "agent-run-123",
+    }
+)
+```
 
 ---
 

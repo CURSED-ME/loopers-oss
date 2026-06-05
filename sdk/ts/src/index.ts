@@ -1,1 +1,9 @@
-export { LoopersOpenAI, LoopersAnthropic, LoopersClientOptions } from './client';
+export {
+  LoopersOpenAI,
+  LoopersAnthropic,
+  LoopersGroq,
+  LoopersMistral,
+  LoopersDeepSeek,
+  LoopersTogether,
+  LoopersClientOptions,
+} from './client';

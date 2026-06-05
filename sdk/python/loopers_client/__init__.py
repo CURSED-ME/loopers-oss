@@ -3,6 +3,14 @@ from .client import (
     LoopersAsyncOpenAI,
     LoopersAnthropic,
     LoopersAsyncAnthropic,
+    LoopersGroq,
+    LoopersAsyncGroq,
+    LoopersMistral,
+    LoopersAsyncMistral,
+    LoopersDeepSeek,
+    LoopersAsyncDeepSeek,
+    LoopersTogether,
+    LoopersAsyncTogether,
 )
 
 __all__ = [
@@ -10,4 +18,12 @@ __all__ = [
     "LoopersAsyncOpenAI",
     "LoopersAnthropic",
     "LoopersAsyncAnthropic",
+    "LoopersGroq",
+    "LoopersAsyncGroq",
+    "LoopersMistral",
+    "LoopersAsyncMistral",
+    "LoopersDeepSeek",
+    "LoopersAsyncDeepSeek",
+    "LoopersTogether",
+    "LoopersAsyncTogether",
 ]

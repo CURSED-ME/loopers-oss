@@ -155,3 +155,38 @@ providers:
       "_fallback":
         input_per_1m: 0.90
         output_per_1m: 0.90
+
+  ollama:
+    default_max_output_tokens: 8192
+    models:
+      "_fallback":
+        input_per_1m: 0.00
+        output_per_1m: 0.00
+
+  fireworks:
+    default_max_output_tokens: 8192
+    models:
+      "accounts/fireworks/models/llama-v3-70b-instruct":
+        input_per_1m: 0.90
+        output_per_1m: 0.90
+      "_fallback":
+        input_per_1m: 0.90
+        output_per_1m: 0.90
+
+  xai:
+    default_max_output_tokens: 8192
+    models:
+      "grok-beta":
+        input_per_1m: 5.00
+        output_per_1m: 15.00
+      "_fallback":
+        input_per_1m: 5.00
+        output_per_1m: 15.00
+
+  vllm:
+    default_max_output_tokens: 8192
+    models:
+      "_fallback":
+        input_per_1m: 0.00
+        output_per_1m: 0.00
+
