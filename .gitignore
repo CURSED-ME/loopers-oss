@@ -5,6 +5,7 @@ docs/launch/
 internal/budget/budget-leak-test-results.md
 loopers-oom-crash-report.md
 throughput test results.md
+docs/*.md
 graphify-out/
 bin/
 *.exe

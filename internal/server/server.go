@@ -14,6 +14,7 @@ import (
 	"github.com/loopers-oss/loopers/internal/budget"
 	"github.com/loopers-oss/loopers/internal/keyring"
 	"github.com/loopers-oss/loopers/internal/logging"
+	"github.com/loopers-oss/loopers/internal/loop"
 	"github.com/loopers-oss/loopers/internal/pricing"
 	"github.com/loopers-oss/loopers/internal/provider"
 	"github.com/loopers-oss/loopers/internal/provider/anthropic"
@@ -48,6 +49,16 @@ var (
 		Name: "loopers_budget_blocks_total",
 		Help: "Total number of AI requests blocked by Loopers budget enforcement",
 	}, []string{"provider", "window"})
+
+	loopBlocksTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "loopers_loop_blocks_total",
+		Help: "Total number of requests blocked by the loop detection engine",
+	}, []string{"provider", "rule"})
+
+	loopWarnsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "loopers_loop_warns_total",
+		Help: "Total number of requests flagged with warnings by the loop detection engine",
+	}, []string{"provider", "rule"})
 
 	shadowBlockedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "loopers_shadow_blocked_total",
@@ -87,14 +98,15 @@ const (
 
 // Server coordinates the proxy operations and HTTP routing.
 type Server struct {
-	router     *gin.Engine
-	redis      *budget.Client
-	pricing    *pricing.Store
-	proxy      *proxy.Proxy
-	registry   *provider.Registry
-	alerter    *alerting.Alerter
-	shadowMode bool
-	proxyGroup *gin.RouterGroup // exposed so tests can register routes with BodyBuffer applied
+	router       *gin.Engine
+	redis        *budget.Client
+	pricing      *pricing.Store
+	proxy        *proxy.Proxy
+	registry     *provider.Registry
+	alerter      *alerting.Alerter
+	loopDetector *loop.Detector
+	shadowMode   bool
+	proxyGroup   *gin.RouterGroup // exposed so tests can register routes with BodyBuffer applied
 }
 
 // NewServer initializes and builds the HTTP server with middlewares and ReverseProxy configuration.
@@ -120,21 +132,28 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 
 	var alertingCfg alerting.AlertingConfig
 	var alerter *alerting.Alerter
+	var loopDetector *loop.Detector
 	if redisClient != nil {
 		if err := viper.UnmarshalKey("alerting", &alertingCfg); err == nil && alertingCfg.WebhookURL != "" {
 			alerter = alerting.NewAlerter(alertingCfg, redisClient.GetUnderlyingClient())
+		}
+		
+		var loopCfg loop.Config
+		if err := viper.UnmarshalKey("loop_detection", &loopCfg); err == nil && loopCfg.Enabled {
+			loopDetector = loop.NewDetector(loopCfg, redisClient.GetUnderlyingClient())
 		}
 	}
 
 	shadowMode := viper.GetBool("server.shadow_mode")
 
 	s := &Server{
-		router:     r,
-		redis:      redisClient,
-		pricing:    pricingStore,
-		registry:   reg,
-		alerter:    alerter,
-		shadowMode: shadowMode,
+		router:       r,
+		redis:        redisClient,
+		pricing:      pricingStore,
+		registry:     reg,
+		alerter:      alerter,
+		loopDetector: loopDetector,
+		shadowMode:   shadowMode,
 	}
 
 	// Setup custom ReverseProxy with modifyResponse callback
@@ -469,6 +488,55 @@ sessionCheck:
 					c.AbortWithStatusJSON(http.StatusTooManyRequests, api.NewSessionStepsExceededResponse(sessionID, int(val2), int(val1)))
 				}
 				return
+			}
+		}
+	}
+
+	// 6.6 Loop detection (deterministic, rule-based)
+	if s.loopDetector != nil && sessionID != "" {
+		result, err := s.loopDetector.Check(c.Request.Context(), sessionID, providerName+c.Request.URL.Path, body)
+		if err != nil {
+			// Log but never block on internal error — loop detection failure is not a fail-closed event
+			logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("loop_detection_check_failed")
+		} else if result != nil && result.Detected {
+			if result.ShouldBlock {
+				loopBlocksTotal.WithLabelValues(providerName, result.Rule).Inc()
+				
+				// Refund key budget reservation
+				s.redis.LeaseManager.ReconcileSpend(keyHash, estimatedCost, 0)
+				sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
+				_, _ = s.redis.GetUnderlyingClient().IncrByFloat(c.Request.Context(), sessionSpendKey, -estimatedCost).Result()
+				
+				logging.Logger.Warn().
+					Str("session_id", sessionID).
+					Str("rule", result.Rule).
+					Str("detail", result.Detail).
+					Msg("loop_detected_blocked")
+				requestsTotal.WithLabelValues(providerName, model, "429").Inc()
+				
+				if s.alerter != nil {
+					go s.alerter.TriggerLoopAlert(keyHash, meta.Name, providerName, sessionID, result.Rule, result.Detail, true)
+				}
+				
+				c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+					"error":      "loop detected",
+					"type":       "loop_detected",
+					"rule":       result.Rule,
+					"session_id": sessionID,
+				})
+				return
+			}
+			
+			// ShouldBlock=false: warn-only mode (stall detection default)
+			loopWarnsTotal.WithLabelValues(providerName, result.Rule).Inc()
+			logging.Logger.Warn().
+				Str("session_id", sessionID).
+				Str("rule", result.Rule).
+				Str("detail", result.Detail).
+				Msg("loop_detected_warn_only")
+			
+			if s.alerter != nil {
+				go s.alerter.TriggerLoopAlert(keyHash, meta.Name, providerName, sessionID, result.Rule, result.Detail, false)
 			}
 		}
 	}
