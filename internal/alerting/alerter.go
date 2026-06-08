@@ -56,6 +56,20 @@ type BudgetExceededAlert struct {
 
 func (b *BudgetExceededAlert) EventType() string { return "budget_exceeded" }
 
+type LoopDetectedAlert struct {
+	Event     string `json:"event"`
+	Timestamp string `json:"timestamp"`
+	KeyHash   string `json:"key_hash"`
+	KeyName   string `json:"key_name"`
+	Provider  string `json:"provider"`
+	SessionID string `json:"session_id"`
+	Rule      string `json:"rule"`
+	Detail    string `json:"detail"`
+	Blocked   bool   `json:"blocked"`
+}
+
+func (l *LoopDetectedAlert) EventType() string { return "loop_detected" }
+
 type Alerter struct {
 	cfg    AlertingConfig
 	client *http.Client
@@ -96,6 +110,28 @@ func (a *Alerter) TriggerBlockAlert(keyHash, keyName, provider, model, window st
 	case a.ch <- event:
 	default:
 		logging.Logger.Warn().Msg("Alert channel full, dropping budget exceeded alert")
+	}
+}
+
+func (a *Alerter) TriggerLoopAlert(keyHash, keyName, provider, sessionID, rule, detail string, blocked bool) {
+	if a == nil || a.cfg.WebhookURL == "" {
+		return
+	}
+	event := &LoopDetectedAlert{
+		Event:     "loop_detected",
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		KeyHash:   keyHash,
+		KeyName:   keyName,
+		Provider:  provider,
+		SessionID: sessionID,
+		Rule:      rule,
+		Detail:    detail,
+		Blocked:   blocked,
+	}
+	select {
+	case a.ch <- event:
+	default:
+		logging.Logger.Warn().Msg("Alert channel full, dropping loop detected alert")
 	}
 }
 

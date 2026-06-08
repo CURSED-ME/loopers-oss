@@ -17,3 +17,18 @@ alerting:
       message: "Budget 80% consumed — approaching limit"
     - percent: 95
       message: "Budget 95% consumed — imminent cutoff"
+
+loop_detection:
+  enabled: true
+  fingerprint:
+    threshold: 3
+    # Default 60s catches rapid HFT-style agents. Consider 300s for slower, low-frequency agents.
+    window_seconds: 60
+  velocity:
+    max_rps: 0             # disabled by default; set e.g. 10.0 to enable
+    max_endpoint_repeats: 0
+    repeat_window_seconds: 30
+  stall:
+    min_hamming_distance: 0  # disabled by default
+    low_diversity_threshold: 5
+    action: "warn"           # V1 default: warn only, does not block request
