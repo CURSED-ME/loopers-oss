@@ -20,9 +20,9 @@ Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It interc
 
 ---
 
-## 🆕 What's New
+## What's New
 
-**🚀 Deterministic Loop Detection Engine (v1.1)**
+**Deterministic Loop Detection Engine (v1.1)**
 We just released our enterprise-grade, deterministic loop detection engine designed specifically for High-Frequency Trading (HFT) and critical infrastructure agents. It features three advanced sub-detectors:
 - **Fingerprint Ring**: Sliding window O(1) exact hash matching with volatile field stripping (ignores temperature/seed variance).
 - **Velocity Limiter**: Highly granular RPS and endpoint repetition bounding using atomic Redis tracking.
@@ -259,24 +259,24 @@ The OSS version is the full circuit-breaker engine — everything you need to se
 
 | Feature | OSS (Self-Hosted) | [Loopers Cloud](https://tryloopers.com) |
 |---|:---:|:---:|
-| Pre-call budget enforcement | ✅ | ✅ |
-| 10 provider support (OpenAI, Anthropic, Gemini, Bedrock, Azure, Mistral, Groq, Cohere, DeepSeek, Together) | ✅ | ✅ |
-| 5 budget windows (minute / hourly / daily / weekly / monthly) | ✅ | ✅ |
-| Mid-stream SSE cutoff | ✅ | ✅ |
-| Fail-closed Redis guarantee | ✅ | ✅ |
-| Zero-storage pass-through key model | ✅ | ✅ |
-| Prometheus metrics + Grafana dashboard | ✅ | ✅ |
-| Helm chart for Kubernetes | ✅ | — |
-| Web dashboard & spend analytics | ❌ | ✅ |
-| Team management & RBAC | ❌ | ✅ |
-| LLMjacking anomaly detection & auto-revocation | ❌ | ✅ |
-| Agent loop circuit breaker (step counter) | ✅ | ✅ |
-| Tamper-proof audit log | ❌ | ✅ |
-| Slack / PagerDuty / webhook alerting | ❌ | ✅ |
-| Multi-project & org-level budget hierarchy | ❌ | ✅ |
-| SSO / SAML | ❌ | ✅ (Business+) |
-| SOC 2 compliance export | ❌ | ✅ (Business+) |
-| Managed infrastructure (no Redis to run) | ❌ | ✅ |
+| Pre-call budget enforcement | Yes | Yes |
+| 10 provider support (OpenAI, Anthropic, Gemini, Bedrock, Azure, Mistral, Groq, Cohere, DeepSeek, Together) | Yes | Yes |
+| 5 budget windows (minute / hourly / daily / weekly / monthly) | Yes | Yes |
+| Mid-stream SSE cutoff | Yes | Yes |
+| Fail-closed Redis guarantee | Yes | Yes |
+| Zero-storage pass-through key model | Yes | Yes |
+| Prometheus metrics + Grafana dashboard | Yes | Yes |
+| Helm chart for Kubernetes | Yes | — |
+| Web dashboard & spend analytics | No | Yes |
+| Team management & RBAC | No | Yes |
+| LLMjacking anomaly detection & auto-revocation | No | Yes |
+| Agent loop circuit breaker (step counter) | Yes | Yes |
+| Tamper-proof audit log | No | Yes |
+| Slack / PagerDuty / webhook alerting | No | Yes |
+| Multi-project & org-level budget hierarchy | No | Yes |
+| SSO / SAML | No | Yes (Business+) |
+| SOC 2 compliance export | No | Yes (Business+) |
+| Managed infrastructure (no Redis to run) | No | Yes |
 | Support | Community | Email / Priority / Dedicated |
 
 > **Self-hosting Loopers?** You own your data, your infra, and your keys. If you want the managed experience with zero ops overhead, [start free at tryloopers.com](https://tryloopers.com).
