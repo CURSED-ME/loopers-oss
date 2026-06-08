@@ -6,7 +6,7 @@ toolchain go1.26.3
 
 require (
 	github.com/alicebob/miniredis/v2 v2.38.0
-	github.com/aws/aws-sdk-go-v2 v1.41.10
+	github.com/aws/aws-sdk-go-v2 v1.42.0
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.13
 	github.com/charmbracelet/bubbletea v1.1.0
 	github.com/charmbracelet/huh v0.6.0
