@@ -270,7 +270,7 @@ func TestStallConcurrentRace(t *testing.T) {
 	// Due to concurrency, some might overlap, but the transactional logic
 	// should prevent the stall counter from spuriously spiking beyond the actual number of requests.
 	// Since Threshold is 10, 5 identical requests should NEVER trigger a stall, even with race conditions.
-	
+
 	errCh := make(chan error, 5)
 	for i := 0; i < 5; i++ {
 		go func() {

@@ -12,7 +12,7 @@ type FingerprintConfig struct {
 	// NOTE: JSON map key ordering in arbitrary structs may cause identical requests to hash differently.
 	// Default: 3
 	Threshold int `mapstructure:"threshold"`
-	
+
 	// WindowSeconds is the sliding window in seconds for the fingerprint ring.
 	// Default: 60 for rapid HFT-style agents. Consider 300 for slower, low-frequency agents.
 	WindowSeconds int `mapstructure:"window_seconds"`

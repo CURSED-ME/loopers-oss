@@ -46,10 +46,10 @@ func (d *Detector) CheckVelocity(ctx context.Context, sessionID, providerPath st
 		if repeatWindow <= 0 {
 			repeatWindow = 30
 		}
-		
+
 		repeatBucket := now / int64(repeatWindow)
 		repeatKey := fmt.Sprintf("loopers:loop:repeat:%s:%s:%d", sessionID, providerPath, repeatBucket)
-		
+
 		rCount, rErr := d.rdb.Incr(ctx, repeatKey).Result()
 		if rErr == nil {
 			if rCount == 1 {

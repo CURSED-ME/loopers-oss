@@ -51,7 +51,7 @@ func (d *Detector) CheckFingerprint(ctx context.Context, sessionID, hash string)
 
 	ringKey := fmt.Sprintf("loopers:loop:fp:%s", sessionID)
 	now := time.Now().Unix()
-	
+
 	memberID := strconv.FormatUint(memberCounter.Add(1), 10)
 
 	window := int64(d.cfg.Fingerprint.WindowSeconds)

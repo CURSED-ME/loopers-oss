@@ -137,7 +137,7 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		if err := viper.UnmarshalKey("alerting", &alertingCfg); err == nil && alertingCfg.WebhookURL != "" {
 			alerter = alerting.NewAlerter(alertingCfg, redisClient.GetUnderlyingClient())
 		}
-		
+
 		var loopCfg loop.Config
 		if err := viper.UnmarshalKey("loop_detection", &loopCfg); err == nil && loopCfg.Enabled {
 			loopDetector = loop.NewDetector(loopCfg, redisClient.GetUnderlyingClient())
@@ -501,23 +501,23 @@ sessionCheck:
 		} else if result != nil && result.Detected {
 			if result.ShouldBlock {
 				loopBlocksTotal.WithLabelValues(providerName, result.Rule).Inc()
-				
+
 				// Refund key budget reservation
 				s.redis.LeaseManager.ReconcileSpend(keyHash, estimatedCost, 0)
 				sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
 				_, _ = s.redis.GetUnderlyingClient().IncrByFloat(c.Request.Context(), sessionSpendKey, -estimatedCost).Result()
-				
+
 				logging.Logger.Warn().
 					Str("session_id", sessionID).
 					Str("rule", result.Rule).
 					Str("detail", result.Detail).
 					Msg("loop_detected_blocked")
 				requestsTotal.WithLabelValues(providerName, model, "429").Inc()
-				
+
 				if s.alerter != nil {
 					go s.alerter.TriggerLoopAlert(keyHash, meta.Name, providerName, sessionID, result.Rule, result.Detail, true)
 				}
-				
+
 				c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
 					"error":      "loop detected",
 					"type":       "loop_detected",
@@ -526,7 +526,7 @@ sessionCheck:
 				})
 				return
 			}
-			
+
 			// ShouldBlock=false: warn-only mode (stall detection default)
 			loopWarnsTotal.WithLabelValues(providerName, result.Rule).Inc()
 			logging.Logger.Warn().
@@ -534,7 +534,7 @@ sessionCheck:
 				Str("rule", result.Rule).
 				Str("detail", result.Detail).
 				Msg("loop_detected_warn_only")
-			
+
 			if s.alerter != nil {
 				go s.alerter.TriggerLoopAlert(keyHash, meta.Name, providerName, sessionID, result.Rule, result.Detail, false)
 			}

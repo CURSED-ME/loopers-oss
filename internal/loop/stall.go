@@ -27,7 +27,7 @@ func (d *Detector) CheckStall(ctx context.Context, sessionID string, currentHash
 	err := d.rdb.Watch(ctx, func(tx *redis.Tx) error {
 		// Fetch last hash from the list
 		lastHashStr, lErr := tx.LIndex(ctx, listKey, -1).Result()
-		
+
 		isLowDiversity := false
 		if lErr == nil && lastHashStr != "" {
 			lastHashVal, parseErr := strconv.ParseUint(lastHashStr, 10, 64)
@@ -46,7 +46,7 @@ func (d *Detector) CheckStall(ctx context.Context, sessionID string, currentHash
 		var incrCmd *redis.IntCmd
 		_, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 			pipe.RPush(ctx, listKey, strconv.FormatUint(currentHashVal, 10))
-			pipe.LTrim(ctx, listKey, -10, -1) // Keep only last 10 hashes for reference
+			pipe.LTrim(ctx, listKey, -10, -1)    // Keep only last 10 hashes for reference
 			pipe.Expire(ctx, listKey, time.Hour) // Session TTL
 
 			if isLowDiversity {
