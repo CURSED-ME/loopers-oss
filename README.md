@@ -20,6 +20,18 @@ Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It interc
 
 ---
 
+## 🆕 What's New
+
+**🚀 Deterministic Loop Detection Engine (v1.1)**
+We just released our enterprise-grade, deterministic loop detection engine designed specifically for High-Frequency Trading (HFT) and critical infrastructure agents. It features three advanced sub-detectors:
+- **Fingerprint Ring**: Sliding window O(1) exact hash matching with volatile field stripping (ignores temperature/seed variance).
+- **Velocity Limiter**: Highly granular RPS and endpoint repetition bounding using atomic Redis tracking.
+- **Stall Detector**: Uses Hamming distance over request hashes within a `TxPipelined` Watch transaction to detect low-diversity "stuck" agents in a TOCTOU-safe manner.
+
+*Enable it via the new `loop:` block in `loopers.yaml`!*
+
+---
+
 ## Why Loopers?
 
 If an autonomous agent gets stuck in a loop or an API key is compromised, it can burn thousands of dollars in minutes. Loopers is not an alert or a dashboard—it's a **kill-switch**:
