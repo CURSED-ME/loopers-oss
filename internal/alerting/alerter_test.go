@@ -136,7 +136,7 @@ func TestAlerterThresholdCheck(t *testing.T) {
 		if event["event"] != "budget_threshold" || event["threshold_percent"] != float64(50) {
 			t.Errorf("unexpected event: %v", event)
 		}
-		
+
 		owasp, ok := event["owasp"].(map[string]interface{})
 		if !ok || owasp["owasp_category"] != "LLM10:2025" || owasp["severity"] != "high" {
 			t.Errorf("missing or incorrect OWASP metadata in threshold event: %v", event["owasp"])
@@ -170,7 +170,7 @@ func TestOWASPMetadataOnLoopFingerprint(t *testing.T) {
 	if len(received) != 1 {
 		t.Fatalf("expected exactly 1 received event, got %d", len(received))
 	}
-	
+
 	event := received[0]
 	owasp, ok := event["owasp"].(map[string]interface{})
 	if !ok || owasp["owasp_category"] != "LLM06:2025" || owasp["severity"] != "critical" {
@@ -205,7 +205,7 @@ func TestOWASPMetadataOnStallWarn(t *testing.T) {
 	if len(received) != 1 {
 		t.Fatalf("expected exactly 1 received event, got %d", len(received))
 	}
-	
+
 	event := received[0]
 	owasp, ok := event["owasp"].(map[string]interface{})
 	if !ok || owasp["owasp_category"] != "LLM06:2025" || owasp["severity"] != "medium" {
@@ -221,13 +221,13 @@ func TestStdoutEmissionNoWebhook(t *testing.T) {
 	// Run Alerter with NO webhook
 	cfg := AlertingConfig{}
 	alerter := NewAlerter(cfg, nil)
-	
+
 	alerter.TriggerBlockAlert("test-hash", "test-key", "openai", "gpt-4", "daily", 10.0, 10.0, 0.5)
-	
+
 	// Give worker time to process and write to stdout
 	time.Sleep(100 * time.Millisecond)
 	alerter.Close()
-	
+
 	w.Close()
 	os.Stdout = oldStdout
 
@@ -238,12 +238,12 @@ func TestStdoutEmissionNoWebhook(t *testing.T) {
 	if output == "" {
 		t.Errorf("expected stdout output, got empty string")
 	}
-	
+
 	var event map[string]interface{}
 	if err := json.Unmarshal([]byte(output), &event); err != nil {
 		t.Errorf("failed to parse stdout JSON: %v. Output was: %s", err, output)
 	}
-	
+
 	if event["event"] != "budget_exceeded" {
 		t.Errorf("expected budget_exceeded event in stdout, got: %v", event)
 	}

@@ -129,7 +129,7 @@ func (a *Alerter) TriggerLoopAlert(keyHash, keyName, provider, sessionID, rule, 
 	if a == nil {
 		return
 	}
-	
+
 	// Severity is determined by how confident we are this is a real loop
 	// and how much damage it can cause.
 	var severity string
