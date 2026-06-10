@@ -1,11 +1,13 @@
 package alerting
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -68,6 +70,11 @@ func TestAlerterDelivery(t *testing.T) {
 	if event["event"] != "budget_exceeded" || event["key_hash"] != "test-hash" || event["window"] != "daily" {
 		t.Errorf("unexpected event content: %v", event)
 	}
+
+	owasp, ok := event["owasp"].(map[string]interface{})
+	if !ok || owasp["owasp_category"] != "LLM10:2025" || owasp["severity"] != "critical" {
+		t.Errorf("missing or incorrect OWASP metadata in budget_exceeded event: %v", event["owasp"])
+	}
 }
 
 func TestAlerterThresholdCheck(t *testing.T) {
@@ -129,5 +136,115 @@ func TestAlerterThresholdCheck(t *testing.T) {
 		if event["event"] != "budget_threshold" || event["threshold_percent"] != float64(50) {
 			t.Errorf("unexpected event: %v", event)
 		}
+		
+		owasp, ok := event["owasp"].(map[string]interface{})
+		if !ok || owasp["owasp_category"] != "LLM10:2025" || owasp["severity"] != "high" {
+			t.Errorf("missing or incorrect OWASP metadata in threshold event: %v", event["owasp"])
+		}
+	}
+}
+
+func TestOWASPMetadataOnLoopFingerprint(t *testing.T) {
+	var mu sync.Mutex
+	var received []map[string]interface{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		body, _ := io.ReadAll(r.Body)
+		var event map[string]interface{}
+		json.Unmarshal(body, &event)
+		received = append(received, event)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	alerter := NewAlerter(AlertingConfig{WebhookURL: server.URL}, nil)
+	defer alerter.Close()
+
+	alerter.TriggerLoopAlert("test-hash", "test-key", "openai", "sess-1", "fingerprint", "details", true)
+	time.Sleep(50 * time.Millisecond)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(received) != 1 {
+		t.Fatalf("expected exactly 1 received event, got %d", len(received))
+	}
+	
+	event := received[0]
+	owasp, ok := event["owasp"].(map[string]interface{})
+	if !ok || owasp["owasp_category"] != "LLM06:2025" || owasp["severity"] != "critical" {
+		t.Errorf("incorrect OWASP metadata for fingerprint loop: %v", event["owasp"])
+	}
+	// Velocity rule also maps to "critical" — same OWASP LLM06:2025, same severity
+}
+
+func TestOWASPMetadataOnStallWarn(t *testing.T) {
+	var mu sync.Mutex
+	var received []map[string]interface{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		body, _ := io.ReadAll(r.Body)
+		var event map[string]interface{}
+		json.Unmarshal(body, &event)
+		received = append(received, event)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	alerter := NewAlerter(AlertingConfig{WebhookURL: server.URL}, nil)
+	defer alerter.Close()
+
+	alerter.TriggerLoopAlert("test-hash", "test-key", "openai", "sess-2", "stall", "details", false)
+	time.Sleep(50 * time.Millisecond)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(received) != 1 {
+		t.Fatalf("expected exactly 1 received event, got %d", len(received))
+	}
+	
+	event := received[0]
+	owasp, ok := event["owasp"].(map[string]interface{})
+	if !ok || owasp["owasp_category"] != "LLM06:2025" || owasp["severity"] != "medium" {
+		t.Errorf("incorrect OWASP metadata for stall warn: %v", event["owasp"])
+	}
+}
+
+func TestStdoutEmissionNoWebhook(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// Run Alerter with NO webhook
+	cfg := AlertingConfig{}
+	alerter := NewAlerter(cfg, nil)
+	
+	alerter.TriggerBlockAlert("test-hash", "test-key", "openai", "gpt-4", "daily", 10.0, 10.0, 0.5)
+	
+	// Give worker time to process and write to stdout
+	time.Sleep(100 * time.Millisecond)
+	alerter.Close()
+	
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	if output == "" {
+		t.Errorf("expected stdout output, got empty string")
+	}
+	
+	var event map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &event); err != nil {
+		t.Errorf("failed to parse stdout JSON: %v. Output was: %s", err, output)
+	}
+	
+	if event["event"] != "budget_exceeded" {
+		t.Errorf("expected budget_exceeded event in stdout, got: %v", event)
 	}
 }

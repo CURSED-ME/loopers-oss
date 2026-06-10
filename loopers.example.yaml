@@ -9,6 +9,8 @@ log:
 pricing_path: "./pricing.yaml"
 
 alerting:
+  # Loopers always emits structured security events to stdout.
+  # Set webhook_url to additionally POST events to a webhook endpoint.
   webhook_url: "https://example.com/webhook"
   thresholds:
     - percent: 50
