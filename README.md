@@ -22,6 +22,9 @@ Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It interc
 
 ## What's New
 
+**Structured Security Event Emission (OWASP Top 10 for LLMs 2025)**
+Loopers now natively aligns with the [OWASP Top 10 for LLM Applications (2025)](https://genai.owasp.org/) standard. Every budget block and loop detection trigger emits a structured JSON security event tagged with the precise OWASP category (e.g., `LLM06:2025` for Excessive Agency, `LLM10:2025` for Unbounded Consumption) and severity. Events are always emitted to `stdout` for local observability, and can optionally be POSTed to a `webhook_url`. A versioned JSON schema is provided in `docs/reference/event-schema.json`.
+
 **Deterministic Loop Detection Engine (v1.1)**
 We just released our enterprise-grade, deterministic loop detection engine designed specifically for High-Frequency Trading (HFT) and critical infrastructure agents. It features three advanced sub-detectors:
 - **Fingerprint Ring**: Sliding window O(1) exact hash matching with volatile field stripping (ignores temperature/seed variance).

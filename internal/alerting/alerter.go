@@ -26,46 +26,55 @@ type AlertEvent interface {
 	EventType() string
 }
 
+type OWASPMetadata struct {
+	Category string `json:"owasp_category"`
+	Name     string `json:"owasp_name"`
+	Severity string `json:"severity"`
+}
+
 type ThresholdAlert struct {
-	Event            string  `json:"event"`
-	Timestamp        string  `json:"timestamp"`
-	KeyHash          string  `json:"key_hash"`
-	KeyName          string  `json:"key_name"`
-	Provider         string  `json:"provider"`
-	Window           string  `json:"window"`
-	ThresholdPercent int     `json:"threshold_percent"`
-	CurrentSpendUSD  float64 `json:"current_spend_usd"`
-	BudgetLimitUSD   float64 `json:"budget_limit_usd"`
-	Message          string  `json:"message"`
+	OWASP            OWASPMetadata `json:"owasp"`
+	Event            string        `json:"event"`
+	Timestamp        string        `json:"timestamp"`
+	KeyHash          string        `json:"key_hash"`
+	KeyName          string        `json:"key_name"`
+	Provider         string        `json:"provider"`
+	Window           string        `json:"window"`
+	ThresholdPercent int           `json:"threshold_percent"`
+	CurrentSpendUSD  float64       `json:"current_spend_usd"`
+	BudgetLimitUSD   float64       `json:"budget_limit_usd"`
+	Message          string        `json:"message"`
 }
 
 func (t *ThresholdAlert) EventType() string { return "budget_threshold" }
 
 type BudgetExceededAlert struct {
-	Event                 string  `json:"event"`
-	Timestamp             string  `json:"timestamp"`
-	KeyHash               string  `json:"key_hash"`
-	KeyName               string  `json:"key_name"`
-	Provider              string  `json:"provider"`
-	Model                 string  `json:"model"`
-	Window                string  `json:"window"`
-	CurrentSpendUSD       float64 `json:"current_spend_usd"`
-	BudgetLimitUSD        float64 `json:"budget_limit_usd"`
-	BlockedRequestCostUSD float64 `json:"blocked_request_cost_usd"`
+	OWASP                 OWASPMetadata `json:"owasp"`
+	Event                 string        `json:"event"`
+	Timestamp             string        `json:"timestamp"`
+	KeyHash               string        `json:"key_hash"`
+	KeyName               string        `json:"key_name"`
+	Provider              string        `json:"provider"`
+	Model                 string        `json:"model"`
+	Window                string        `json:"window"`
+	CurrentSpendUSD       float64       `json:"current_spend_usd"`
+	BudgetLimitUSD        float64       `json:"budget_limit_usd"`
+	BlockedRequestCostUSD float64       `json:"blocked_request_cost_usd"`
 }
 
 func (b *BudgetExceededAlert) EventType() string { return "budget_exceeded" }
 
 type LoopDetectedAlert struct {
-	Event     string `json:"event"`
-	Timestamp string `json:"timestamp"`
-	KeyHash   string `json:"key_hash"`
-	KeyName   string `json:"key_name"`
-	Provider  string `json:"provider"`
-	SessionID string `json:"session_id"`
-	Rule      string `json:"rule"`
-	Detail    string `json:"detail"`
-	Blocked   bool   `json:"blocked"`
+	OWASP     OWASPMetadata `json:"owasp"`
+	Event     string        `json:"event"`
+	Timestamp string        `json:"timestamp"`
+	KeyHash   string        `json:"key_hash"`
+	KeyName   string        `json:"key_name"`
+	Provider  string        `json:"provider"`
+	SessionID string        `json:"session_id"`
+	Rule      string        `json:"rule"`
+	Detail    string        `json:"detail"`
+	Blocked   bool          `json:"blocked"`
 }
 
 func (l *LoopDetectedAlert) EventType() string { return "loop_detected" }
@@ -84,17 +93,20 @@ func NewAlerter(cfg AlertingConfig, rdb *redis.Client) *Alerter {
 		rdb:    rdb,
 		ch:     make(chan AlertEvent, 100),
 	}
-	if cfg.WebhookURL != "" {
-		go a.worker()
-	}
+	go a.worker()
 	return a
 }
 
 func (a *Alerter) TriggerBlockAlert(keyHash, keyName, provider, model, window string, currentSpend, limit, blockedCost float64) {
-	if a == nil || a.cfg.WebhookURL == "" {
+	if a == nil {
 		return
 	}
 	event := &BudgetExceededAlert{
+		OWASP: OWASPMetadata{
+			Category: "LLM10:2025",
+			Name:     "Unbounded Consumption",
+			Severity: "critical",
+		},
 		Event:                 "budget_exceeded",
 		Timestamp:             time.Now().UTC().Format(time.RFC3339),
 		KeyHash:               keyHash,
@@ -114,10 +126,28 @@ func (a *Alerter) TriggerBlockAlert(keyHash, keyName, provider, model, window st
 }
 
 func (a *Alerter) TriggerLoopAlert(keyHash, keyName, provider, sessionID, rule, detail string, blocked bool) {
-	if a == nil || a.cfg.WebhookURL == "" {
+	if a == nil {
 		return
 	}
+	
+	// Severity is determined by how confident we are this is a real loop
+	// and how much damage it can cause.
+	var severity string
+	switch {
+	case rule == "fingerprint" || rule == "velocity":
+		severity = "critical" // Deterministic proof of loop — always block
+	case rule == "stall" && blocked:
+		severity = "high" // Stall configured to block is a serious signal
+	default:
+		severity = "medium" // Stall warn-only: flagged but not yet confirmed
+	}
+
 	event := &LoopDetectedAlert{
+		OWASP: OWASPMetadata{
+			Category: "LLM06:2025",
+			Name:     "Excessive Agency",
+			Severity: severity,
+		},
 		Event:     "loop_detected",
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 		KeyHash:   keyHash,
@@ -136,7 +166,7 @@ func (a *Alerter) TriggerLoopAlert(keyHash, keyName, provider, sessionID, rule, 
 }
 
 func (a *Alerter) TriggerThresholdAlerts(ctx context.Context, keyHash, keyName, provider string, currentSpends map[string]float64, limits map[string]float64) {
-	if a == nil || a.cfg.WebhookURL == "" || len(a.cfg.Thresholds) == 0 {
+	if a == nil || len(a.cfg.Thresholds) == 0 {
 		return
 	}
 
@@ -163,6 +193,11 @@ func (a *Alerter) TriggerThresholdAlerts(ctx context.Context, keyHash, keyName, 
 				if set {
 					// Fire alert
 					event := &ThresholdAlert{
+						OWASP: OWASPMetadata{
+							Category: "LLM10:2025",
+							Name:     "Unbounded Consumption",
+							Severity: "high",
+						},
 						Event:            "budget_threshold",
 						Timestamp:        time.Now().UTC().Format(time.RFC3339),
 						KeyHash:          keyHash,
@@ -238,15 +273,20 @@ func (a *Alerter) worker() {
 			continue
 		}
 
-		resp, err := a.client.Post(a.cfg.WebhookURL, "application/json", bytes.NewReader(payload))
-		if err != nil {
-			logging.Logger.Error().Err(err).Str("url", a.cfg.WebhookURL).Msg("failed to deliver webhook alert")
-			continue
-		}
-		resp.Body.Close()
+		// Always emit to stdout
+		fmt.Println(string(payload))
 
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			logging.Logger.Error().Int("status", resp.StatusCode).Str("url", a.cfg.WebhookURL).Msg("webhook host returned non-2xx response")
+		if a.cfg.WebhookURL != "" {
+			resp, err := a.client.Post(a.cfg.WebhookURL, "application/json", bytes.NewReader(payload))
+			if err != nil {
+				logging.Logger.Error().Err(err).Str("url", a.cfg.WebhookURL).Msg("failed to deliver webhook alert")
+				continue
+			}
+			resp.Body.Close()
+
+			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+				logging.Logger.Error().Int("status", resp.StatusCode).Str("url", a.cfg.WebhookURL).Msg("webhook host returned non-2xx response")
+			}
 		}
 	}
 }
