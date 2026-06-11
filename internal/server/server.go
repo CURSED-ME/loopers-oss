@@ -134,7 +134,7 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 	var alerter *alerting.Alerter
 	var loopDetector *loop.Detector
 	if redisClient != nil {
-		if err := viper.UnmarshalKey("alerting", &alertingCfg); err == nil && alertingCfg.WebhookURL != "" {
+		if err := viper.UnmarshalKey("alerting", &alertingCfg); err == nil {
 			alerter = alerting.NewAlerter(alertingCfg, redisClient.GetUnderlyingClient())
 		}
 
