@@ -11,12 +11,12 @@
 <p align="left">
   <img src="https://img.shields.io/badge/license-MIT-black.svg?style=for-the-badge" alt="License" />
   <img src="https://img.shields.io/badge/go-1.26.3-black.svg?style=for-the-badge" alt="Go Version" />
-  <img src="https://img.shields.io/badge/providers-14%20Supported-black.svg?style=for-the-badge" alt="Providers" />
+  <img src="https://img.shields.io/badge/models-500%2B%20Supported-black.svg?style=for-the-badge" alt="Models Supported" />
   <a href="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml"><img src="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml/badge.svg" alt="Build Status" /></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/CURSED-ME/loopers-oss"><img src="https://api.securityscorecards.dev/projects/github.com/CURSED-ME/loopers-oss/badge?style=for-the-badge" alt="OpenSSF Scorecard" /></a>
 </p>
 
-Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It intercepts requests across **14 different AI providers** (OpenAI, Anthropic, Gemini, Groq, Ollama, vLLM, and more) to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
+Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It intercepts requests across **500+ AI models natively** (across 14 providers like OpenAI, Anthropic, Gemini, Groq, Ollama, vLLM, and more), plus **any OpenAI-compatible endpoint**, to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
 
 ---
 
@@ -99,6 +99,7 @@ Read the full deep-dive with raw data and methodology in our [Final Benchmark Re
 | **Cohere** | `command-r`, etc. | Supported | Supported | Supported | Supported (Model Tokenizer) |
 | **DeepSeek** | `deepseek-chat`, etc. | Supported | Supported | Supported | Supported (tiktoken) |
 | **Together** | Llama 3 on Together, etc. | Supported | Supported | Supported | Supported (tiktoken) |
+| **Generic (BYO)** | Any OpenAI-compatible model (LM Studio, LocalAI, OpenRouter, etc.) | Supported | Supported | Supported | Supported (tiktoken) |
 
 ---
 
@@ -272,7 +273,7 @@ The OSS version is the full circuit-breaker engine — everything you need to se
 | Feature | OSS (Self-Hosted) | [Loopers Cloud](https://tryloopers.com) |
 |---|:---:|:---:|
 | Pre-call budget enforcement | Yes | Yes |
-| 10 provider support (OpenAI, Anthropic, Gemini, Bedrock, Azure, Mistral, Groq, Cohere, DeepSeek, Together) | Yes | Yes |
+| 500+ models across 14 providers + generic OpenAI endpoints | Yes | Yes |
 | 5 budget windows (minute / hourly / daily / weekly / monthly) | Yes | Yes |
 | Mid-stream SSE cutoff | Yes | Yes |
 | Fail-closed Redis guarantee | Yes | Yes |
