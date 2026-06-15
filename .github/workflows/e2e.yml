@@ -5,6 +5,8 @@ on:
   push:
     branches: [main]
 
+permissions: read-all
+
 jobs:
   e2e:
     runs-on: ubuntu-latest
