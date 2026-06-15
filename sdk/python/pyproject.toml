@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "loopers-client"
-version = "1.0.0"
+version = "1.1.0"
 description = "A premium Python client wrapper for the Loopers AI budget & rate-limit proxy."
 readme = "README.md"
 requires-python = ">=3.7"
@@ -21,7 +21,9 @@ dependencies = [
 [project.optional-dependencies]
 openai = ["openai>=1.0.0"]
 anthropic = ["anthropic>=0.3.0"]
-dev = ["pytest", "pytest-asyncio", "respx", "openai>=1.0.0", "anthropic>=0.3.0"]
+langchain = ["langchain-openai>=0.1.0"]
+llama_index = ["llama-index-llms-openai>=0.1.0"]
+dev = ["pytest", "pytest-asyncio", "respx", "openai>=1.0.0", "anthropic>=0.3.0", "langchain-openai>=0.1.0", "llama-index-llms-openai>=0.1.0"]
 
 [tool.setuptools.packages.find]
 where = ["."]

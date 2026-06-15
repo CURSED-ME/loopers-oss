@@ -98,6 +98,16 @@ var serveCmd = &cobra.Command{
 		defer cancel()
 		redisClient.LeaseManager.StartLeaseWorkers(ctx)
 
+		// Start remote pricing fetcher
+		pricingURL := viper.GetString("pricing.remote_url")
+		if pricingURL != "" {
+			refreshHours := viper.GetInt("pricing.refresh_hours")
+			if refreshHours <= 0 {
+				refreshHours = 24
+			}
+			pricingStore.StartRemoteFetcher(ctx, pricingURL, refreshHours)
+		}
+
 		port := viper.GetString("server.port")
 		if port == "" {
 			port = "8080"
@@ -169,8 +179,25 @@ var keysCreateCmd = &cobra.Command{
 			"groq": true, "cohere": true, "deepseek": true, "together": true,
 			"ollama": true, "fireworks": true, "xai": true, "vllm": true,
 		}
+		
+		type GenericProviderConfig struct {
+			Name string `mapstructure:"name"`
+		}
+		var genericProviders []GenericProviderConfig
+		if err := viper.UnmarshalKey("generic_providers", &genericProviders); err == nil {
+			for _, gp := range genericProviders {
+				if gp.Name != "" {
+					validProviders[gp.Name] = true
+				}
+			}
+		}
+
 		if !validProviders[keyProvider] {
-			logging.Logger.Fatal().Msg("provider must be one of: openai, anthropic, gemini, bedrock, azure, mistral, groq, cohere, deepseek, together, ollama, fireworks, xai, vllm")
+			var validList []string
+			for k := range validProviders {
+				validList = append(validList, k)
+			}
+			logging.Logger.Fatal().Msgf("provider must be one of: %v", strings.Join(validList, ", "))
 		}
 
 		rawKey, err := keyring.GenerateRawKey()

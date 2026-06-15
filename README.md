@@ -22,6 +22,15 @@ Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It interc
 
 ## What's New
 
+**Bring Your Own Provider (Generic OpenAI-Compatible Endpoints)**
+You are no longer limited to the built-in providers! Loopers now supports routing to *any* OpenAI-compatible endpoint (like vLLM, OpenRouter, local Llama.cpp, or custom proxies) while still maintaining full budget enforcement, mid-stream cutoffs, and loop detection. Configure them easily via `generic_providers` in `loopers.yaml`.
+
+**Dynamic Remote Pricing Fetcher**
+Tired of manually updating `pricing.yaml` when models change prices? Loopers can now automatically fetch the latest token pricing from a remote JSON endpoint at a configured interval. This ensures your budget accounting is always 100% accurate, completely hands-free.
+
+**LangChain & LlamaIndex Native Adapters**
+We've published official adapters for the Python SDK! You can now drop Loopers into your existing LangChain (`ChatLoopers`) or LlamaIndex (`LoopersLLM`) workflows with a single line of code. They automatically handle session IDs, step counting, and budget headers out-of-the-box.
+
 **Structured Security Event Emission (OWASP Top 10 for LLMs 2025)**
 Loopers now natively aligns with the [OWASP Top 10 for LLM Applications (2025)](https://genai.owasp.org/) standard. Every budget block and loop detection trigger emits a structured JSON security event tagged with the precise OWASP category (e.g., `LLM06:2025` for Excessive Agency, `LLM10:2025` for Unbounded Consumption) and severity. Events are always emitted to `stdout` for local observability, and can optionally be POSTed to a `webhook_url`. A versioned JSON schema is provided in `docs/reference/event-schema.json`.
 

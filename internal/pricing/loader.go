@@ -1,28 +1,31 @@
 package pricing
 
 import (
+	"context"
 	"fmt"
 	"sync"
+	"time"
 
+	"github.com/loopers-oss/loopers/internal/logging"
 	"github.com/spf13/viper"
 )
 
 // ModelPrice holds the cost parameters for a specific model.
 type ModelPrice struct {
-	InputPer1M  float64 `mapstructure:"input_per_1m"`
-	OutputPer1M float64 `mapstructure:"output_per_1m"`
-	Fallback    string  `mapstructure:"fallback"`
+	InputPer1M  float64 `mapstructure:"input_per_1m" json:"input_per_1m"`
+	OutputPer1M float64 `mapstructure:"output_per_1m" json:"output_per_1m"`
+	Fallback    string  `mapstructure:"fallback" json:"fallback"`
 }
 
 // ProviderConfig holds the pricing config for a specific provider.
 type ProviderConfig struct {
-	DefaultMaxOutputTokens int                   `mapstructure:"default_max_output_tokens"`
-	Models                 map[string]ModelPrice `mapstructure:"models"`
+	DefaultMaxOutputTokens int                   `mapstructure:"default_max_output_tokens" json:"default_max_output_tokens"`
+	Models                 map[string]ModelPrice `mapstructure:"models" json:"models"`
 }
 
 // Config represents the schema of pricing.yaml.
 type Config struct {
-	Providers map[string]ProviderConfig `mapstructure:"providers"`
+	Providers map[string]ProviderConfig `mapstructure:"providers" json:"providers"`
 }
 
 // Store is a thread-safe in-memory store for LLM pricing.
@@ -45,6 +48,72 @@ func LoadStore(path string) (*Store, error) {
 	}
 
 	return &Store{config: config}, nil
+}
+
+// MergeRemote merges fetched pricing into the in-memory store without overwriting locally defined models.
+func (s *Store) MergeRemote(remoteConfig map[string]ProviderConfig) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for provName, remoteProv := range remoteConfig {
+		localProv, hasProv := s.config.Providers[provName]
+		if !hasProv {
+			// Add whole provider
+			if s.config.Providers == nil {
+				s.config.Providers = make(map[string]ProviderConfig)
+			}
+			s.config.Providers[provName] = remoteProv
+			continue
+		}
+
+		// Merge models
+		if localProv.Models == nil {
+			localProv.Models = make(map[string]ModelPrice)
+		}
+		for modelName, remoteModel := range remoteProv.Models {
+			if _, hasModel := localProv.Models[modelName]; !hasModel {
+				localProv.Models[modelName] = remoteModel
+			}
+		}
+		// Fix M1: inherit DefaultMaxOutputTokens from remote if not set locally
+		if localProv.DefaultMaxOutputTokens == 0 && remoteProv.DefaultMaxOutputTokens > 0 {
+			localProv.DefaultMaxOutputTokens = remoteProv.DefaultMaxOutputTokens
+		}
+		s.config.Providers[provName] = localProv
+
+	}
+}
+
+// StartRemoteFetcher runs a background goroutine to fetch pricing periodically.
+func (s *Store) StartRemoteFetcher(ctx context.Context, url string, refreshHours int) {
+	if url == "" || refreshHours <= 0 {
+		return
+	}
+
+	ticker := time.NewTicker(time.Duration(refreshHours) * time.Hour)
+	go func() {
+		defer ticker.Stop()
+		// Initial fetch
+		if remote, err := FetchRemotePricing(url); err == nil {
+			s.MergeRemote(remote.Providers)
+			logging.Logger.Info().Msgf("Loaded remote pricing from %s", url)
+		} else {
+			logging.Logger.Warn().Err(err).Msg("Failed to load remote pricing initially")
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if remote, err := FetchRemotePricing(url); err == nil {
+					s.MergeRemote(remote.Providers)
+				} else {
+					logging.Logger.Warn().Err(err).Msg("Failed to reload remote pricing")
+				}
+			}
+		}
+	}()
 }
 
 // GetModelPrice returns the pricing rates (input & output per 1M tokens) and default max output tokens for a model.

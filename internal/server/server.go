@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/loopers-oss/loopers/internal/provider/deepseek"
 	"github.com/loopers-oss/loopers/internal/provider/fireworks"
 	"github.com/loopers-oss/loopers/internal/provider/gemini"
+	"github.com/loopers-oss/loopers/internal/provider/generic"
 	"github.com/loopers-oss/loopers/internal/provider/groq"
 	"github.com/loopers-oss/loopers/internal/provider/mistral"
 	"github.com/loopers-oss/loopers/internal/provider/ollama"
@@ -129,6 +131,35 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 	reg.Register(fireworks.NewFireworksProvider())
 	reg.Register(xai.NewXAIProvider())
 	reg.Register(vllm.NewVLLMProvider())
+
+	type GenericProviderConfig struct {
+		Name    string `mapstructure:"name"`
+		BaseURL string `mapstructure:"base_url"`
+	}
+	var genericProviders []GenericProviderConfig
+	if err := viper.UnmarshalKey("generic_providers", &genericProviders); err == nil {
+		// Pre-compile name validation: alphanumeric, dash, underscore only.
+		// This prevents malformed Gin route patterns (G1).
+		validName := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+		for _, gp := range genericProviders {
+			if gp.Name == "" || gp.BaseURL == "" {
+				logging.Logger.Warn().Msgf("Skipping generic provider with empty name or base_url")
+				continue
+			}
+			// G1: Reject names with special characters
+			if !validName.MatchString(gp.Name) {
+				logging.Logger.Error().Msgf("Invalid generic provider name %q: only alphanumeric, dash, and underscore are allowed", gp.Name)
+				continue
+			}
+			// S1 & S3: Detect collision with built-in or previously registered provider
+			if _, err := reg.Get(gp.Name); err == nil {
+				logging.Logger.Error().Msgf("Generic provider %q conflicts with an already-registered provider; skipping to prevent shadowing", gp.Name)
+				continue
+			}
+			reg.Register(generic.NewGenericProvider(gp.Name, gp.BaseURL))
+			logging.Logger.Info().Msgf("Registered generic provider: %s (%s)", gp.Name, gp.BaseURL)
+		}
+	}
 
 	var alertingCfg alerting.AlertingConfig
 	var alerter *alerting.Alerter
@@ -734,4 +765,9 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 // GetRouter retrieves the Gin engine.
 func (s *Server) GetRouter() *gin.Engine {
 	return s.router
+}
+
+// GetRegistry retrieves the provider registry. Primarily used for testing.
+func (s *Server) GetRegistry() *provider.Registry {
+	return s.registry
 }
