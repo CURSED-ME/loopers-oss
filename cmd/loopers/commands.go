@@ -179,7 +179,7 @@ var keysCreateCmd = &cobra.Command{
 			"groq": true, "cohere": true, "deepseek": true, "together": true,
 			"ollama": true, "fireworks": true, "xai": true, "vllm": true,
 		}
-		
+
 		type GenericProviderConfig struct {
 			Name string `mapstructure:"name"`
 		}

@@ -262,7 +262,7 @@ func TestStartRemoteFetcher_EmptyURL_NoOp(t *testing.T) {
 	ctx := context.Background()
 	// Must not panic and must not start a goroutine
 	store.StartRemoteFetcher(ctx, "", 24)
-	store.StartRemoteFetcher(ctx, "http://valid.url", 0)   // zero refresh hours
+	store.StartRemoteFetcher(ctx, "http://valid.url", 0)  // zero refresh hours
 	store.StartRemoteFetcher(ctx, "http://valid.url", -1) // negative refresh hours
 }
 
