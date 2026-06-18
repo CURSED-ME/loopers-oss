@@ -18,4 +18,14 @@ __pycache__/
 
 # Node
 node_modules/
-dist/
+dist/
+
+# Graphify - knowledge graph outputs (never push these)
+graphify-out/
+.graphify_python
+graphify-out/.graphify_python
+graphify-out/.graphify_root
+
+# OpenCode - AI coding agent local config/sessions
+.opencode/
+opencode.json
