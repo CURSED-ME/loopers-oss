@@ -11,5 +11,9 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    - port: {{ .Values.service.adminPort }}
+      targetPort: admin
+      protocol: TCP
+      name: admin
   selector:
     {{- include "loopers.selectorLabels" . | nindent 4 }}

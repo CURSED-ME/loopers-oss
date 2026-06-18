@@ -8,6 +8,7 @@ image:
 service:
   type: ClusterIP
   port: 8080
+  adminPort: 9090
 
 resources:
   limits:
@@ -31,7 +32,7 @@ serviceMonitor:
 redis:
   enabled: true
   auth:
-    enabled: false
+    enabled: true
   architecture: standalone
   master:
     resources:

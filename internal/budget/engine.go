@@ -10,7 +10,7 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-var configCache = cache.NewTTLCache(30 * time.Second)
+var configCache = cache.NewTTLCache(10 * time.Second)
 var configGroup singleflight.Group
 
 // BudgetExceededError is returned when a budget limit is reached.

@@ -28,6 +28,14 @@ func RequestID() gin.HandlerFunc {
 		reqID := c.GetHeader("X-Request-ID")
 		if reqID == "" {
 			reqID = uuid.New().String()
+		} else {
+			// Sanitize to prevent log injection
+			reqID = strings.Map(func(r rune) rune {
+				if r < 32 || r >= 127 {
+					return -1
+				}
+				return r
+			}, reqID)
 		}
 		c.Set(RequestIDKey, reqID)
 		c.Header("X-Request-ID", reqID)
@@ -138,9 +146,19 @@ var bufferPool = sync.Pool{
 func ConcurrencyLimiter(maxInflight int) gin.HandlerFunc {
 	sema := make(chan struct{}, maxInflight)
 	return func(c *gin.Context) {
-		sema <- struct{}{}        // Acquire slot
-		defer func() { <-sema }() // Release slot when request finishes (after c.Next() completes)
-		c.Next()
+		select {
+		case sema <- struct{}{}:
+			defer func() { <-sema }()
+			c.Next()
+		case <-time.After(5 * time.Second):
+			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
+				"error": gin.H{
+					"message": "Service overloaded, too many concurrent requests",
+					"type":    "rate_limit_error",
+					"code":    "service_unavailable",
+				},
+			})
+		}
 	}
 }
 

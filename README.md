@@ -10,7 +10,7 @@
 
 <p align="left">
   <img src="https://img.shields.io/badge/license-MIT-black.svg?style=for-the-badge" alt="License" />
-  <img src="https://img.shields.io/badge/go-1.26.3-black.svg?style=for-the-badge" alt="Go Version" />
+  <img src="https://img.shields.io/badge/go-1.26.4-black.svg?style=for-the-badge" alt="Go Version" />
   <img src="https://img.shields.io/badge/models-500%2B%20Supported-black.svg?style=for-the-badge" alt="Models Supported" />
   <a href="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml"><img src="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml/badge.svg" alt="Build Status" /></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/CURSED-ME/loopers-oss"><img src="https://api.securityscorecards.dev/projects/github.com/CURSED-ME/loopers-oss/badge?style=for-the-badge" alt="OpenSSF Scorecard" /></a>
@@ -21,6 +21,12 @@ Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It interc
 ---
 
 ## What's New
+
+**Enterprise-Grade Security Architecture**
+We have significantly hardened Loopers for bare-metal and zero-trust deployments:
+- **Dedicated Admin Server:** Telemetry (`/metrics`) and health checks are now isolated on a dedicated admin port (default `9090`), preventing internal state exposure when the main proxy (`8080`) is public.
+- **Strict TLS Enforcement:** Production deployments now mandate TLS certificates to start, preventing accidental plaintext exposure.
+- **Hardened Redis Integrations:** Redis connections now require password authentication natively out of the box in our Helm charts and Compose templates.
 
 **Bring Your Own Provider (Generic OpenAI-Compatible Endpoints)**
 You are no longer limited to the built-in providers! Loopers now supports routing to *any* OpenAI-compatible endpoint (like vLLM, OpenRouter, local Llama.cpp, or custom proxies) while still maintaining full budget enforcement, mid-stream cutoffs, and loop detection. Configure them easily via `generic_providers` in `loopers.yaml`.
@@ -262,7 +268,7 @@ For a detailed system overview and sequence diagram, please see our [Architectur
 
 ## Monitoring
 
-Loopers exposes a Prometheus metrics endpoint out of the box. A pre-built Grafana dashboard is included in [`./grafana/`](./grafana/) for instant observability into request throughput, budget block rates, and latency percentiles.
+Loopers exposes a Prometheus metrics endpoint out of the box on a dedicated, isolated admin port (default: `9090`). A pre-built Grafana dashboard is included in [`./grafana/`](./grafana/) for instant observability into request throughput, budget block rates, and latency percentiles.
 
 ---
 

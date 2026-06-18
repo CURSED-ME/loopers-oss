@@ -1,11 +1,13 @@
-version: '3.8'
 
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
+    command: ["redis-server", "--requirepass", "demo-pass"]
+    environment:
+      - REDIS_PASSWORD=demo-pass
     networks: [loopers-demo]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "sh", "-c", "redis-cli -a $$REDIS_PASSWORD ping"]
       interval: 2s
       timeout: 2s
       retries: 5
@@ -23,7 +25,9 @@ services:
       - "8080:8080"
     environment:
       - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=demo-pass
       - SERVER_PORT=8080
+      - SERVER_INSECURE_DEV=true
       - LOG_LEVEL=info
       - PRICING_PATH=/app/pricing.yaml
       - OPENAI_BASE_URL=http://mock-openai
@@ -36,6 +40,7 @@ services:
     image: ghcr.io/cursed-me/loopers:latest
     environment:
       - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=demo-pass
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |

@@ -11,7 +11,7 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-var keyMetaCache = cache.NewTTLCache(30 * time.Second)
+var keyMetaCache = cache.NewTTLCache(10 * time.Second)
 var keyMetaGroup singleflight.Group
 
 // KeyMetadata represents the fields stored in Redis for a loopers API key.

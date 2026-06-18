@@ -16,10 +16,26 @@ type TTLCache struct {
 	ttl time.Duration
 }
 
-// NewTTLCache creates a new TTLCache with the specified TTL.
+// NewTTLCache creates a new TTLCache with the specified TTL and starts a background sweep.
 func NewTTLCache(ttl time.Duration) *TTLCache {
-	return &TTLCache{
+	c := &TTLCache{
 		ttl: ttl,
+	}
+	go c.startSweep()
+	return c
+}
+
+func (c *TTLCache) startSweep() {
+	ticker := time.NewTicker(time.Minute)
+	for range ticker.C {
+		now := time.Now()
+		c.m.Range(func(key, value interface{}) bool {
+			entry := value.(cacheEntry)
+			if now.After(entry.expiresAt) {
+				c.m.Delete(key)
+			}
+			return true
+		})
 	}
 }
 
