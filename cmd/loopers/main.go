@@ -83,6 +83,7 @@ func initConfig() {
 	viper.BindEnv("redis.addr", "REDIS_ADDR")
 	viper.BindEnv("redis.password", "REDIS_PASSWORD")
 	viper.BindEnv("server.port", "SERVER_PORT")
+	viper.BindEnv("server.insecure_dev", "SERVER_INSECURE_DEV")
 	viper.BindEnv("pricing_path", "PRICING_PATH")
 	viper.BindEnv("log.level", "LOG_LEVEL")
 

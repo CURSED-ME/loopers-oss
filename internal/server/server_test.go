@@ -175,7 +175,7 @@ func TestSessionIDValidation(t *testing.T) {
 	// Load pricing
 	pricingStore, _ := pricing.LoadStore("../../pricing.yaml")
 	s := NewServer(redisClient, pricingStore)
-	
+
 	// Register mock provider
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

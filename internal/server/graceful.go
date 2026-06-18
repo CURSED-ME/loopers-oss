@@ -13,12 +13,20 @@ import (
 )
 
 // ListenAndServeWithGracefulShutdown starts the HTTP server and listens for SIGTERM/SIGINT.
-func ListenAndServeWithGracefulShutdown(srv *http.Server, adminSrv *http.Server, redisClient interface{ Close() error }, certFile, keyFile string) {
+func ListenAndServeWithGracefulShutdown(srv *http.Server, adminSrv *http.Server, redisClient interface{ Close() error }, certFile, keyFile string, insecureDev bool) {
 	// Channel to listen for signals
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
+		if insecureDev {
+			logging.Logger.Warn().Msg("SERVER_INSECURE_DEV is true. Starting proxy in plaintext mode without TLS. DO NOT USE IN PRODUCTION.")
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				logging.Logger.Fatal().Err(err).Msg("Server failed to start")
+			}
+			return
+		}
+
 		if certFile != "" && keyFile != "" {
 			if err := srv.ListenAndServeTLS(certFile, keyFile); err != nil && err != http.ErrServerClosed {
 				logging.Logger.Fatal().Err(err).Msg("Server failed to start (TLS)")

@@ -144,8 +144,6 @@ func (lm *LeaseManager) ReconcileSpend(keyHash string, estCostUSD float64, actua
 	lease.SpentNano.Add(-deltaNano)
 }
 
-
-
 // ErrBudgetExceeded is returned when the global budget is too low.
 var ErrBudgetExceeded = errors.New("budget exceeded")
 
