@@ -82,6 +82,8 @@ var (
 		Name: "loopers_tokens_total",
 		Help: "Total number of tokens processed by Loopers",
 	}, []string{"provider", "direction"})
+
+	validSessionID = regexp.MustCompile(`^[a-zA-Z0-9._:@/-]{1,256}$`)
 )
 
 type serverContextKey string
@@ -202,7 +204,6 @@ func (s *Server) setupRoutes() {
 	s.router.Use(KeyExtractor())
 
 	s.router.GET("/health", s.handleHealth)
-	s.router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	s.router.GET("/budget/status", s.handleBudgetStatus)
 
 	s.proxyGroup = s.router.Group("/")
@@ -451,6 +452,13 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 sessionCheck:
 	// 6.5 Session budget and step limits check (if X-Loopers-Session-ID is present)
 	sessionID := c.GetHeader("X-Loopers-Session-ID")
+	if sessionID != "" {
+		if !validSessionID.MatchString(sessionID) {
+			requestsTotal.WithLabelValues(providerName, model, "400").Inc()
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid session ID format"})
+			return
+		}
+	}
 	var sessionBudget float64
 	var sessionMaxSteps int
 	if sessionID != "" {
@@ -765,6 +773,15 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 // GetRouter retrieves the Gin engine.
 func (s *Server) GetRouter() *gin.Engine {
 	return s.router
+}
+
+// GetAdminRouter retrieves the Gin engine for the admin port.
+func (s *Server) GetAdminRouter() *gin.Engine {
+	adminRouter := gin.New()
+	adminRouter.Use(gin.Recovery())
+	adminRouter.GET("/health", s.handleHealth)
+	adminRouter.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	return adminRouter
 }
 
 // GetRegistry retrieves the provider registry. Primarily used for testing.

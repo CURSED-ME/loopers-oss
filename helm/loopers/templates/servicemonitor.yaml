@@ -10,7 +10,7 @@ spec:
     matchLabels:
       {{- include "loopers.selectorLabels" . | nindent 6 }}
   endpoints:
-    - port: http
+    - port: admin
       path: {{ .Values.serviceMonitor.path | default "/metrics" }}
       interval: {{ .Values.serviceMonitor.interval | default "30s" }}
 {{- end }}

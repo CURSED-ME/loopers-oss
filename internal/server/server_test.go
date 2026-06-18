@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -155,5 +156,70 @@ func TestBudgetStatusEndpoint(t *testing.T) {
 
 	if statusMap["daily"].Limit != 20.0 {
 		t.Errorf("Expected daily limit 20.0, got %f", statusMap["daily"].Limit)
+	}
+}
+
+func TestSessionIDValidation(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	defer mr.Close()
+
+	redisClient, err := budget.NewClient(mr.Addr(), "", 0)
+	if err != nil {
+		t.Fatalf("Failed to create redis client: %v", err)
+	}
+	defer redisClient.Close()
+
+	// Load pricing
+	pricingStore, _ := pricing.LoadStore("../../pricing.yaml")
+	s := NewServer(redisClient, pricingStore)
+	
+	// Register mock provider
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"result":"ok"}`))
+	}))
+	defer upstream.Close()
+	s.RegisterProviderRoute(&mockProvider{baseURL: upstream.URL})
+
+	rawKey, _ := keyring.GenerateRawKey()
+	keyHash := keyring.HashKey(rawKey)
+	ctx := context.Background()
+	rdb := redisClient.GetUnderlyingClient()
+	rdb.HSet(ctx, "loopers:key:"+keyHash, map[string]interface{}{
+		"name":     "test-key",
+		"provider": "mock",
+		"active":   "true",
+	})
+	defer rdb.Del(ctx, "loopers:key:"+keyHash)
+
+	tests := []struct {
+		name      string
+		sessionID string
+		wantCode  int
+	}{
+		{"valid standard", "sess-123", http.StatusOK},
+		{"valid email-like", "user@domain.com", http.StatusOK},
+		{"valid url-like", "org/team/session", http.StatusOK},
+		{"valid complex", "org:team:session_123.45-67@domain/path", http.StatusOK},
+		{"invalid space", "sess 123", http.StatusBadRequest},
+		{"invalid special char", "sess!123", http.StatusBadRequest},
+		{"invalid quotes", "sess\"123\"", http.StatusBadRequest},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest("POST", "/mock/v1/chat", bytes.NewBuffer([]byte(`{"model":"mock-model"}`)))
+			req.Header.Set("Authorization", "Bearer "+rawKey)
+			req.Header.Set("X-Loopers-Provider-Key", "dummy")
+			req.Header.Set("X-Loopers-Session-ID", tt.sessionID)
+			w := newCloseNotifierRecorder()
+			s.GetRouter().ServeHTTP(w, req)
+			if w.Code != tt.wantCode {
+				t.Errorf("Expected status %d, got %d. Body: %s", tt.wantCode, w.Code, w.Body.String())
+			}
+		})
 	}
 }
