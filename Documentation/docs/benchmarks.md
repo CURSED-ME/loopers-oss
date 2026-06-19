@@ -10,14 +10,14 @@ description: Loopers versus LiteLLM throughput, latency, budget leakage, and mem
 Loopers is built to handle huge spikes in traffic without failing to enforce your budget. Here are the results from our latest tests comparing Loopers with Python alternatives like LiteLLM.
 
 :::note How We Tested
-We sent 1,000 requests at the exact same time to both systems using the same computer hardware. LiteLLM was tested using its standard settings. You can view the raw data in the project repository.
+We sent 1,000 requests at the exact same time to both systems using the same computer hardware. LiteLLM was tested using its standard settings. You can view the raw data in the [project repository](https://github.com/CURSED-ME/llm-gateway-benchmark/blob/master/ep01-litellm/results/budget_leak_2026-06-19.md).
 :::
 
 ## Test Results
 
 | Metric | Loopers (Go) | LiteLLM | Result |
 |---|---|---|---|
-| **Budget Leakage** | **0% ($0.00)** | 215% ($0.0215) | Loopers stopped all overspending |
+| **Budget Leakage** | **0% ($0.00)** | 0.17% ($0.000017) | Loopers stopped all overspending |
 | **Requests Per Second** | **4,623** | around 176 | Loopers is 25 times faster |
 | **Latency Overhead** | **241 milliseconds** | 46,813 milliseconds | Loopers has 190 times lower delay |
 | **Memory Usage** | **41 MB** | 958 MB | Loopers is 23 times lighter |

@@ -34,7 +34,7 @@ The result: **0% budget leakage** under a 1,000 concurrent request flood.
 
 | Metric | Loopers | LiteLLM |
 |---|---|---|
-| Budget Leakage | **0%** | 215% |
+| Budget Leakage | **0%** | 0.17% |
 | Peak Throughput | **4,623 req/s** | ~176 req/s |
 | P99 Latency | **241ms** | 46,812ms |
 | Idle RAM | **41MB** | 958MB |
