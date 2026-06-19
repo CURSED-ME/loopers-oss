@@ -23,6 +23,13 @@ const config = {
     locales: ['en'],
   },
 
+  scripts: [
+    {
+      src: '/_vercel/insights/script.js',
+      defer: true,
+    },
+  ],
+
   presets: [
     [
       'classic',
