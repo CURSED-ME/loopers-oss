@@ -5,7 +5,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 const config = {
   title: 'Loopers',
   tagline: 'Break the loop before it breaks your budget.',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/logo.svg',
 
   future: { v4: true },
 
