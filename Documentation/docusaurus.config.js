@@ -59,8 +59,7 @@ const config = {
       navbar: {
         title: 'Loopers',
         logo: {
-          alt: 'Loopers Logo',
-          src: 'img/logo.svg',
+          src: 'img/transparent.svg',
           href: 'https://tryloopers.com',
           target: '_self',
         },
