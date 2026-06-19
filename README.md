@@ -82,7 +82,7 @@ Loopers is engineered to handle massive concurrent traffic spikes without droppi
 
 | Metric | Loopers (Go) | LiteLLM | Advantage |
 | :--- | :--- | :--- | :--- |
-| **Budget Leakage** (1,000 req flood) | **0% ($0.00)** | 215% ($0.0215) | *Complete Protection* |
+| **Budget Leakage** (1,000 req flood) | **0% ($0.00)** | 0.17% ($0.000017) | *Complete Protection* |
 | **Peak Throughput** (RPS) | **4,623 req/s** | ~176 req/s | *25x Faster* |
 | **Proxy Overhead** (P99 Latency) | **240.98 ms** | 46,812.60 ms | *190x Lower Latency* |
 | **Resource Footprint** (Idle RAM) | **41.58 MB** | 957.83 MB | *23x Lighter* |
