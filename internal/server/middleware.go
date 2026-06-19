@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	"github.com/CURSED-ME/loopers-oss/internal/proxy"
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 const (

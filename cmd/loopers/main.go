@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/CURSED-ME/loopers-oss/cmd/loopers/ui"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
