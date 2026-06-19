@@ -58,6 +58,12 @@ const config = {
       },
       navbar: {
         title: 'Loopers',
+        logo: {
+          alt: 'Loopers Logo',
+          src: 'img/logo.svg',
+          href: 'https://tryloopers.com',
+          target: '_self',
+        },
         items: [
           {
             type: 'docSidebar',
@@ -67,8 +73,6 @@ const config = {
           },
           { to: '/docs/reference/cli', label: 'CLI Reference', position: 'left' },
           { to: '/docs/architecture', label: 'Architecture', position: 'left' },
-          { to: '/blog', label: 'Blog', position: 'left' },
-          { href: 'https://tryloopers.com', label: 'Cloud ', position: 'right' },
           {
             href: 'https://github.com/CURSED-ME/loopers-oss',
             label: 'GitHub',
