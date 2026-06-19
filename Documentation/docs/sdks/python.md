@@ -77,6 +77,42 @@ message = client.messages.create(
 )
 ```
 
+## LangChain Integration
+
+We provide an official drop-in `ChatLoopers` model for LangChain workflows.
+
+```python
+from loopers_client.integrations.langchain import ChatLoopers
+
+llm = ChatLoopers(
+    loopers_url="http://localhost:8080",
+    loopers_key="lp-xxx",
+    provider_key="sk-proj-...",
+    session_id="agent-run-123",
+    session_budget=2.50
+)
+
+response = llm.invoke("Hello, Loopers!")
+```
+
+## LlamaIndex Integration
+
+We also provide a drop-in `LoopersLLM` model for LlamaIndex workflows.
+
+```python
+from loopers_client.integrations.llama_index import LoopersLLM
+
+llm = LoopersLLM(
+    loopers_url="http://localhost:8080",
+    loopers_key="lp-xxx",
+    provider_key="sk-proj-...",
+    session_id="agent-run-123",
+    session_budget=2.50
+)
+
+response = llm.complete("Hello, Loopers!")
+```
+
 ## Parameters Reference
 
 | Option | Type | Required | Description |
