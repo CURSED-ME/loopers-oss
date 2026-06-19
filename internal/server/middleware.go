@@ -12,8 +12,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/loopers-oss/loopers/internal/logging"
-	"github.com/loopers-oss/loopers/internal/proxy"
+	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/proxy"
 )
 
 const (

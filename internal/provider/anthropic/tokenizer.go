@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/loopers-oss/loopers/internal/logging"
-	"github.com/loopers-oss/loopers/pkg/api"
+	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/pkg/api"
 	"github.com/pkoukk/tiktoken-go"
 )
 

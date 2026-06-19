@@ -2,10 +2,11 @@ package budget
 
 import (
 	"context"
-	"errors"
 	"math"
 	"sync"
 	"sync/atomic"
+
+	"github.com/CURSED-ME/loopers-oss/internal/logging"
 )
 
 const nanoPerUSD = 1e9
@@ -21,6 +22,7 @@ func FromNano(n int64) float64 {
 type LocalLease struct {
 	RemainingNano atomic.Int64
 	SpentNano     atomic.Int64
+	IsBlocked     atomic.Bool
 	LeaseID       string
 	KeyHash       string
 	mu            sync.Mutex
@@ -55,6 +57,10 @@ func (lm *LeaseManager) getOrCreateLease(keyHash string) *LocalLease {
 func (lm *LeaseManager) Acquire(ctx context.Context, keyHash string, estCostUSD float64, maxChunkUSD float64) error {
 	costNano := ToNano(estCostUSD)
 	lease := lm.getOrCreateLease(keyHash)
+
+	if lease.IsBlocked.Load() {
+		return ErrBudgetExceeded
+	}
 
 	// Fast path: try to deduct locally
 	for {
@@ -127,31 +133,47 @@ func (lm *LeaseManager) Acquire(ctx context.Context, keyHash string, estCostUSD 
 }
 
 // ReconcileSpend updates the local lease with the exact difference between estimated and actual cost.
-// If actualCost < estimatedCost, the difference is refunded to the lease.
-// If actualCost > estimatedCost, the difference is additionally deducted from the lease.
-func (lm *LeaseManager) ReconcileSpend(keyHash string, estCostUSD float64, actualCostUSD float64) {
+// If actualCost < estimatedCost, the difference is refunded to the local lease.
+// If actualCost > estimatedCost, the difference is synchronized immediately to Redis.
+func (lm *LeaseManager) ReconcileSpend(ctx context.Context, keyHash string, estCostUSD float64, actualCostUSD float64) {
 	deltaUSD := estCostUSD - actualCostUSD
 	if deltaUSD == 0 {
 		return
 	}
 
-	deltaNano := ToNano(deltaUSD)
-	lease := lm.getOrCreateLease(keyHash)
+	if deltaUSD > 0 {
+		// Refund path (actual < est): handle locally
+		deltaNano := ToNano(deltaUSD)
+		lease := lm.getOrCreateLease(keyHash)
+		lease.RemainingNano.Add(deltaNano)
+		lease.SpentNano.Add(-deltaNano)
+		return
+	}
 
-	// If delta is positive (refund), we add to remaining, subtract from spent.
-	// If delta is negative (overspend), we subtract from remaining, add to spent.
-	lease.RemainingNano.Add(deltaNano)
-	lease.SpentNano.Add(-deltaNano)
+	// Overage path (actual > est): actual usage exceeded our estimated cost.
+	// Since the heartbeat truncates any spend that exceeds the initially reserved amount,
+	// we must write the overage directly to the Redis spend keys immediately.
+	overageUSD := -deltaUSD
+
+	err := lm.client.reconcileRedis(ctx, keyHash, 0, overageUSD)
+	if err != nil {
+		logging.Logger.Error().Err(err).Str("key_hash", keyHash).Float64("overage_usd", overageUSD).Msg("budget: failed to sync overage to Redis; guardLoop will correct")
+	}
 }
 
 // ErrBudgetExceeded is returned when the global budget is too low.
-var ErrBudgetExceeded = errors.New("budget exceeded")
+var ErrBudgetExceeded = context.DeadlineExceeded // Just reusing a common error interface for now, will refine
 
 // TryAcquireFast attempts to deduct from the local lease instantly without calling Redis.
 // Returns false if the local lease is exhausted.
 func (lm *LeaseManager) TryAcquireFast(keyHash string, costUSD float64) bool {
 	costNano := ToNano(costUSD)
 	lease := lm.getOrCreateLease(keyHash)
+
+	if lease.IsBlocked.Load() {
+		return false
+	}
+
 	for {
 		current := lease.RemainingNano.Load()
 		if current >= costNano {

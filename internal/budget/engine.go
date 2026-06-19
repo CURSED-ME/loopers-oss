@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/loopers-oss/loopers/internal/cache"
+	"github.com/CURSED-ME/loopers-oss/internal/cache"
 	"golang.org/x/sync/singleflight"
 )
 

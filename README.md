@@ -139,7 +139,7 @@ docker pull ghcr.io/cursed-me/loopers:latest
 
 **Or initialize via the wizard** (requires Go):
 ```bash
-go run github.com/loopers-oss/loopers/cmd/loopers init
+go run github.com/CURSED-ME/loopers-oss/cmd/loopers init
 ```
 
 - [ ] **Step 2: Spin Up the Proxy**

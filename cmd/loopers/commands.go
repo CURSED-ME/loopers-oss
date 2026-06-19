@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/charmbracelet/huh"
-	"github.com/loopers-oss/loopers/cmd/loopers/ui"
-	"github.com/loopers-oss/loopers/internal/budget"
-	"github.com/loopers-oss/loopers/internal/keyring"
-	"github.com/loopers-oss/loopers/internal/logging"
-	"github.com/loopers-oss/loopers/internal/pricing"
-	"github.com/loopers-oss/loopers/internal/server"
+	"github.com/CURSED-ME/loopers-oss/cmd/loopers/ui"
+	"github.com/CURSED-ME/loopers-oss/internal/budget"
+	"github.com/CURSED-ME/loopers-oss/internal/keyring"
+	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/pricing"
+	"github.com/CURSED-ME/loopers-oss/internal/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/loopers-oss/loopers/pkg/api"
+	"github.com/CURSED-ME/loopers-oss/pkg/api"
 )
 
 // parseOpenAIStreamChunk processes a single SSE chunk for OpenAI and extracts token usage if available.

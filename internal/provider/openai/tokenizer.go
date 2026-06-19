@@ -3,7 +3,7 @@ package openai
 import (
 	"encoding/json"
 
-	"github.com/loopers-oss/loopers/pkg/api"
+	"github.com/CURSED-ME/loopers-oss/pkg/api"
 )
 
 // countOpenAIRequestTokens parses the OpenAI body and calculates an O(1) heuristic

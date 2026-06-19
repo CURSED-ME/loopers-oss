@@ -76,7 +76,7 @@ func TestStreamingCut_RefundsUnusedReservation(t *testing.T) {
 	// Wait, proxy passes the total actual cost to ReconcileSpend.
 	// Total paid by proxy = 0.05 + 0.03 = 0.08.
 	// ReconcileSpend(est = 0.08, actual = 0.08) -> delta is 0
-	lm.ReconcileSpend(keyHash, 0.08, 0.08)
+	lm.ReconcileSpend(context.Background(), keyHash, 0.08, 0.08)
 
 	// In Redis, how much is spent?
 	// The spent amount locally is tracked in SpentNano.

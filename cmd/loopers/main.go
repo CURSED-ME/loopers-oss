@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/loopers-oss/loopers/cmd/loopers/ui"
-	"github.com/loopers-oss/loopers/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/cmd/loopers/ui"
+	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

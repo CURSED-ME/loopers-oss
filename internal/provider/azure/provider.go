@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/loopers-oss/loopers/internal/provider"
-	"github.com/loopers-oss/loopers/internal/provider/openai"
+	"github.com/CURSED-ME/loopers-oss/internal/provider"
+	"github.com/CURSED-ME/loopers-oss/internal/provider/openai"
 )
 
 type AzureProvider struct {

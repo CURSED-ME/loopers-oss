@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/loopers-oss/loopers/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/logging"
 )
 
 type reserveReq struct {

@@ -133,7 +133,7 @@ func TestBudgetWindowExpansion(t *testing.T) {
 	}
 
 	// Reconcile first request actual cost: 0.15 -> 0.05
-	client.LeaseManager.ReconcileSpend(keyHash, 0.15, 0.05)
+	client.LeaseManager.ReconcileSpend(context.Background(), keyHash, 0.15, 0.05)
 
 	// Wait for async batched reconcile to flush (100ms batch interval)
 	time.Sleep(150 * time.Millisecond)

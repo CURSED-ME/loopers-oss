@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/loopers-oss/loopers/cmd/loopers/ui"
-	"github.com/loopers-oss/loopers/internal/pricing"
+	"github.com/CURSED-ME/loopers-oss/cmd/loopers/ui"
+	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

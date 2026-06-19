@@ -16,7 +16,7 @@ The easiest way to start Loopers is with our interactive setup wizard:
 
 ```bash
 # Run the initialization wizard
-go run github.com/loopers-oss/loopers/cmd/loopers init
+go run github.com/CURSED-ME/loopers-oss/cmd/loopers init
 
 # Start the proxy and Redis services
 docker-compose up -d
@@ -25,7 +25,7 @@ docker-compose up -d
 ### Method 2: From Source
 ```bash
 # Clone the repository
-git clone https://github.com/loopers-oss/loopers-oss.git
+git clone https://github.com/CURSED-ME/loopers-oss-oss.git
 cd loopers-oss
 
 # Build the binary

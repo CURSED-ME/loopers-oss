@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/loopers-oss/loopers/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/logging"
 )
 
 // CheckVelocity returns (isAnomaly, currentRPS, error)

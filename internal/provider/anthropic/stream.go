@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/loopers-oss/loopers/pkg/api"
+	"github.com/CURSED-ME/loopers-oss/pkg/api"
 )
 
 // parseAnthropicFrame parses event and data fields from an Anthropic SSE frame.

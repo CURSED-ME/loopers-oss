@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/loopers-oss/loopers/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/logging"
 )
 
-// StartLeaseWorkers starts the background goroutines for heartbeat and reclaim.
 func (lm *LeaseManager) StartLeaseWorkers(ctx context.Context) {
 	go lm.heartbeatLoop(ctx)
 	go lm.reclaimLoop(ctx)
+	go lm.guardLoop(ctx)
 }
 
 func (lm *LeaseManager) heartbeatLoop(ctx context.Context) {
@@ -97,4 +97,61 @@ func (lm *LeaseManager) reclaimLoop(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func (lm *LeaseManager) guardLoop(ctx context.Context) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			lm.runGuardCheck(ctx)
+		}
+	}
+}
+
+func (lm *LeaseManager) runGuardCheck(ctx context.Context) {
+	lm.leases.Range(func(key, value interface{}) bool {
+		keyHash := key.(string)
+		lease := value.(*LocalLease)
+
+		// Only check keys that have an active Redis lease.
+		// Keys with no LeaseID have never hit Redis, skip them.
+		if lease.LeaseID == "" {
+			return true
+		}
+
+		statusMap, err := lm.client.GetBudgetStatus(ctx, keyHash)
+		if err != nil {
+			logging.Logger.Warn().Err(err).Str("key_hash", keyHash).Msg("budget guard: failed to fetch status")
+			return true
+		}
+
+		for _, status := range statusMap {
+			if status.Limit > 0 && status.CurrentSpend >= status.Limit {
+				if !lease.IsBlocked.Load() {
+					logging.Logger.Warn().
+						Str("key_hash", keyHash).
+						Float64("spend", status.CurrentSpend).
+						Float64("limit", status.Limit).
+						Msg("budget guard: hard ceiling reached, blocking key")
+				}
+				lease.IsBlocked.Store(true)
+				lease.RemainingNano.Store(0)
+				return true
+			}
+		}
+
+		// If we were previously blocked but the budget window has rolled over
+		// (spend dropped back below limit), unblock.
+		if lease.IsBlocked.Load() {
+			lease.IsBlocked.Store(false)
+			logging.Logger.Info().Str("key_hash", keyHash).Msg("budget guard: key unblocked after window reset")
+		}
+
+		return true
+	})
 }

@@ -6,8 +6,8 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/loopers-oss/loopers/internal/logging"
-	"github.com/loopers-oss/loopers/internal/provider"
+	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/provider"
 	"io"
 	"time"
 )

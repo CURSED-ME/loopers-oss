@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/loopers-oss/loopers/internal/budget"
-	"github.com/loopers-oss/loopers/internal/keyring"
-	"github.com/loopers-oss/loopers/internal/pricing"
+	"github.com/CURSED-ME/loopers-oss/internal/budget"
+	"github.com/CURSED-ME/loopers-oss/internal/keyring"
+	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 )
 
 func TestFallbackRouting(t *testing.T) {
