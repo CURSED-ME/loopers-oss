@@ -2,7 +2,7 @@
   <img src="./docs/logo.svg" alt="Loopers" width="800"/>
 </p>
 
-# Loopers – Pre-call AI billing circuit breaker
+# Loopers – The firewall for the agentic era
 
 > **Break the loop before it breaks your budget.**
 
@@ -16,13 +16,13 @@
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/CURSED-ME/loopers-oss"><img src="https://api.securityscorecards.dev/projects/github.com/CURSED-ME/loopers-oss/badge?style=for-the-badge" alt="OpenSSF Scorecard" /></a>
 </p>
 
-Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It intercepts requests across **500+ AI models natively** (across 14 providers like OpenAI, Anthropic, Gemini, Groq, Ollama, vLLM, and more), plus **any OpenAI-compatible endpoint**, to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
+Loopers is a baremetal, zero-delay firewall for the agentic era. It intercepts requests across **500+ AI models natively** (across 14 providers like OpenAI, Anthropic, Gemini, Groq, Ollama, vLLM, and more), plus **any OpenAI-compatible endpoint**, to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
 
 ---
 
 ## What's New
 
-We constantly ship updates to make Loopers the fastest, most secure AI gateway. For full configuration details, visit the **[Loopers Documentation](https://docs.tryloopers.com)**.
+We constantly ship updates to make Loopers the fastest, most secure AI firewall. For full configuration details, visit the **[Loopers Documentation](https://docs.tryloopers.com)**.
 
 1. **Security Events & OpenTelemetry** *(Latest)*: Emits OWASP Top 10 for LLMs security payloads for budget/loop blocks, and supports W3C OTLP tracing with a smart sampling processor designed for EU AI Act compliance.
 2. **Loop Detection Engine v1.1**: Deterministic circuit breakers for autonomous agents, featuring a Fingerprint Ring, Velocity Limiter, and Stall Detector for TOCTOU-safe enforcement.
@@ -47,11 +47,11 @@ If an autonomous agent gets stuck in a loop or an API key is compromised, it can
 
 ## Competitor Analysis
 
-Loopers is engineered specifically as a high-performance infrastructure-level circuit breaker, prioritizing absolute security and correctness over simple observability.
+Loopers is engineered specifically as a high-performance infrastructure-level firewall, prioritizing absolute security and correctness over simple observability.
 
 | Feature / Tool | **Loopers** | Bifrost | AgentBudget | LiteLLM |
 |---|---|---|---|---|
-| **Type** | OSS Gateway | OSS Gateway | Python SDK | OSS Gateway |
+| **Type** | OSS Firewall | OSS Gateway | Python SDK | OSS Gateway |
 | **Pre-Call Enforcement** | **Yes (Atomic Lua)** | Yes | Yes | Partial (Post-call) |
 | **Storage Security** | **Zero-Storage (Pass-through)** | In-Memory | In-Process | Database Required |
 | **Agent Loop Circuit Breaking** | **Yes** | No | Yes | No |
@@ -61,7 +61,7 @@ Loopers is engineered specifically as a high-performance infrastructure-level ci
 
 ## Performance Benchmarks (Episode 1)
 
-Loopers is engineered to handle massive concurrent traffic spikes without dropping the ball on budget enforcement. In our latest LLM Gateway benchmarks against Python/FastAPI alternatives like LiteLLM, Loopers demonstrated:
+Loopers is engineered to handle massive concurrent traffic spikes without dropping the ball on budget enforcement. In our latest LLM Firewall benchmarks against Python/FastAPI alternatives like LiteLLM, Loopers demonstrated:
 
 | Metric | Loopers (Go) | LiteLLM | Advantage |
 | :--- | :--- | :--- | :--- |
