@@ -5,32 +5,32 @@ import (
 	"time"
 )
 
-type cacheEntry struct {
-	value     interface{}
+type cacheEntry[V any] struct {
+	value     V
 	expiresAt time.Time
 }
 
 // TTLCache is a thread-safe cache with TTL.
-type TTLCache struct {
+type TTLCache[K comparable, V any] struct {
 	m   sync.Map
 	ttl time.Duration
 }
 
 // NewTTLCache creates a new TTLCache with the specified TTL and starts a background sweep.
-func NewTTLCache(ttl time.Duration) *TTLCache {
-	c := &TTLCache{
+func NewTTLCache[K comparable, V any](ttl time.Duration) *TTLCache[K, V] {
+	c := &TTLCache[K, V]{
 		ttl: ttl,
 	}
 	go c.startSweep()
 	return c
 }
 
-func (c *TTLCache) startSweep() {
+func (c *TTLCache[K, V]) startSweep() {
 	ticker := time.NewTicker(time.Minute)
 	for range ticker.C {
 		now := time.Now()
 		c.m.Range(func(key, value interface{}) bool {
-			entry := value.(cacheEntry)
+			entry := value.(cacheEntry[V])
 			if now.After(entry.expiresAt) {
 				c.m.Delete(key)
 			}
@@ -40,28 +40,29 @@ func (c *TTLCache) startSweep() {
 }
 
 // Set stores a value in the cache.
-func (c *TTLCache) Set(key string, value interface{}) {
-	c.m.Store(key, cacheEntry{
+func (c *TTLCache[K, V]) Set(key K, value V) {
+	c.m.Store(key, cacheEntry[V]{
 		value:     value,
 		expiresAt: time.Now().Add(c.ttl),
 	})
 }
 
 // Get retrieves a value from the cache if it hasn't expired.
-func (c *TTLCache) Get(key string) (interface{}, bool) {
+func (c *TTLCache[K, V]) Get(key K) (V, bool) {
+	var zero V
 	val, ok := c.m.Load(key)
 	if !ok {
-		return nil, false
+		return zero, false
 	}
-	entry := val.(cacheEntry)
+	entry := val.(cacheEntry[V])
 	if time.Now().After(entry.expiresAt) {
 		c.m.Delete(key)
-		return nil, false
+		return zero, false
 	}
 	return entry.value, true
 }
 
 // Delete removes a key from the cache.
-func (c *TTLCache) Delete(key string) {
+func (c *TTLCache[K, V]) Delete(key K) {
 	c.m.Delete(key)
 }

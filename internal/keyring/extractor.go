@@ -10,8 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/singleflight"
 )
-
-var keyMetaCache = cache.NewTTLCache(10 * time.Second)
+var keyMetaCache = cache.NewTTLCache[string, *KeyMetadata](10 * time.Second)
 var keyMetaGroup singleflight.Group
 
 // KeyMetadata represents the fields stored in Redis for a loopers API key.
@@ -25,7 +24,7 @@ type KeyMetadata struct {
 // GetKeyMetadata retrieves key metadata from Redis using the SHA-256 hash of the raw key.
 func GetKeyMetadata(ctx context.Context, rdb *redis.Client, keyHash string) (*KeyMetadata, error) {
 	if val, ok := keyMetaCache.Get(keyHash); ok {
-		return val.(*KeyMetadata), nil
+		return val, nil
 	}
 
 	key := fmt.Sprintf("loopers:key:%s", keyHash)
