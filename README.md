@@ -22,34 +22,14 @@ Loopers is a baremetal, zero-delay circuit breaker for AI API billing. It interc
 
 ## What's New
 
-**Enterprise-Grade Security Architecture**
-We have significantly hardened Loopers for bare-metal and zero-trust deployments:
-- **Dedicated Admin Server:** Telemetry (`/metrics`) and health checks are now isolated on a dedicated admin port (default `9090`), preventing internal state exposure when the main proxy (`8080`) is public.
-- **Strict TLS Enforcement:** Production deployments now mandate TLS certificates to start, preventing accidental plaintext exposure.
-- **Hardened Redis Integrations:** Redis connections now require password authentication natively out of the box in our Helm charts and Compose templates.
+We constantly ship updates to make Loopers the fastest, most secure AI gateway. For full configuration details, visit the **[Loopers Documentation](https://docs.tryloopers.com)**.
 
-**Bring Your Own Provider (Generic OpenAI-Compatible Endpoints)**
-You are no longer limited to the built-in providers! Loopers now supports routing to *any* OpenAI-compatible endpoint (like vLLM, OpenRouter, local Llama.cpp, or custom proxies) while still maintaining full budget enforcement, mid-stream cutoffs, and loop detection. Configure them easily via `generic_providers` in `loopers.yaml`.
-
-**Dynamic Remote Pricing Fetcher**
-Tired of manually updating `pricing.yaml` when models change prices? Loopers can now automatically fetch the latest token pricing from a remote JSON endpoint at a configured interval. This ensures your budget accounting is always 100% accurate, completely hands-free.
-
-**LangChain & LlamaIndex Native Adapters**
-We've published official adapters for the Python SDK! You can now drop Loopers into your existing LangChain (`ChatLoopers`) or LlamaIndex (`LoopersLLM`) workflows with a single line of code. They automatically handle session IDs, step counting, and budget headers out-of-the-box.
-
-**Structured Security Event Emission (OWASP Top 10 for LLMs 2025)**
-Loopers now natively aligns with the [OWASP Top 10 for LLM Applications (2025)](https://genai.owasp.org/) standard. Every budget block and loop detection trigger emits a structured JSON security event tagged with the precise OWASP category (e.g., `LLM06:2025` for Excessive Agency, `LLM10:2025` for Unbounded Consumption) and severity. Events are always emitted to `stdout` for local observability, and can optionally be POSTed to a `webhook_url`. A versioned JSON schema is provided in `docs/reference/event-schema.json`.
-
-**OpenTelemetry Distributed Tracing (EU AI Act Ready)**
-Built-in W3C Trace context propagation and OTLP (gRPC/HTTP) exporting. Loopers implements a **Smart Sampling Processor** that selectively elevates critical security enforcement events (like budget exhaustion or loops) to 100% trace capture, even when baseline traffic is sampled down. Every exported trace strictly omits payload bodies, maintaining our zero-storage privacy guarantee while satisfying EU AI Act human oversight regulations.
-
-**Deterministic Loop Detection Engine (v1.1)**
-We just released our enterprise-grade, deterministic loop detection engine designed specifically for High-Frequency Trading (HFT) and critical infrastructure agents. It features three advanced sub-detectors:
-- **Fingerprint Ring**: Sliding window O(1) exact hash matching with volatile field stripping (ignores temperature/seed variance).
-- **Velocity Limiter**: Highly granular RPS and endpoint repetition bounding using atomic Redis tracking.
-- **Stall Detector**: Uses Hamming distance over request hashes within a `TxPipelined` Watch transaction to detect low-diversity "stuck" agents in a TOCTOU-safe manner.
-
-*Enable it via the new `loop:` block in `loopers.yaml`!*
+1. **Security Events & OpenTelemetry** *(Latest)*: Emits OWASP Top 10 for LLMs security payloads for budget/loop blocks, and supports W3C OTLP tracing with a smart sampling processor designed for EU AI Act compliance.
+2. **Loop Detection Engine v1.1**: Deterministic circuit breakers for autonomous agents, featuring a Fingerprint Ring, Velocity Limiter, and Stall Detector for TOCTOU-safe enforcement.
+3. **Generic OpenAI-Compatible Endpoints**: Bring your own provider! Route traffic to vLLM, local Llama.cpp, or custom proxies while retaining full budget enforcement.
+4. **Dynamic Pricing Fetcher**: Hands-free token accounting. Loopers automatically synchronizes real-time token prices from a remote JSON endpoint.
+5. **Enterprise-Grade Security**: Dedicated, isolated admin ports (`/metrics`), strict TLS enforcement, and secure Redis configurations for bare-metal deployments.
+6. **LangChain & LlamaIndex Adapters**: Drop-in Python SDK wrappers (`ChatLoopers` and `LoopersLLM`) to effortlessly inject session IDs and track step counts in native agent frameworks.
 
 ---
 
