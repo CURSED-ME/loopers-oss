@@ -23,12 +23,7 @@ const config = {
     locales: ['en'],
   },
 
-  scripts: [
-    {
-      src: '/_vercel/insights/script.js',
-      defer: true,
-    },
-  ],
+  plugins: ['@docusaurus/plugin-vercel-analytics'],
 
   presets: [
     [
