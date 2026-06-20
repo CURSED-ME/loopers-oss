@@ -10,6 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/singleflight"
 )
+
 var keyMetaCache = cache.NewTTLCache[string, *KeyMetadata](10 * time.Second)
 var keyMetaGroup singleflight.Group
 

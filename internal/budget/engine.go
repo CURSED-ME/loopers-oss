@@ -9,6 +9,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/cache"
 	"golang.org/x/sync/singleflight"
 )
+
 var configCache = cache.NewTTLCache[string, map[string]string](10 * time.Second)
 var configGroup singleflight.Group
 
