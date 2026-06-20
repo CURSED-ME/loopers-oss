@@ -55,7 +55,7 @@ func TestAlerterDelivery(t *testing.T) {
 	defer alerter.Close()
 
 	// 1. Test Block Event Alert
-	alerter.TriggerBlockAlert("test-hash", "test-key", "openai", "gpt-4o", "daily", 10.05, 10.00, 0.05)
+	alerter.TriggerBlockAlert(context.Background(), "req-1", "test-hash", "test-key", "openai", "gpt-4o", "daily", 10.05, 10.00, 0.05)
 
 	// Wait for delivery
 	time.Sleep(100 * time.Millisecond)
@@ -67,8 +67,13 @@ func TestAlerterDelivery(t *testing.T) {
 	event := received[0]
 	mu.Unlock()
 
-	if event["event"] != "budget_exceeded" || event["key_hash"] != "test-hash" || event["window"] != "daily" {
+	if event["event"] != "budget_exceeded" || event["loopers_event_type"] != "BUDGET_BLOCK" {
 		t.Errorf("unexpected event content: %v", event)
+	}
+
+	details := event["details"].(map[string]interface{})
+	if details["key_hash"] != "test-hash" || details["window"] != "daily" {
+		t.Errorf("unexpected event details: %v", details)
 	}
 
 	owasp, ok := event["owasp"].(map[string]interface{})
@@ -119,11 +124,11 @@ func TestAlerterThresholdCheck(t *testing.T) {
 	limits := map[string]float64{"daily": 10.00}
 
 	// 1. Should fire threshold alert (spend is 6.00 which is 60% of 10.00)
-	alerter.TriggerThresholdAlerts(ctx, "test-hash", "test-key", "openai", spends, limits)
+	alerter.TriggerThresholdAlerts(ctx, "req-2", "test-hash", "test-key", "openai", spends, limits)
 	time.Sleep(100 * time.Millisecond)
 
 	// 2. Trigger again -> should NOT fire due to Redis deduplication
-	alerter.TriggerThresholdAlerts(ctx, "test-hash", "test-key", "openai", spends, limits)
+	alerter.TriggerThresholdAlerts(ctx, "req-3", "test-hash", "test-key", "openai", spends, limits)
 	time.Sleep(100 * time.Millisecond)
 
 	mu.Lock()
@@ -133,8 +138,13 @@ func TestAlerterThresholdCheck(t *testing.T) {
 		t.Errorf("expected exactly 1 received event, got %d", len(received))
 	} else {
 		event := received[0]
-		if event["event"] != "budget_threshold" || event["threshold_percent"] != float64(50) {
+		if event["event"] != "budget_threshold" || event["loopers_event_type"] != "BUDGET_THRESHOLD" {
 			t.Errorf("unexpected event: %v", event)
+		}
+
+		details := event["details"].(map[string]interface{})
+		if details["threshold_percent"] != float64(50) {
+			t.Errorf("unexpected threshold percent: %v", details)
 		}
 
 		owasp, ok := event["owasp"].(map[string]interface{})
@@ -162,7 +172,7 @@ func TestOWASPMetadataOnLoopFingerprint(t *testing.T) {
 	alerter := NewAlerter(AlertingConfig{WebhookURL: server.URL}, nil)
 	defer alerter.Close()
 
-	alerter.TriggerLoopAlert("test-hash", "test-key", "openai", "sess-1", "fingerprint", "details", true)
+	alerter.TriggerLoopAlert(context.Background(), "req-3", "test-hash", "test-key", "openai", "sess-1", "fingerprint", "details", true)
 	time.Sleep(50 * time.Millisecond)
 
 	mu.Lock()
@@ -197,7 +207,7 @@ func TestOWASPMetadataOnStallWarn(t *testing.T) {
 	alerter := NewAlerter(AlertingConfig{WebhookURL: server.URL}, nil)
 	defer alerter.Close()
 
-	alerter.TriggerLoopAlert("test-hash", "test-key", "openai", "sess-2", "stall", "details", false)
+	alerter.TriggerLoopAlert(context.Background(), "req-4", "test-hash", "test-key", "openai", "sess-2", "stall", "details", false)
 	time.Sleep(50 * time.Millisecond)
 
 	mu.Lock()
@@ -222,7 +232,7 @@ func TestStdoutEmissionNoWebhook(t *testing.T) {
 	cfg := AlertingConfig{}
 	alerter := NewAlerter(cfg, nil)
 
-	alerter.TriggerBlockAlert("test-hash", "test-key", "openai", "gpt-4", "daily", 10.0, 10.0, 0.5)
+	alerter.TriggerBlockAlert(context.Background(), "req-5", "test-hash", "test-key", "openai", "gpt-4", "daily", 10.0, 10.0, 0.5)
 
 	// Give worker time to process and write to stdout
 	time.Sleep(100 * time.Millisecond)

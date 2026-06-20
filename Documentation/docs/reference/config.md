@@ -46,6 +46,18 @@ metrics:
   port: 9090
   path: /metrics
 
+alerting:
+  webhook_url: "https://example.com/webhook"
+  thresholds:
+    - percent: 80
+      message: "Budget 80% consumed — approaching limit"
+
+otel:
+  enabled: true
+  endpoint: "localhost:4317"
+  protocol: "grpc"
+  sampling_rate: 1.0
+
 providers:
   openai:
     base_url: https://api.openai.com
@@ -98,6 +110,22 @@ providers:
 | enabled | true | Enable Prometheus metrics endpoint |
 | port | 9090 | Metrics server port |
 | path | /metrics | Metrics endpoint path |
+
+### alerting
+
+| Key | Default | Description |
+|---|---|---|
+| webhook_url | "" | Webhook URL for POSTing structured security events |
+| thresholds | [] | List of percent thresholds and messages for budget alerts |
+
+### otel
+
+| Key | Default | Description |
+|---|---|---|
+| enabled | false | Enable OpenTelemetry tracing (EU AI Act tracing) |
+| endpoint | "localhost:4317" | OTLP collector endpoint |
+| protocol | "grpc" | Transport protocol (`grpc` or `http`) |
+| sampling_rate | 1.0 | Probabilistic sampling rate for successful requests. Enforcement events are always traced at 100%. |
 
 ## Environment Variable Overrides
 

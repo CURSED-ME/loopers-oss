@@ -34,3 +34,18 @@ loop_detection:
     min_hamming_distance: 0  # disabled by default
     low_diversity_threshold: 5
     action: "warn"           # V1 default: warn only, does not block request
+
+otel:
+  # Export traces to an OTel Collector or compatible backend
+  enabled: false
+  # Standard OTLP endpoint (e.g. localhost:4317 for gRPC, localhost:4318 for HTTP)
+  endpoint: "localhost:4317"
+  # Protocol: grpc or http
+  protocol: "grpc"
+  insecure: true
+  # Probabilistic sampling rate for successful requests (0.0 to 1.0).
+  # 1.0 = trace all requests. 0.1 = trace 10%.
+  # Note: Security enforcement events (blocks, warnings, auth failures) are ALWAYS traced regardless of this setting.
+  sampling_rate: 1.0
+  # headers:
+  #   "x-honeycomb-team": "your-api-key"

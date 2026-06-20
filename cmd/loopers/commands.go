@@ -132,7 +132,7 @@ var serveCmd = &cobra.Command{
 		keyFile := viper.GetString("server.tls_key_file")
 		insecureDev := viper.GetBool("server.insecure_dev")
 
-		server.ListenAndServeWithGracefulShutdown(srv, adminSrv, redisClient, certFile, keyFile, insecureDev)
+		server.ListenAndServeWithGracefulShutdown(srv, adminSrv, redisClient, certFile, keyFile, insecureDev, s.GetOtelShutdown())
 	},
 }
 

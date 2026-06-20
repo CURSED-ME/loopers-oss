@@ -26,58 +26,37 @@ type AlertEvent interface {
 	EventType() string
 }
 
-type OWASPMetadata struct {
-	Category string `json:"owasp_category"`
-	Name     string `json:"owasp_name"`
-	Severity string `json:"severity"`
-}
-
 type ThresholdAlert struct {
-	OWASP            OWASPMetadata `json:"owasp"`
-	Event            string        `json:"event"`
-	Timestamp        string        `json:"timestamp"`
-	KeyHash          string        `json:"key_hash"`
-	KeyName          string        `json:"key_name"`
-	Provider         string        `json:"provider"`
-	Window           string        `json:"window"`
-	ThresholdPercent int           `json:"threshold_percent"`
-	CurrentSpendUSD  float64       `json:"current_spend_usd"`
-	BudgetLimitUSD   float64       `json:"budget_limit_usd"`
-	Message          string        `json:"message"`
+	KeyHash          string  `json:"key_hash"`
+	KeyName          string  `json:"key_name"`
+	Provider         string  `json:"provider"`
+	Window           string  `json:"window"`
+	ThresholdPercent int     `json:"threshold_percent"`
+	CurrentSpendUSD  float64 `json:"current_spend_usd"`
+	BudgetLimitUSD   float64 `json:"budget_limit_usd"`
+	Message          string  `json:"message"`
 }
-
-func (t *ThresholdAlert) EventType() string { return "budget_threshold" }
 
 type BudgetExceededAlert struct {
-	OWASP                 OWASPMetadata `json:"owasp"`
-	Event                 string        `json:"event"`
-	Timestamp             string        `json:"timestamp"`
-	KeyHash               string        `json:"key_hash"`
-	KeyName               string        `json:"key_name"`
-	Provider              string        `json:"provider"`
-	Model                 string        `json:"model"`
-	Window                string        `json:"window"`
-	CurrentSpendUSD       float64       `json:"current_spend_usd"`
-	BudgetLimitUSD        float64       `json:"budget_limit_usd"`
-	BlockedRequestCostUSD float64       `json:"blocked_request_cost_usd"`
+	KeyHash               string  `json:"key_hash"`
+	KeyName               string  `json:"key_name"`
+	Provider              string  `json:"provider"`
+	Model                 string  `json:"model"`
+	Window                string  `json:"window"`
+	CurrentSpendUSD       float64 `json:"current_spend_usd"`
+	BudgetLimitUSD        float64 `json:"budget_limit_usd"`
+	BlockedRequestCostUSD float64 `json:"blocked_request_cost_usd"`
 }
-
-func (b *BudgetExceededAlert) EventType() string { return "budget_exceeded" }
 
 type LoopDetectedAlert struct {
-	OWASP     OWASPMetadata `json:"owasp"`
-	Event     string        `json:"event"`
-	Timestamp string        `json:"timestamp"`
-	KeyHash   string        `json:"key_hash"`
-	KeyName   string        `json:"key_name"`
-	Provider  string        `json:"provider"`
-	SessionID string        `json:"session_id"`
-	Rule      string        `json:"rule"`
-	Detail    string        `json:"detail"`
-	Blocked   bool          `json:"blocked"`
+	KeyHash   string `json:"key_hash"`
+	KeyName   string `json:"key_name"`
+	Provider  string `json:"provider"`
+	SessionID string `json:"session_id"`
+	Rule      string `json:"rule"`
+	Detail    string `json:"detail"`
+	Blocked   bool   `json:"blocked"`
 }
-
-func (l *LoopDetectedAlert) EventType() string { return "loop_detected" }
 
 type Alerter struct {
 	cfg    AlertingConfig
@@ -97,18 +76,11 @@ func NewAlerter(cfg AlertingConfig, rdb *redis.Client) *Alerter {
 	return a
 }
 
-func (a *Alerter) TriggerBlockAlert(keyHash, keyName, provider, model, window string, currentSpend, limit, blockedCost float64) {
+func (a *Alerter) TriggerBlockAlert(ctx context.Context, requestID, keyHash, keyName, provider, model, window string, currentSpend, limit, blockedCost float64) {
 	if a == nil {
 		return
 	}
-	event := &BudgetExceededAlert{
-		OWASP: OWASPMetadata{
-			Category: "LLM10:2025",
-			Name:     "Unbounded Consumption",
-			Severity: "critical",
-		},
-		Event:                 "budget_exceeded",
-		Timestamp:             time.Now().UTC().Format(time.RFC3339),
+	details := &BudgetExceededAlert{
 		KeyHash:               keyHash,
 		KeyName:               keyName,
 		Provider:              provider,
@@ -118,6 +90,7 @@ func (a *Alerter) TriggerBlockAlert(keyHash, keyName, provider, model, window st
 		BudgetLimitUSD:        limit,
 		BlockedRequestCostUSD: blockedCost,
 	}
+	event := NewBudgetBlockEvent(ctx, requestID, details)
 	select {
 	case a.ch <- event:
 	default:
@@ -125,31 +98,12 @@ func (a *Alerter) TriggerBlockAlert(keyHash, keyName, provider, model, window st
 	}
 }
 
-func (a *Alerter) TriggerLoopAlert(keyHash, keyName, provider, sessionID, rule, detail string, blocked bool) {
+func (a *Alerter) TriggerLoopAlert(ctx context.Context, requestID, keyHash, keyName, provider, sessionID, rule, detail string, blocked bool) {
 	if a == nil {
 		return
 	}
 
-	// Severity is determined by how confident we are this is a real loop
-	// and how much damage it can cause.
-	var severity string
-	switch {
-	case rule == "fingerprint" || rule == "velocity":
-		severity = "critical" // Deterministic proof of loop — always block
-	case rule == "stall" && blocked:
-		severity = "high" // Stall configured to block is a serious signal
-	default:
-		severity = "medium" // Stall warn-only: flagged but not yet confirmed
-	}
-
-	event := &LoopDetectedAlert{
-		OWASP: OWASPMetadata{
-			Category: "LLM06:2025",
-			Name:     "Excessive Agency",
-			Severity: severity,
-		},
-		Event:     "loop_detected",
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	details := &LoopDetectedAlert{
 		KeyHash:   keyHash,
 		KeyName:   keyName,
 		Provider:  provider,
@@ -158,6 +112,14 @@ func (a *Alerter) TriggerLoopAlert(keyHash, keyName, provider, sessionID, rule, 
 		Detail:    detail,
 		Blocked:   blocked,
 	}
+
+	var event *SecurityEventEnvelope
+	if blocked {
+		event = NewLoopBlockEvent(ctx, requestID, details)
+	} else {
+		event = NewLoopWarnEvent(ctx, requestID, details)
+	}
+
 	select {
 	case a.ch <- event:
 	default:
@@ -165,7 +127,31 @@ func (a *Alerter) TriggerLoopAlert(keyHash, keyName, provider, sessionID, rule, 
 	}
 }
 
-func (a *Alerter) TriggerThresholdAlerts(ctx context.Context, keyHash, keyName, provider string, currentSpends map[string]float64, limits map[string]float64) {
+func (a *Alerter) TriggerAuthFail(ctx context.Context, requestID, reason string) {
+	if a == nil {
+		return
+	}
+	event := NewAuthFailEvent(ctx, requestID, reason, nil)
+	select {
+	case a.ch <- event:
+	default:
+		logging.Logger.Warn().Msg("Alert channel full, dropping auth failure alert")
+	}
+}
+
+func (a *Alerter) TriggerFailClosed(ctx context.Context, requestID, reason string) {
+	if a == nil {
+		return
+	}
+	event := NewFailClosedEvent(ctx, requestID, reason, nil)
+	select {
+	case a.ch <- event:
+	default:
+		logging.Logger.Warn().Msg("Alert channel full, dropping fail-closed alert")
+	}
+}
+
+func (a *Alerter) TriggerThresholdAlerts(ctx context.Context, requestID, keyHash, keyName, provider string, currentSpends map[string]float64, limits map[string]float64) {
 	if a == nil || len(a.cfg.Thresholds) == 0 {
 		return
 	}
@@ -192,14 +178,7 @@ func (a *Alerter) TriggerThresholdAlerts(ctx context.Context, keyHash, keyName, 
 				}
 				if set {
 					// Fire alert
-					event := &ThresholdAlert{
-						OWASP: OWASPMetadata{
-							Category: "LLM10:2025",
-							Name:     "Unbounded Consumption",
-							Severity: "high",
-						},
-						Event:            "budget_threshold",
-						Timestamp:        time.Now().UTC().Format(time.RFC3339),
+					details := &ThresholdAlert{
 						KeyHash:          keyHash,
 						KeyName:          keyName,
 						Provider:         provider,
@@ -209,6 +188,7 @@ func (a *Alerter) TriggerThresholdAlerts(ctx context.Context, keyHash, keyName, 
 						BudgetLimitUSD:   limit,
 						Message:          t.Message,
 					}
+					event := NewBudgetThresholdEvent(ctx, requestID, details)
 					select {
 					case a.ch <- event:
 					default:

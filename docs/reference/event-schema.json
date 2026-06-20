@@ -1,73 +1,50 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://tryloopers.com/schemas/security-event/v1.json",
-  "title": "Loopers Security Event",
-  "description": "Schema for structured security events emitted by Loopers",
-  "version": "1.0.0",
-  "oneOf": [
-    { "$ref": "#/definitions/BudgetExceededEvent" },
-    { "$ref": "#/definitions/BudgetThresholdEvent" },
-    { "$ref": "#/definitions/LoopDetectedEvent" }
-  ],
-  "definitions": {
-    "OWASPMetadata": {
+  "$id": "https://tryloopers.com/schemas/security-event/v2.json",
+  "title": "Loopers Security Event Envelope (v2)",
+  "description": "Schema for structured security events emitted by Loopers, designed for EU AI Act compliance",
+  "version": "2.0.0",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string", "const": "2.0.0" },
+    "event_id": { "type": "string" },
+    "loopers_event_type": { "type": "string", "enum": ["BUDGET_BLOCK", "BUDGET_THRESHOLD", "LOOP_BLOCK", "LOOP_WARN", "AUTH_FAIL", "FAIL_CLOSED"] },
+    "trace_id": { "type": "string" },
+    "span_id": { "type": "string" },
+    "request_id": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "source": {
       "type": "object",
       "properties": {
-        "owasp_category": { "type": "string", "example": "LLM10:2025" },
-        "owasp_name": { "type": "string", "example": "Unbounded Consumption" },
+        "component": { "type": "string", "const": "loopers_proxy" },
+        "version": { "type": "string" },
+        "instance": { "type": "string" }
+      },
+      "required": ["component", "version"]
+    },
+    "owasp": {
+      "type": "object",
+      "properties": {
+        "owasp_category": { "type": "string" },
+        "owasp_name": { "type": "string" },
         "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] }
       },
       "required": ["owasp_category", "owasp_name", "severity"]
     },
-    "BudgetExceededEvent": {
-      "type": "object",
-      "properties": {
-        "owasp": { "$ref": "#/definitions/OWASPMetadata" },
-        "event": { "type": "string", "const": "budget_exceeded" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "key_hash": { "type": "string" },
-        "key_name": { "type": "string" },
-        "provider": { "type": "string" },
-        "model": { "type": "string" },
-        "window": { "type": "string" },
-        "current_spend_usd": { "type": "number" },
-        "budget_limit_usd": { "type": "number" },
-        "blocked_request_cost_usd": { "type": "number" }
-      },
-      "required": ["owasp", "event", "timestamp", "key_hash", "provider"]
+    "regulation": {
+      "type": "array",
+      "items": { "type": "string" }
     },
-    "BudgetThresholdEvent": {
+    "action": {
       "type": "object",
       "properties": {
-        "owasp": { "$ref": "#/definitions/OWASPMetadata" },
-        "event": { "type": "string", "const": "budget_threshold" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "key_hash": { "type": "string" },
-        "key_name": { "type": "string" },
-        "provider": { "type": "string" },
-        "window": { "type": "string" },
-        "threshold_percent": { "type": "integer" },
-        "current_spend_usd": { "type": "number" },
-        "budget_limit_usd": { "type": "number" },
-        "message": { "type": "string" }
+        "type": { "type": "string" },
+        "reason": { "type": "string" }
       },
-      "required": ["owasp", "event", "timestamp", "key_hash", "provider", "threshold_percent"]
+      "required": ["type", "reason"]
     },
-    "LoopDetectedEvent": {
-      "type": "object",
-      "properties": {
-        "owasp": { "$ref": "#/definitions/OWASPMetadata" },
-        "event": { "type": "string", "const": "loop_detected" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "key_hash": { "type": "string" },
-        "key_name": { "type": "string" },
-        "provider": { "type": "string" },
-        "session_id": { "type": "string" },
-        "rule": { "type": "string", "enum": ["fingerprint", "velocity", "stall"] },
-        "detail": { "type": "string" },
-        "blocked": { "type": "boolean" }
-      },
-      "required": ["owasp", "event", "timestamp", "key_hash", "provider", "session_id", "rule", "blocked"]
-    }
-  }
+    "event": { "type": "string" },
+    "details": { "type": "object" }
+  },
+  "required": ["schema_version", "event_id", "loopers_event_type", "timestamp", "source", "owasp", "action", "event", "details"]
 }

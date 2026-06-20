@@ -19,4 +19,8 @@ __pycache__/
 
 # Node
 node_modules/
-dist/
+dist/
+
+# Excluded by user request
+raw/
+Documentation/icon.svg

@@ -15,6 +15,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	"github.com/CURSED-ME/loopers-oss/internal/loop"
+	"github.com/CURSED-ME/loopers-oss/internal/otel"
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	"github.com/CURSED-ME/loopers-oss/internal/provider"
 	"github.com/CURSED-ME/loopers-oss/internal/provider/anthropic"
@@ -39,6 +40,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/viper"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -98,6 +100,7 @@ const (
 	sessionMaxStepsCtx serverContextKey = "SessionMaxSteps"
 	startTimeCtx       serverContextKey = "StartTime"
 	keyNameCtx         serverContextKey = "KeyName"
+	requestIDCtx       serverContextKey = "ProxyRequestID"
 )
 
 // Server coordinates the proxy operations and HTTP routing.
@@ -111,6 +114,8 @@ type Server struct {
 	loopDetector *loop.Detector
 	shadowMode   bool
 	proxyGroup   *gin.RouterGroup // exposed so tests can register routes with BodyBuffer applied
+	otelEnabled  bool
+	otelShutdown func(context.Context) error
 }
 
 // NewServer initializes and builds the HTTP server with middlewares and ReverseProxy configuration.
@@ -179,6 +184,19 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 
 	shadowMode := viper.GetBool("server.shadow_mode")
 
+	var otelCfg otel.Config
+	var otelShutdown func(context.Context) error
+	var otelEnabled bool
+	if err := viper.UnmarshalKey("otel", &otelCfg); err == nil {
+		otelEnabled = otelCfg.Enabled
+		if shutdown, err := otel.Init(otelCfg, alerting.Version); err != nil {
+			logging.Logger.Error().Err(err).Msg("failed to initialize OTel")
+			otelEnabled = false
+		} else {
+			otelShutdown = shutdown
+		}
+	}
+
 	s := &Server{
 		router:       r,
 		redis:        redisClient,
@@ -187,6 +205,8 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		alerter:      alerter,
 		loopDetector: loopDetector,
 		shadowMode:   shadowMode,
+		otelEnabled:  otelEnabled,
+		otelShutdown: otelShutdown,
 	}
 
 	// Setup custom ReverseProxy with modifyResponse callback
@@ -194,6 +214,11 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 
 	s.setupRoutes()
 	return s
+}
+
+// GetOtelShutdown returns the shutdown function for OpenTelemetry.
+func (s *Server) GetOtelShutdown() func(context.Context) error {
+	return s.otelShutdown
 }
 
 func (s *Server) setupRoutes() {
@@ -213,6 +238,7 @@ func (s *Server) setupRoutes() {
 		maxInflight = 2000
 	}
 	s.proxyGroup.Use(ConcurrencyLimiter(maxInflight))
+	s.proxyGroup.Use(otel.TraceMiddleware(s.otelEnabled))
 	s.proxyGroup.Use(BodyBuffer())
 
 	for _, p := range s.registry.All() {
@@ -290,13 +316,28 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	// 1. Auth check
 	rawProxyKey, exists := c.Get("RawProxyKey")
 	if !exists {
+		reqID := c.GetString("RequestID")
 		requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
+		if s.otelEnabled {
+			otel.PromoteToSampled(trace.SpanFromContext(c.Request.Context()))
+		}
+		if s.alerter != nil {
+			go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Missing Authorization header")
+		}
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
 		return
 	}
 	rawKeyStr := rawProxyKey.(string)
+	reqID := c.GetString("RequestID")
+
 	if !keyring.ValidateLoopersKey(rawKeyStr) {
 		requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
+		if s.otelEnabled {
+			otel.PromoteToSampled(trace.SpanFromContext(c.Request.Context()))
+		}
+		if s.alerter != nil {
+			go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Invalid loopers key format")
+		}
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid loopers key format"})
 		return
 	}
@@ -306,16 +347,34 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	if err != nil {
 		if err.Error() == "key does not exist" {
 			requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
+			if s.otelEnabled {
+				otel.PromoteToSampled(trace.SpanFromContext(c.Request.Context()))
+			}
+			if s.alerter != nil {
+				go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Key not registered")
+			}
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
 		} else {
 			logging.Logger.Error().Err(err).Msg("failed to get key metadata")
 			requestsTotal.WithLabelValues(providerName, "unknown", "503").Inc()
+			if s.otelEnabled {
+				otel.PromoteToSampled(trace.SpanFromContext(c.Request.Context()))
+			}
+			if s.alerter != nil {
+				go s.alerter.TriggerFailClosed(detachedTraceContext(c.Request.Context()), reqID, "Failed to get key metadata")
+			}
 			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "Service Unavailable: internal error"})
 		}
 		return
 	}
 	if meta.Active != "true" {
 		requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
+		if s.otelEnabled {
+			otel.PromoteToSampled(trace.SpanFromContext(c.Request.Context()))
+		}
+		if s.alerter != nil {
+			go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Key revoked")
+		}
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key has been revoked"})
 		return
 	}
@@ -422,8 +481,11 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				estimatedCost = 0
 				goto sessionCheck
 			} else {
+				if s.otelEnabled {
+					otel.PromoteToSampled(trace.SpanFromContext(c.Request.Context()))
+				}
 				if s.alerter != nil {
-					go s.alerter.TriggerBlockAlert(keyHash, meta.Name, providerName, model, "budget", 0, 0, estimatedCost)
+					go s.alerter.TriggerBlockAlert(detachedTraceContext(c.Request.Context()), reqID, keyHash, meta.Name, providerName, model, "budget", 0, 0, estimatedCost)
 				}
 				requestsTotal.WithLabelValues(providerName, model, "429").Inc()
 
@@ -439,6 +501,12 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 		}
 		logging.Logger.Error().Err(err).Msg("Budget check failed closed due to backend connection error")
 		requestsTotal.WithLabelValues(providerName, model, "503").Inc()
+		if s.otelEnabled {
+			otel.PromoteToSampled(trace.SpanFromContext(c.Request.Context()))
+		}
+		if s.alerter != nil {
+			go s.alerter.TriggerFailClosed(detachedTraceContext(c.Request.Context()), reqID, "Budget check backend connection error")
+		}
 		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
 			"error": gin.H{
 				"message": "Budget enforcement service is temporarily unavailable (fail-closed)",
@@ -515,7 +583,7 @@ sessionCheck:
 				s.redis.LeaseManager.ReconcileSpend(c.Request.Context(), keyHash, estimatedCost, 0)
 
 				if s.alerter != nil {
-					go s.alerter.TriggerBlockAlert(keyHash, meta.Name, providerName, model, windowName, val1, val2, estimatedCost)
+					go s.alerter.TriggerBlockAlert(detachedTraceContext(c.Request.Context()), reqID, keyHash, meta.Name, providerName, model, windowName, val1, val2, estimatedCost)
 				}
 
 				requestsTotal.WithLabelValues(providerName, model, "429").Inc()
@@ -553,8 +621,11 @@ sessionCheck:
 					Msg("loop_detected_blocked")
 				requestsTotal.WithLabelValues(providerName, model, "429").Inc()
 
+				if s.otelEnabled {
+					otel.PromoteToSampled(trace.SpanFromContext(c.Request.Context()))
+				}
 				if s.alerter != nil {
-					go s.alerter.TriggerLoopAlert(keyHash, meta.Name, providerName, sessionID, result.Rule, result.Detail, true)
+					go s.alerter.TriggerLoopAlert(detachedTraceContext(c.Request.Context()), reqID, keyHash, meta.Name, providerName, sessionID, result.Rule, result.Detail, true)
 				}
 
 				c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
@@ -568,6 +639,9 @@ sessionCheck:
 
 			// ShouldBlock=false: warn-only mode (stall detection default)
 			loopWarnsTotal.WithLabelValues(providerName, result.Rule).Inc()
+			if s.otelEnabled {
+				otel.PromoteToSampled(trace.SpanFromContext(c.Request.Context()))
+			}
 			logging.Logger.Warn().
 				Str("session_id", sessionID).
 				Str("rule", result.Rule).
@@ -575,7 +649,7 @@ sessionCheck:
 				Msg("loop_detected_warn_only")
 
 			if s.alerter != nil {
-				go s.alerter.TriggerLoopAlert(keyHash, meta.Name, providerName, sessionID, result.Rule, result.Detail, false)
+				go s.alerter.TriggerLoopAlert(detachedTraceContext(c.Request.Context()), reqID, keyHash, meta.Name, providerName, sessionID, result.Rule, result.Detail, false)
 			}
 		}
 	}
@@ -594,6 +668,7 @@ sessionCheck:
 	ctx = context.WithValue(ctx, outputPriceCtx, outputPrice)
 	ctx = context.WithValue(ctx, inputTokensCtx, inputTokens)
 	ctx = context.WithValue(ctx, keyNameCtx, meta.Name)
+	ctx = context.WithValue(ctx, requestIDCtx, reqID)
 	if sessionID != "" {
 		ctx = context.WithValue(ctx, sessionIDCtx, sessionID)
 		ctx = context.WithValue(ctx, sessionBudgetCtx, sessionBudget)
@@ -620,6 +695,7 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 	inputPrice, _ := ctx.Value(inputPriceCtx).(float64)
 	outputPrice, _ := ctx.Value(outputPriceCtx).(float64)
 	sessionID, _ := ctx.Value(sessionIDCtx).(string)
+	reqID, _ := ctx.Value(requestIDCtx).(string)
 
 	if resp.StatusCode != http.StatusOK {
 		s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, reservedCost, 0)
@@ -688,7 +764,7 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 				// Trigger alerts
 				if s.alerter != nil {
 					go func() {
-						statusMap, err := s.redis.GetBudgetStatus(context.Background(), keyHash)
+						statusMap, err := s.redis.GetBudgetStatus(detachedTraceContext(ctx), keyHash)
 						if err == nil {
 							limits := make(map[string]float64)
 							spends := make(map[string]float64)
@@ -696,7 +772,7 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 								limits[k] = v.Limit
 								spends[k] = v.CurrentSpend
 							}
-							s.alerter.TriggerThresholdAlerts(context.Background(), keyHash, keyName, provName, spends, limits)
+							s.alerter.TriggerThresholdAlerts(detachedTraceContext(ctx), reqID, keyHash, keyName, provName, spends, limits)
 						}
 					}()
 				}
@@ -753,7 +829,7 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 		// Trigger alerts
 		if s.alerter != nil {
 			go func() {
-				statusMap, err := s.redis.GetBudgetStatus(context.Background(), keyHash)
+				statusMap, err := s.redis.GetBudgetStatus(detachedTraceContext(ctx), keyHash)
 				if err == nil {
 					limits := make(map[string]float64)
 					spends := make(map[string]float64)
@@ -761,7 +837,7 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 						limits[k] = v.Limit
 						spends[k] = v.CurrentSpend
 					}
-					s.alerter.TriggerThresholdAlerts(context.Background(), keyHash, keyName, provName, spends, limits)
+					s.alerter.TriggerThresholdAlerts(detachedTraceContext(ctx), reqID, keyHash, keyName, provName, spends, limits)
 				}
 			}()
 		}
@@ -787,4 +863,10 @@ func (s *Server) GetAdminRouter() *gin.Engine {
 // GetRegistry retrieves the provider registry. Primarily used for testing.
 func (s *Server) GetRegistry() *provider.Registry {
 	return s.registry
+}
+
+// detachedTraceContext creates a new background context but carries over the trace span context.
+// This is used for firing alerts in goroutines without risking cancellation of the original context.
+func detachedTraceContext(ctx context.Context) context.Context {
+	return trace.ContextWithSpanContext(context.Background(), trace.SpanContextFromContext(ctx))
 }
