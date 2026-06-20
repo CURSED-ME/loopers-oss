@@ -10,7 +10,7 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-var configCache = cache.NewTTLCache(10 * time.Second)
+var configCache = cache.NewTTLCache[string, map[string]string](10 * time.Second)
 var configGroup singleflight.Group
 
 // BudgetExceededError is returned when a budget limit is reached.
@@ -97,7 +97,7 @@ func getWindowConfigs(keyHash string, now time.Time) []WindowInfo {
 
 func (c *Client) getBudgetConfig(ctx context.Context, configKey string) (map[string]string, error) {
 	if val, ok := configCache.Get(configKey); ok {
-		return val.(map[string]string), nil
+		return val, nil
 	}
 
 	v, err, _ := configGroup.Do(configKey, func() (interface{}, error) {
