@@ -30,6 +30,7 @@ const sidebars = {
       items: [
         'concepts/budget-windows',
         'concepts/session-budgets',
+        'concepts/security-events',
         'concepts/concurrency-correctness',
       ],
     },
