@@ -7,38 +7,28 @@ description: Discover the latest features and updates in Loopers.
 
 # What's New in Loopers
 
-Stay up to date with the newest capabilities we've added to the Loopers cost firewall. Features are listed in the order of their release.
+Stay up to date with the newest capabilities we've added to the Loopers cost firewall.
 
 ---
 
-## Unreleased (main)
-
-### Strict Synchronous Budget Guard Loop
+## Strict Synchronous Budget Guard Loop
 We have completely eliminated the possibility of budget leaks. Loopers introduces a powerful synchronous overage reconciliation engine. If an agent tries to burst concurrent requests that exceed the available budget, the new guard loop will strictly enforce the limit before the requests even reach the upstream provider.
 
----
-
-## v1.1.0
-
-### Security Events Webhooks
+## Security Events Webhooks
 Security and auditing just got much easier. You can now configure Loopers to POST structured security events directly to your SIEM or custom webhook endpoints. This allows security teams to instantly react to anomalies, budget breaches, or potential credential leaks without polling the database.
 * **Configure**: Set `audit.webhook_url` in your `loopers.yaml` configuration.
 
-### OpenTelemetry (OTel) Tracing
+## OpenTelemetry (OTel) Tracing
 To help enterprises meet stringent compliance requirements (like the EU AI Act), Loopers now includes first-class OpenTelemetry support. When enabled, every prompt, response, and budget transaction is fully traced across your microservices architecture.
 * **Configure**: Set `otel.enabled: true` in your `loopers.yaml` configuration.
 
-### LangChain & LlamaIndex Native Adapters
+## LangChain & LlamaIndex Native Adapters
 We have officially launched native drop-in adapters for both Python and TypeScript. You no longer need to manually construct HTTP requests to the Loopers proxy. You can just drop `ChatLoopers` into your LangChain workflow or `LoopersLLM` into your LlamaIndex pipelines with a single line of code.
 * **Learn More**: See the [Python SDK](/docs/sdks/python) or [TypeScript SDK](/docs/sdks/typescript) guides.
 
----
-
-## v1.0.0
-
-### 14 Provider Integrations & Stable SDK Launch
-The v1.0.0 release marked the launch of our stable SDKs alongside native proxy support for 14 leading AI providers, including OpenAI, Anthropic, Google Gemini, Fireworks, Ollama, vLLM, and xAI. 
-
-### Session Budgets
+## Session Budgets
 Along with global provider limits, you can now define Session Budgets. This allows you to cap the exact amount of money a specific user, chat session, or autonomous agent can spend in a single run. Simply pass the `session_id` and `session_budget` headers!
 * **Learn More**: Read the deep-dive on [Session Budgets](/docs/concepts/session-budgets).
+
+## 14 Provider Integrations & Stable SDK Launch
+The initial stable release of Loopers marked the launch of our SDKs alongside native proxy support for 14 leading AI providers, including OpenAI, Anthropic, Google Gemini, Fireworks, Ollama, vLLM, and xAI. 
