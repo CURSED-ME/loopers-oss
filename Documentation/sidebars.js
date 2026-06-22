@@ -10,6 +10,11 @@ const sidebars = {
     },
     {
       type: 'doc',
+      id: 'whats-new',
+      label: 'What\'s New',
+    },
+    {
+      type: 'doc',
       id: 'architecture',
       label: 'Architecture',
     },
