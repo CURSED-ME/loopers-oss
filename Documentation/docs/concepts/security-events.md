@@ -13,14 +13,19 @@ To help security teams monitor these anomalies, Loopers emits **Structured Secur
 
 ## Configuration
 
-To enable Security Event webhooks, update your `loopers.yaml` configuration file:
+To enable Security Event webhooks and budget threshold alerts, update your `loopers.yaml` configuration file:
 
 ```yaml
-audit:
+alerting:
   webhook_url: "https://your-siem.example.com/api/webhooks/loopers"
+  thresholds:
+    - percent: 80
+      message: "Warning: Approaching budget limit"
+    - percent: 95
+      message: "Critical: Budget almost depleted"
 ```
 
-Once configured, Loopers will automatically issue an HTTP `POST` request to this URL whenever a critical security event is triggered.
+Once configured, Loopers will automatically issue an HTTP `POST` request to this URL whenever a security event is triggered. Additionally, events are always written to `stdout`.
 
 ---
 
@@ -77,7 +82,7 @@ Loopers emits the following types of events based on internal triggers. You can 
 
 ### 2. Budget Threshold Warnings (`BUDGET_THRESHOLD`)
 * **Event**: `budget_threshold`
-* **Trigger**: Fired when a budget approaches depletion (e.g., reaching 80% or 90% of the allocated funds). The request is allowed through, but the warning is logged.
+* **Trigger**: Fired when a budget approaches user-defined depletion percentages (configured in `alerting.thresholds`). The request is allowed through, but the warning is emitted.
 * **Severity**: `high` (OWASP LLM10:2025 - Unbounded Consumption)
 
 ### 3. Agent Loop Blocks (`LOOP_BLOCK`)
@@ -92,7 +97,7 @@ Loopers emits the following types of events based on internal triggers. You can 
 
 ### 5. Authentication Failures (`AUTH_FAIL`)
 * **Event**: `auth_failure`
-* **Trigger**: Fired when an invalid `Loopers-Key` or `Provider-Key` is supplied, or when a revoked key attempts to access the proxy.
+* **Trigger**: Fired during initial access validation. Specifically triggers on: missing Authorization header, invalid Loopers key format, unregistered key, or revoked key. (Note: Upstream provider keys are not validated by Loopers).
 * **Severity**: `high` (OWASP LLM10:2025 - Unbounded Consumption)
 
 ### 6. Fail-Closed Triggers (`FAIL_CLOSED`)
