@@ -39,7 +39,7 @@ const response = await client.chat.completions.create({
 });
 
 console.log(response.choices[0].message.content);
-console.log(`Cost: ${response.loopersCost.toFixed(4)}`);
+console.log(`Cost: ${response.loopers_cost.toFixed(4)}`);
 ```
 
 ## Streaming Responses
@@ -74,22 +74,6 @@ const model = new ChatOpenAI({
     },
   },
 });
-```
-
-## Error Handling
-
-```typescript
-import { BudgetExceededError, LoopDetectedError } from '@loopers/client';
-
-try {
-  const response = await client.chat.completions.create({ ... });
-} catch (err) {
-  if (err instanceof BudgetExceededError) {
-    console.error(`Budget exceeded for window: ${err.window}`);
-  } else if (err instanceof LoopDetectedError) {
-    console.error(`Loop detected after steps: ${err.steps}`);
-  }
-}
 ```
 
 ## Parameters Reference

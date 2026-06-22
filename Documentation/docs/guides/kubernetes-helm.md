@@ -79,11 +79,6 @@ loopers:
     server:
       port: 8080
       log_level: info
-    proxy:
-      fail_closed: true
-    budget:
-      loop_threshold: 3
-      session_ttl: 24h
 
 autoscaling:
   enabled: true
@@ -128,22 +123,9 @@ If you have a production Redis cluster already running:
 redis:
   enabled: false    # Disable bundled Redis
 
-loopers:
-  config:
-    redis:
-      url: redis://your-redis-cluster:6379
-```
-
-Alternatively, you can use a Kubernetes Secret to store the Redis URL:
-
-```bash
-kubectl create secret generic loopers-redis \
-  --from-literal=url="redis://:password@your-redis:6379" \
-  -n loopers
-```
-
-```yaml
-# values.yaml
-loopers:
-  redisSecretName: loopers-redis
+externalRedis:
+  host: your-redis-cluster
+  port: 6379
+  password: ""
+  db: 0
 ```

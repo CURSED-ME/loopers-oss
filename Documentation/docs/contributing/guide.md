@@ -56,7 +56,7 @@ To build and test Loopers, you will need:
 
 2. Start the proxy server in debug mode:
    ```bash
-   ./loopers serve --log-level debug
+   ./loopers serve -v
    ```
 
 ## Pull Request Guidelines
@@ -108,6 +108,8 @@ loopers-oss/
     cache/          # Simple in-memory cache helpers
     keyring/        # Key creation, storage, and validation
     logging/        # Structured JSON logs
+    loop/           # Deterministic agent loop, velocity, and stall detection
+    otel/           # OpenTelemetry tracing configuration and span helpers
     pricing/        # Model price lookup and cost estimation
     provider/       # Adapters for each AI provider (OpenAI, Gemini, etc.)
     proxy/          # Reverse proxy core and streaming interceptor

@@ -20,7 +20,7 @@ This list is for Loopers maintainers when preparing a new release.
 
 ### Correctness Checks
 - [ ] Test budget limits under a heavy load of requests
-- [ ] Confirm there is zero budget leakage or overspending
+- [ ] Confirm budget leakage is capped within the expected lease limit (e.g., $1.00 USD)
 - [ ] Test fail closed behavior by stopping the Redis server
 - [ ] Test mid stream cutoffs for all streaming AI services
 - [ ] Test agent loop detection with repeating prompts

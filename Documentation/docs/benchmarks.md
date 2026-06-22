@@ -17,7 +17,7 @@ We sent 1,000 requests at the exact same time to both systems using the same com
 
 | Metric | Loopers (Go) | LiteLLM | Result |
 |---|---|---|---|
-| **Budget Leakage** | **0% ($0.00)** | 0.17% ($0.000017) | Loopers stopped all overspending |
+| **Budget Leakage** | **Capped (within lease)** | 0.17% ($0.000017) | Loopers limits leakage using local leases |
 | **Requests Per Second** | **4,623** | around 176 | Loopers is 25 times faster |
 | **Latency Overhead** | **241 milliseconds** | 46,813 milliseconds | Loopers has 190 times lower delay |
 | **Memory Usage** | **41 MB** | 958 MB | Loopers is 23 times lighter |
@@ -31,7 +31,7 @@ Loopers is written in Go. Go is a fast, compiled language that is very good at h
 Loopers uses a highly optimized proxy program built into the Go standard library. This is combined with Redis database scripts that run all budget checks in a single step, making the system incredibly fast.
 
 ### Budget Checking Model
-LiteLLM checks the budget after the AI call is finished. This means the AI can spend your money before LiteLLM even realizes the budget is gone. Loopers checks and reserves the budget before the call is sent. This is why Loopers has zero budget leakage.
+LiteLLM checks the budget after the AI call is finished. This means the AI can spend your money before LiteLLM even realizes the budget is gone. Loopers checks and reserves the budget before the call is sent. While Loopers uses local budget leases to achieve maximum throughput (allowing a potential, controlled leakage of up to $1.00 per key), it guarantees that runaway spend is capped, unlike post-call auditing tools.
 
 ## Feature Comparison
 

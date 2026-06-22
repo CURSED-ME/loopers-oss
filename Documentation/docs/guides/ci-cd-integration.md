@@ -32,8 +32,8 @@ jobs:
       loopers:
         image: ghcr.io/cursed-me/loopers:latest
         env:
-          LOOPERS_REDIS_URL: redis://redis:6379
-          LOOPERS_SERVER_PORT: 8080
+          REDIS_ADDR: redis:6379
+          SERVER_PORT: 8080
         ports:
           - 8080:8080
 
@@ -49,19 +49,15 @@ jobs:
 
       - name: Create CI budget key
         run: |
-          KEY=$(curl -sf -X POST http://localhost:8080/api/keys \
-            -H "Content-Type: application/json" \
-            -d '{"name": "ci-run-${{ github.run_id }}", "provider": "openai"}' \
-            | jq -r '.raw_key')
+          OUTPUT=$(loopers keys create --name "ci-run-${{ github.run_id }}" --provider openai)
+          KEY=$(echo "$OUTPUT" | grep -i "Raw Key" | awk '{print $3}')
+          HASH=$(echo "$OUTPUT" | grep -i "Hash" | awk '{print $2}')
           echo "LOOPERS_KEY=$KEY" >> $GITHUB_ENV
+          echo "KEY_HASH=$HASH" >> $GITHUB_ENV
 
       - name: Set CI budget
         run: |
-          HASH=$(curl -sf http://localhost:8080/api/keys \
-            | jq -r '.[] | select(.name == "ci-run-${{ github.run_id }}") | .hash')
-          curl -sf -X POST http://localhost:8080/api/budget \
-            -H "Content-Type: application/json" \
-            -d "{\"hash\": \"$HASH\", \"daily\": 2.00}"
+          loopers budget set $KEY_HASH --daily 2.00
 
       - name: Run AI tests
         env:
@@ -92,13 +88,13 @@ Configure your test runner to fail immediately when a budget limit is reached:
 ```python
 # conftest.py
 import pytest
-from loopers_client import BudgetExceededError
+from openai import APIStatusError
 
 @pytest.fixture(autouse=True)
 def fail_on_budget_exceeded():
     yield
-    # Check remaining budget after each test
-    # Fail if budget is close to empty
+    # You can catch standard API status errors
+    # and check if 'budget exceeded' is in the message
 ```
 
 ## Cost Reporting
@@ -109,10 +105,8 @@ Report the cost of each run directly to your job summary:
 - name: Report AI Costs
   if: always()
   run: |
-    STATUS=$(curl -sf "http://localhost:8080/api/budget/status/$KEY_HASH")
-    SPENT=$(echo $STATUS | jq -r '.daily.spent')
     echo "### AI API Cost Report" >> $GITHUB_STEP_SUMMARY
-    echo "| Window | Spent | Limit |" >> $GITHUB_STEP_SUMMARY
-    echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
-    echo "| Daily | \$$SPENT | \$2.00 |" >> $GITHUB_STEP_SUMMARY
+    echo '```text' >> $GITHUB_STEP_SUMMARY
+    loopers budget status $KEY_HASH >> $GITHUB_STEP_SUMMARY
+    echo '```' >> $GITHUB_STEP_SUMMARY
 ```

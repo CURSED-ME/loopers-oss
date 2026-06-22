@@ -20,33 +20,25 @@ Imagine two people share a bank account with 10 dollars in it. They both check t
 
 This is a concurrency race condition. In computer programming, it is called a Time of Check to Time of Use (TOCTOU) race. If two requests ask Loopers for permission at the same millisecond, a simple system might let both go through and bypass your limit.
 
-## The Solution: Redis Lua Scripts
+## The Solution: Local Leases and Background Sync
 
-To prevent this problem, Loopers uses special scripts that run inside the Redis database. Redis guarantees that these scripts run in a single, unbreakable step. This is called an atomic operation. No other database commands can run while the script is executing.
+To provide ultra-low latency while preventing massive double spending, Loopers uses a **local lease/budget cache** mechanism. 
 
 ### How the check works
 
-A simplified version of the Redis script does the following:
+1. Loopers reserves a larger chunk of budget (default $1.00 USD) from Redis as a local "lease".
+2. When a request arrives, Loopers performs fast-path atomic deductions locally in memory from this lease (`RemainingNano`).
+3. Loopers reconciles the spent totals back to Redis via background heartbeats every 5 seconds.
+4. An asynchronous background worker runs every 2 seconds to check for threshold limits and block keys globally if the total budget is exceeded.
 
-1. Reads the current spending total from the database.
-2. Reads the limit you set.
-3. Calculates the estimated cost of the new request.
-4. Checks if the current spend plus the estimated cost goes over the limit.
-5. If it does, it returns a block signal immediately.
-6. If it does not, it adds the estimated cost to the spending total and returns an allowed signal.
-
-Because the check and the reservation happen in one single step, 1,000 requests arriving at the same time are queued up and processed one by one. This means your budget limits will never be bypassed.
-
-## Multi Window Atomicity
-
-Loopers checks all five budget windows (minute, hourly, daily, weekly, monthly) in one single Redis transaction. Either all windows pass and the cost is reserved, or the request is blocked. There is no in between state.
+Because of this asynchronous design, the system is not strictly synchronous on every request. While this allows us to achieve incredibly fast proxy speeds, it means there can be up to $1.00 USD of budget leakage per key before the global block propagates. 
 
 ## Refunding Unused Budget
 
-For streaming responses (where the AI sends back text word by word), Loopers overestimates the cost of the request at the start. Once the request is complete, Loopers compares the actual cost to the reserved amount and refunds any unused budget back to your account:
+For streaming responses (where the AI sends back text word by word), Loopers overestimates the cost of the request at the start. Once the request is complete, Loopers compares the actual cost to the reserved amount and adjusts the local lease:
 
-1. Before the call: Reserve the estimated cost.
+1. Before the call: Deduct the estimated cost from the local lease.
 2. During the call: Count the actual tokens in the streaming response.
-3. After the call: Calculate the real cost and adjust the budget total in Redis (refunding any difference).
+3. After the call: Calculate the real cost and add any unused estimated budget back to the local lease.
 
-This ensures your database always has the exact, correct cost recorded.
+The background heartbeat eventually syncs the accurate spent amount to Redis.

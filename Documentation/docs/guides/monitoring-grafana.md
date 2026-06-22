@@ -64,7 +64,6 @@ The dashboard displays:
 * **Budget Window Hits**: Which window is closest to its limit.
 * **Latency**: Request duration metrics.
 * **Cost by Provider**: Cumulative spending per AI provider.
-* **Loops Detected**: stuck agent loops blocked over time.
 
 ## Docker Compose Monitoring
 
@@ -74,11 +73,18 @@ You can run Loopers, Prometheus, and Grafana together:
 # docker-compose.monitoring.yml
 version: '3.8'
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - 6379:6379
+
   loopers:
     image: ghcr.io/cursed-me/loopers:latest
     ports:
       - 8080:8080
       - 9090:9090
+    environment:
+      - REDIS_ADDR=redis:6379
 
   prometheus:
     image: prom/prometheus:latest

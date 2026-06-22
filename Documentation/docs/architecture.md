@@ -15,7 +15,7 @@ Here are the parts that make up Loopers:
 
 * **Your Application**: This is your program or AI agent that wants to send prompts to the AI. It talks directly to Loopers instead of the AI provider.
 * **Loopers Proxy**: This is the core Go program. It intercepts your messages, counts how many words are in them, and checks if you have enough budget left. It does all of this in only 1 or 2 milliseconds, which is extremely fast.
-* **Redis Cache**: This is a database that remembers how much money you have spent. It uses special scripts to update your budget in one single step. This prevents two requests from trying to use the same budget at the same time.
+* **Redis Cache**: This is a database that remembers how much money you have spent. Loopers reserves a large chunk of budget from Redis (a lease) and performs deductions locally in memory, syncing back to Redis every 5 seconds.
 * **AI Provider**: This is the real AI company (like OpenAI or Anthropic) that answers your messages.
 
 ---
@@ -33,8 +33,8 @@ sequenceDiagram
     participant LLM as AI Provider
 
     Client->>Proxy: Send request with Loopers key and real AI key
-    Proxy->>Redis: Check and reserve budget (in one step)
-    alt Budget Exceeded or Redis Down
+    Proxy->>Proxy: Check local budget lease (fetch from Redis if empty)
+    alt Local lease empty or blocked
         Proxy-->>Client: Block request with error
     else Budget Check OK
         Proxy->>LLM: Forward request with real AI key
@@ -47,7 +47,7 @@ sequenceDiagram
                 Proxy-->>Client: Forward response chunk
             end
         end
-        Proxy->>Redis: Reconcile spend and refund unused budget
+        Proxy-->>Proxy: Deduct cost from local lease in memory
     end
 ```
 
@@ -61,8 +61,8 @@ Your real AI keys are only kept in the temporary memory of the computer while yo
 ### Fail Closed Design
 If the Redis database or the Loopers program stops working, Loopers shuts the door and blocks all incoming requests. This protects you from spending money when the system cannot check your limits.
 
-### Atomic Concurrency Control
-Loopers uses special Redis scripts to check and reserve your budget in a single, unbreakable step. This is called an atomic operation. Even if 1,000 requests arrive at the exact same millisecond, they are checked one by one. This means your budget will never be bypassed by concurrent requests.
+### Local Lease Concurrency Control
+Loopers uses a local lease mechanism. It reserves a budget lease (default $1.00) from Redis, then performs fast atomic deductions locally in memory for each request. It reconciles spent totals back to Redis via background heartbeats every 5 seconds. This allows processing thousands of requests per second with extremely low latency.
 
 ---
 

@@ -38,7 +38,7 @@ response = client.chat.completions.create(
 
 print(response.choices[0].message.content)
 print(f"Cost: {response.loopers_cost:.4f}")
-print(f"Steps used: {response.loopers_steps}")
+print(f"Steps used: {response.loopers_session_steps}")
 ```
 
 ## Streaming Responses
@@ -124,15 +124,3 @@ response = llm.complete("Hello, Loopers!")
 | session_budget | float | No | Spend limit in USD for this session |
 | max_steps | integer | No | Maximum AI calls allowed in this session |
 
-## Error Handling
-
-```python
-from loopers_client import BudgetExceededError, LoopDetectedError
-
-try:
-    response = client.chat.completions.create(...)
-except BudgetExceededError as e:
-    print(f"Budget exceeded for window: {e.window}")
-except LoopDetectedError as e:
-    print(f"Loop detected after steps: {e.steps}")
-```

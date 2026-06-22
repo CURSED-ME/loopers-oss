@@ -108,25 +108,17 @@ KEY: KEY_HASH
 
 ---
 
-### loopers budget reset
-
+## serve
 ```bash
-loopers budget reset KEY_HASH [--window minute|hourly|daily|weekly|monthly]
+loopers serve
 ```
 
-Resets spend counters. If you do not specify a window, resets all windows.
+The `serve` command does not accept any flags. Configure the server using the `loopers.yaml` configuration file, or via environment variables (e.g., `SERVER_PORT`, `REDIS_ADDR`, `LOG_LEVEL`).
 
----
-
-## serve Flags
+To enable debug logging, you can set the `LOG_LEVEL` environment variable or use the global `-v` flag:
 
 ```bash
-loopers serve [flags]
+LOG_LEVEL=debug loopers serve
+# or
+loopers serve -v
 ```
-
-| Flag | Default | Description |
-|---|---|---|
-| --port | 8080 | Port to listen on |
-| --redis-url | redis://localhost:6379 | Redis connection URL |
-| --config | loopers.yaml | Path to config file |
-| --log-level | info | Log level (debug, info, warn, error) |

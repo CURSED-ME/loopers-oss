@@ -19,7 +19,7 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
   -H "X-Loopers-Provider-Key: sk-proj-..." \
   -H "X-Loopers-Session-ID: run-42" \
   -H "X-Loopers-Session-Budget: 5.00" \
-  -H "X-Loopers-Max-Steps: 20" \
+  -H "X-Loopers-Session-Max-Steps: 20" \
   -d '{ ... }'
 ```
 
@@ -31,22 +31,20 @@ You can configure sessions using these headers:
 |---|---|---|
 | X-Loopers-Session-ID | string | The name or ID of this specific run |
 | X-Loopers-Session-Budget | float | The maximum money this session can spend |
-| X-Loopers-Max-Steps | integer | The maximum number of AI calls allowed |
+| X-Loopers-Session-Max-Steps | integer | The maximum number of AI calls allowed |
 
 ## Agent Loop Detection
 
 Loopers keeps track of the prompts you send in each session. If you send the exact same prompt multiple times, Loopers realizes that your agent is stuck in a loop and blocks it.
 
-### How it works
-
-1. Loopers hashes each prompt using SHA-256. This converts the prompt text into a unique string of characters.
+1. Loopers hashes each normalized JSON payload using FNV-1a. This converts the payload into a unique fingerprint.
 2. The hash is saved in a Redis list.
 3. If the same hash is sent more than the loop threshold count within the session, Loopers blocks the request.
 4. The session is flagged as blocked, and all future requests for that session will be stopped immediately.
 
-### Why do we use SHA-256?
+### Why do we use FNV-1a?
 
-SHA-256 turns any text into a unique fingerprint. If two prompts have the exact same characters, they will have the exact same fingerprint. This is a very fast and accurate way to detect if your program is repeating the same message over and over again.
+FNV-1a is a fast non-cryptographic hash function that turns normalized JSON payloads (with volatile fields like temperature stripped) into a unique fingerprint. If two prompts have the exact same structure and content, they will have the exact same fingerprint. This is a very fast and accurate way to detect if your program is repeating the same message over and over again.
 
 ## Using the Python SDK
 
@@ -71,7 +69,7 @@ response = client.chat.completions.create(
 
 # You can access the cost and steps used for this run
 print(f"Cost so far: {response.loopers_cost}")
-print(f"Steps used: {response.loopers_steps}")
+print(f"Steps used: {response.loopers_session_steps}")
 ```
 
 ## Self Hosted versus Cloud Loop Detection

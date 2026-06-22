@@ -31,15 +31,15 @@ All windows are optional. You can set limits on only one window, or combine any 
 
 ## How Limits are Checked
 
-Before forwarding a request, Loopers runs a script in Redis:
+Before forwarding a request, Loopers checks your budget:
 
 1. It reads the limits you configured for that key.
-2. It checks how much money has already been spent in each window.
-3. If spending in any window goes over the limit, it blocks the request.
-4. If there is enough budget, it reserves the cost of the request.
-5. After the AI responds, it updates the actual cost and refunds any unused amount.
+2. Loopers checks if it has a local budget lease for the key. If not, it reserves a $1.00 lease from Redis.
+3. It deducts the estimated request cost locally in memory.
+4. If the local lease runs out or the key is blocked, it blocks the request.
+5. It reconciles spent totals back to Redis via background heartbeats every 5 seconds.
 
-This script runs in a single step, which means it is completely safe from concurrency errors.
+This asynchronous local cache mechanism provides ultra-low latency. Because of this background reconciliation, there can be up to $1.00 of budget leakage per key.
 
 ## Checking Current Spend
 
