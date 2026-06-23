@@ -24,12 +24,13 @@ Loopers is a baremetal, zero-delay firewall for the agentic era. It intercepts r
 
 We constantly ship updates to make Loopers the fastest, most secure AI firewall. For full configuration details, visit the **[Loopers Documentation](https://docs.tryloopers.com)**.
 
-1. **Security Events & OpenTelemetry** *(Latest)*: Emits OWASP Top 10 for LLMs security payloads for budget/loop blocks, and supports W3C OTLP tracing with a smart sampling processor designed for EU AI Act compliance.
-2. **Loop Detection Engine v1.1**: Deterministic circuit breakers for autonomous agents, featuring a Fingerprint Ring, Velocity Limiter, and Stall Detector for TOCTOU-safe enforcement.
-3. **Generic OpenAI-Compatible Endpoints**: Bring your own provider! Route traffic to vLLM, local Llama.cpp, or custom proxies while retaining full budget enforcement.
-4. **Dynamic Pricing Fetcher**: Hands-free token accounting. Loopers automatically synchronizes real-time token prices from a remote JSON endpoint.
-5. **Enterprise-Grade Security**: Dedicated, isolated admin ports (`/metrics`), strict TLS enforcement, and secure Redis configurations for bare-metal deployments.
-6. **LangChain & LlamaIndex Adapters**: Drop-in Python SDK wrappers (`ChatLoopers` and `LoopersLLM`) to effortlessly inject session IDs and track step counts in native agent frameworks.
+1. **Model Context Protocol (MCP) Governance** *(Latest)*: Loopers now governs MCP traffic natively. Features include a transparent JSON-RPC 2.0 proxy, per-tool budget enforcement (e.g., $0.05 per Snowflake query), and deterministic tool-call circuit breakers to stop infinite loops. Check out the **[MCP Setup Guide](./Documentation/docs/guides/mcp-setup.md)** to get started in 2 minutes.
+2. **Security Events & OpenTelemetry**: Emits OWASP Top 10 for LLMs security payloads for budget/loop blocks, and supports W3C OTLP tracing with a smart sampling processor designed for EU AI Act compliance.
+3. **Loop Detection Engine v1.1**: Deterministic circuit breakers for autonomous agents, featuring a Fingerprint Ring, Velocity Limiter, and Stall Detector for TOCTOU-safe enforcement.
+4. **Generic OpenAI-Compatible Endpoints**: Bring your own provider! Route traffic to vLLM, local Llama.cpp, or custom proxies while retaining full budget enforcement.
+5. **Dynamic Pricing Fetcher**: Hands-free token accounting. Loopers automatically synchronizes real-time token prices from a remote JSON endpoint.
+6. **Enterprise-Grade Security**: Dedicated, isolated admin ports (`/metrics`), strict TLS enforcement, and secure Redis configurations for bare-metal deployments.
+7. **LangChain & LlamaIndex Adapters**: Drop-in Python SDK wrappers (`ChatLoopers` and `LoopersLLM`) to effortlessly inject session IDs and track step counts in native agent frameworks.
 
 ---
 
@@ -55,6 +56,7 @@ Loopers is engineered specifically as a high-performance infrastructure-level fi
 | **Pre-Call Enforcement** | **Yes (Atomic Lua)** | Yes | Yes | Partial (Post-call) |
 | **Storage Security** | **Zero-Storage (Pass-through)** | In-Memory | In-Process | Database Required |
 | **Agent Loop Circuit Breaking** | **Yes** | No | Yes | No |
+| **MCP Tool-Call Enforcement** | **Yes (Cost-based)** | Policy-based only | No | No |
 | **Fail-Closed Guarantee** | **Yes** | Varies | N/A | No |
 
 ---
@@ -89,6 +91,7 @@ Read the full deep-dive with raw data and methodology in our [Final Benchmark Re
 | **DeepSeek** | `deepseek-chat`, etc. | Supported | Supported | Supported | Supported (tiktoken) |
 | **Together** | Llama 3 on Together, etc. | Supported | Supported | Supported | Supported (tiktoken) |
 | **Generic (BYO)** | Any OpenAI-compatible model (LM Studio, LocalAI, OpenRouter, etc.) | Supported | Supported | Supported | Supported (tiktoken) |
+| **MCP Servers** | Any JSON-RPC 2.0 MCP server | N/A | N/A | Supported (Per-tool Cost) | N/A |
 
 ---
 
@@ -272,7 +275,9 @@ The OSS version is the full circuit-breaker engine — everything you need to se
 | Web dashboard & spend analytics | No | Yes |
 | Team management & RBAC | No | Yes |
 | LLMjacking anomaly detection & auto-revocation | No | Yes |
-| Agent loop circuit breaker (step counter) | Yes | Yes |
+| Agent loop circuit breaker (LLM & MCP) | Yes | Yes |
+| Per-Tool MCP Budgeting | Yes | Yes |
+| MCP Policy-as-Code (OPA/Rego) | No | Yes |
 | Tamper-proof audit log | No | Yes |
 | Slack / PagerDuty / webhook alerting | No | Yes |
 | Multi-project & org-level budget hierarchy | No | Yes |

@@ -11,6 +11,9 @@ Stay up to date with the newest capabilities we've added to the Loopers cost fir
 
 ---
 
+## Model Context Protocol (MCP) Governance
+Loopers now governs Model Context Protocol (MCP) traffic natively. We have shipped a transparent JSON-RPC 2.0 proxy that enforces per-tool cost budgets (e.g., $0.05 per Snowflake query, $0.001 per GitHub API call). It also features a deterministic tool-call circuit breaker to stop agents from executing infinite runaway loops. This feature establishes Loopers as the definitive enforcement layer for agentic workloads.
+
 ## Local Lease Budget Guard Loop
 To provide high-throughput rate-limiting under extreme concurrent loads, Loopers utilizes a local lease/budget cache mechanism. It reserves a budget lease from Redis and performs atomic deductions locally in memory, keeping latency to 1-2 milliseconds. The background guard loop reconciles spent totals and blocks keys within seconds, keeping any potential concurrent budget leakage capped.
 
