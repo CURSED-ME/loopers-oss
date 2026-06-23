@@ -15,6 +15,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	"github.com/CURSED-ME/loopers-oss/internal/loop"
+	"github.com/CURSED-ME/loopers-oss/internal/mcp"
 	"github.com/CURSED-ME/loopers-oss/internal/otel"
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	"github.com/CURSED-ME/loopers-oss/internal/provider"
@@ -85,6 +86,21 @@ var (
 		Help: "Total number of tokens processed by Loopers",
 	}, []string{"provider", "direction"})
 
+	mcpToolCallsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "loopers_mcp_tool_calls_total",
+		Help: "Total MCP tool calls processed",
+	}, []string{"tool_name", "status"})
+
+	mcpCircuitBreaksTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "loopers_mcp_circuit_breaks_total",
+		Help: "Total MCP tool calls blocked by circuit breaker",
+	}, []string{"tool_name"})
+
+	mcpToolSpendUSD = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "loopers_mcp_tool_spend_usd_total",
+		Help: "Total USD spent on MCP tool calls",
+	}, []string{"tool_name", "key_hash"})
+
 	validSessionID = regexp.MustCompile(`^[a-zA-Z0-9._:@/-]{1,256}$`)
 )
 
@@ -116,6 +132,7 @@ type Server struct {
 	proxyGroup   *gin.RouterGroup // exposed so tests can register routes with BodyBuffer applied
 	otelEnabled  bool
 	otelShutdown func(context.Context) error
+	mcpHandler   *mcp.Handler
 }
 
 // NewServer initializes and builds the HTTP server with middlewares and ReverseProxy configuration.
@@ -182,6 +199,16 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		}
 	}
 
+	var mcpCfg mcp.Config
+	var mcpHandler *mcp.Handler
+	if err := viper.UnmarshalKey("mcp", &mcpCfg); err == nil && mcpCfg.Enabled {
+		if redisClient != nil {
+			mcpHandler = mcp.NewHandler(mcpCfg, redisClient, pricingStore, alerter)
+		} else {
+			logging.Logger.Error().Msg("MCP is enabled but Redis client is not initialized. MCP routing will be disabled.")
+		}
+	}
+
 	shadowMode := viper.GetBool("server.shadow_mode")
 
 	var otelCfg otel.Config
@@ -207,6 +234,7 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		shadowMode:   shadowMode,
 		otelEnabled:  otelEnabled,
 		otelShutdown: otelShutdown,
+		mcpHandler:   mcpHandler,
 	}
 
 	// Setup custom ReverseProxy with modifyResponse callback
@@ -245,6 +273,16 @@ func (s *Server) setupRoutes() {
 		providerName := p.Name()
 		s.proxyGroup.POST("/"+providerName+"/*path", func(c *gin.Context) {
 			s.handleProxy(c, providerName)
+		})
+	}
+
+	if s.mcpHandler != nil {
+		mcpGroup := s.router.Group("/mcp")
+		mcpGroup.Use(ConcurrencyLimiter(maxInflight))
+		mcpGroup.Use(otel.TraceMiddleware(s.otelEnabled))
+		mcpGroup.Use(BodyBuffer())
+		mcpGroup.Any("/:server/*path", func(c *gin.Context) {
+			s.mcpHandler.HandleMCP(c)
 		})
 	}
 }

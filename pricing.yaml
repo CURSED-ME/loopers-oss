@@ -190,3 +190,21 @@ providers:
         input_per_1m: 0.00
         output_per_1m: 0.00
 
+tool_costs:
+  defaults:
+    unknown_tool: 0.001
+  tools:
+    "snowflake_query":
+      cost_per_call: 0.05
+    "github_api":
+      cost_per_call: 0.001
+    "web_search":
+      cost_per_call: 0.01
+    "database_read":
+      cost_per_call: 0.005
+    "database_write":
+      cost_per_call: 0.01
+    "file_read":
+      cost_per_call: 0.0001
+    "file_write":
+      cost_per_call: 0.001
