@@ -55,6 +55,15 @@ otel:
   protocol: "grpc"
   sampling_rate: 1.0
 
+mcp:
+  enabled: true
+  servers:
+    - name: "filesystem"
+      url: "http://localhost:3001"
+  circuit_breaker:
+    threshold: 5
+    window_seconds: 60
+
 providers:
   openai:
     base_url: https://api.openai.com
@@ -116,6 +125,16 @@ providers:
 | endpoint | "localhost:4317" | OTLP collector endpoint |
 | protocol | "grpc" | Transport protocol (`grpc` or `http`) |
 | sampling_rate | 1.0 | Probabilistic sampling rate for successful requests. Enforcement events are always traced at 100%. |
+
+### mcp
+
+| Key | Default | Description |
+|---|---|---|
+| enabled | false | Enable MCP JSON-RPC proxy and governance |
+| servers[].name | | Name of the upstream MCP server |
+| servers[].url | | HTTP URL of the upstream MCP server |
+| circuit_breaker.threshold | 5 | Repetition threshold for identical tool calls |
+| circuit_breaker.window_seconds | 60 | Time window in seconds for the tool circuit breaker |
 
 ## Environment Variable Overrides
 

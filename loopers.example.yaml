@@ -49,3 +49,14 @@ otel:
   sampling_rate: 1.0
   # headers:
   #   "x-honeycomb-team": "your-api-key"
+
+# mcp:
+#   enabled: false
+#   servers:
+#     - name: "filesystem"
+#       url: "http://localhost:3001"
+#     - name: "github"
+#       url: "http://localhost:3002"
+#   circuit_breaker:
+#     threshold: 5        # Trip after 5 identical tool calls
+#     window_seconds: 60  # Within a 60-second window

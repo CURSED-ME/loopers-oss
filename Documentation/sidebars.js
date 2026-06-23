@@ -38,6 +38,7 @@ const sidebars = {
       type: 'category',
       label: 'Guides',
       items: [
+        'guides/mcp-setup',
         'guides/ci-cd-integration',
         'guides/kubernetes-helm',
         'guides/monitoring-grafana',

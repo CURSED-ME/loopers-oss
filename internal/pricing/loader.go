@@ -24,8 +24,20 @@ type ProviderConfig struct {
 }
 
 // Config represents the schema of pricing.yaml.
+type ToolCostEntry struct {
+	CostPerCall float64 `mapstructure:"cost_per_call" json:"cost_per_call"`
+}
+
+type ToolCostsConfig struct {
+	Defaults struct {
+		UnknownTool float64 `mapstructure:"unknown_tool" json:"unknown_tool"`
+	} `mapstructure:"defaults" json:"defaults"`
+	Tools map[string]ToolCostEntry `mapstructure:"tools" json:"tools"`
+}
+
 type Config struct {
 	Providers map[string]ProviderConfig `mapstructure:"providers" json:"providers"`
+	ToolCosts ToolCostsConfig           `mapstructure:"tool_costs" json:"tool_costs"`
 }
 
 // Store is a thread-safe in-memory store for LLM pricing.
@@ -157,4 +169,16 @@ func (s *Store) GetFallback(provider, model string) string {
 	}
 
 	return modelPrice.Fallback
+}
+
+// GetToolCost returns the configured cost for the given tool, or the default unknown tool cost if not mapped.
+func (s *Store) GetToolCost(toolName string) float64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	costEntry, hasCost := s.config.ToolCosts.Tools[toolName]
+	if !hasCost {
+		return s.config.ToolCosts.Defaults.UnknownTool
+	}
+	return costEntry.CostPerCall
 }
