@@ -13,8 +13,9 @@ import (
 )
 
 type CircuitBreakerResult struct {
-	Tripped bool
-	Count   int64
+	Tripped      bool
+	TotalTripped bool
+	Count        int64
 }
 
 type CircuitBreaker struct {
@@ -27,16 +28,30 @@ var cbMemberCounter atomic.Uint64
 
 const luaMCPCircuitBreaker = `
 local ring_key      = KEYS[1]
+local total_key     = KEYS[2]
 local hash          = ARGV[1]
 local now           = tonumber(ARGV[2])
 local window        = tonumber(ARGV[3])
 local threshold     = tonumber(ARGV[4])
 local member_id     = ARGV[5]
+local max_total     = tonumber(ARGV[6])
 local cutoff        = now - window
+
+if max_total > 0 then
+    local total = tonumber(redis.call('GET', total_key) or '0')
+    if total >= max_total then
+        return {2, total}
+    end
+end
 
 redis.call('ZREMRANGEBYSCORE', ring_key, '-inf', cutoff)
 redis.call('ZADD', ring_key, now, hash .. ':' .. member_id)
 redis.call('EXPIRE', ring_key, window + 10)
+
+if max_total > 0 then
+    redis.call('INCR', total_key)
+    redis.call('EXPIRE', total_key, 86400)
+end
 
 local members = redis.call('ZRANGE', ring_key, 0, -1)
 local count = 0
@@ -75,19 +90,20 @@ func hashArgs(args []byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func (cb *CircuitBreaker) Check(ctx context.Context, sessionID, toolName string, args []byte) (*CircuitBreakerResult, error) {
+func (cb *CircuitBreaker) Check(ctx context.Context, sessionID, toolName string, args []byte, maxTotalTools int) (*CircuitBreakerResult, error) {
 	if sessionID == "" {
-		return &CircuitBreakerResult{Tripped: false}, nil
+		return &CircuitBreakerResult{Tripped: false, TotalTripped: false}, nil
 	}
 
 	ringKey := fmt.Sprintf("loopers:mcp:cb:%s", sessionID)
+	totalKey := fmt.Sprintf("loopers:mcp:cb:%s:total", sessionID)
 	now := time.Now().Unix()
 
 	// Create a stable hash for the tool call
 	callHash := fmt.Sprintf("%s|%s", toolName, hashArgs(args))
 	memberID := strconv.FormatUint(cbMemberCounter.Add(1), 10)
 
-	res, err := cb.cbScript.Run(ctx, cb.rdb, []string{ringKey}, callHash, strconv.FormatInt(now, 10), strconv.Itoa(cb.cfg.WindowSeconds), strconv.Itoa(cb.cfg.Threshold), memberID).Result()
+	res, err := cb.cbScript.Run(ctx, cb.rdb, []string{ringKey, totalKey}, callHash, strconv.FormatInt(now, 10), strconv.Itoa(cb.cfg.WindowSeconds), strconv.Itoa(cb.cfg.Threshold), memberID, strconv.Itoa(maxTotalTools)).Result()
 	if err != nil {
 		return nil, fmt.Errorf("circuit breaker redis script error: %w", err)
 	}
@@ -97,11 +113,12 @@ func (cb *CircuitBreaker) Check(ctx context.Context, sessionID, toolName string,
 		return nil, fmt.Errorf("unexpected script response type: %v", res)
 	}
 
-	tripped := resSlice[0].(int64) == 1
+	status := resSlice[0].(int64)
 	count := resSlice[1].(int64)
 
 	return &CircuitBreakerResult{
-		Tripped: tripped,
-		Count:   count,
+		Tripped:      status == 1,
+		TotalTripped: status == 2,
+		Count:        count,
 	}, nil
 }

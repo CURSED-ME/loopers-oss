@@ -68,8 +68,9 @@ tool_costs:
 			},
 		},
 		"circuit_breaker": map[string]interface{}{
-			"threshold":      5,
-			"window_seconds": 10,
+			"enabled":        true,
+			"threshold":      2,
+			"window_seconds": 60,
 		},
 	})
 

@@ -1,0 +1,8 @@
+server:
+  port: 8081
+redis:
+  addr: "localhost:6379"
+otel:
+  enabled: true
+  endpoint: "localhost:4317"
+  protocol: "grpc"
