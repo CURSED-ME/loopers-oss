@@ -43,6 +43,16 @@ loop_detection:
     threshold: 3            # repeat prompt count before flagging as loop
     window_seconds: 60      # time window for loop detection in seconds
 
+mcp:
+  enabled: true
+  servers:
+    - name: "mock-server"
+      url: "http://mcp-server:3001"
+  circuit_breaker:
+    enabled: true
+    threshold: 5            # repeat exact tool call block threshold
+    window_seconds: 60      # time window for circuit breaker
+
 alerting:
   webhook_url: "https://example.com/webhook"
   thresholds:

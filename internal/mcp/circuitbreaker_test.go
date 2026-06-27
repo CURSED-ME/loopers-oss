@@ -37,7 +37,7 @@ func TestCircuitBreaker_Check(t *testing.T) {
 	args := []byte(`{"query": "SELECT * FROM db"}`)
 
 	// Call 1
-	res, err := cb.Check(ctx, sessionID, toolName, args)
+	res, err := cb.Check(ctx, sessionID, toolName, args, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -46,7 +46,7 @@ func TestCircuitBreaker_Check(t *testing.T) {
 	}
 
 	// Call 2
-	res, err = cb.Check(ctx, sessionID, toolName, args)
+	res, err = cb.Check(ctx, sessionID, toolName, args, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestCircuitBreaker_Check(t *testing.T) {
 	}
 
 	// Call 3 - threshold is 3, so it should trip
-	res, err = cb.Check(ctx, sessionID, toolName, args)
+	res, err = cb.Check(ctx, sessionID, toolName, args, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

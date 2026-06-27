@@ -31,6 +31,14 @@ If the Redis database or the Loopers program stops working:
 
 This is a fail closed system. It acts like a locked gate that shuts automatically to protect your budget if something goes wrong.
 
+### MCP Governance & Hardening (Phase 1)
+
+Loopers also extends its security model to **Model Context Protocol (MCP)** tools.
+When autonomous agents attempt to call arbitrary functions, Loopers proxies the traffic and enforces strict boundaries:
+
+* **Blast Radius Prevention**: By injecting the `X-Loopers-Session-Max-Servers` header, you can strictly limit the number of distinct MCP servers an agent is allowed to access in a single session. If the agent attempts lateral movement to unauthorized servers, Loopers blocks the request instantly with a `403 Forbidden`.
+* **Exact-Match Circuit Breaker**: If a rogue agent gets stuck in an infinite loop sending the exact same payload repeatedly to an MCP tool, Loopers fingerprints the request in a Redis sliding window and halts the connection with a `429 Too Many Requests`.
+
 ### Loopers Key Security
 
 The keys you create for Loopers (starting with lp) are also secure:

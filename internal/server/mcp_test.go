@@ -88,8 +88,9 @@ tool_costs:
 			},
 		},
 		"circuit_breaker": map[string]interface{}{
-			"threshold":      2, // Trip on 2nd identical call in test
-			"window_seconds": 10,
+			"enabled":        true,
+			"threshold":      2,
+			"window_seconds": 60,
 		},
 	})
 	defer viper.Reset()

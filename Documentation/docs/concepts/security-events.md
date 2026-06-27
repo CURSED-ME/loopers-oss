@@ -100,7 +100,17 @@ Loopers emits the following types of events based on internal triggers. You can 
 * **Trigger**: Fired during initial access validation. Specifically triggers on: missing Authorization header, invalid Loopers key format, unregistered key, or revoked key. (Note: Upstream provider keys are not validated by Loopers).
 * **Severity**: `high` (OWASP LLM10:2025 - Unbounded Consumption)
 
-### 6. Fail-Closed Triggers (`FAIL_CLOSED`)
+### 6. MCP Blast Radius Blocks (`BLAST_RADIUS_BLOCK`)
+* **Event**: `blast_radius_block`
+* **Trigger**: Fired when an agent attempts lateral movement across MCP servers exceeding its `X-Loopers-Session-Max-Servers` limit. 
+* **Severity**: `critical` (OWASP LLM06:2025 - Excessive Agency)
+
+### 7. MCP Circuit Breaker Trips (`CIRCUIT_BREAKER_TRIP`)
+* **Event**: `circuit_breaker_trip`
+* **Trigger**: Fired when an agent is caught in an infinite loop executing the exact same MCP tool invocation.
+* **Severity**: `critical` (OWASP LLM06:2025 - Excessive Agency)
+
+### 8. Fail-Closed Triggers (`FAIL_CLOSED`)
 * **Event**: `fail_closed`
 * **Trigger**: Fired when the underlying Redis database disconnects. Because Loopers operates on a "Fail Closed" guarantee, all traffic is instantly blocked to prevent untracked spending.
 * **Severity**: `critical` (OWASP LLM10:2025 - Unbounded Consumption)

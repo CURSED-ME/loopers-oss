@@ -16,10 +16,13 @@ var keyMetaGroup singleflight.Group
 
 // KeyMetadata represents the fields stored in Redis for a loopers API key.
 type KeyMetadata struct {
-	Name      string `redis:"name"`
-	Provider  string `redis:"provider"`
-	CreatedAt string `redis:"created_at"`
-	Active    string `redis:"active"`
+	Name         string `redis:"name" json:"name"`
+	Provider     string `redis:"provider" json:"provider"`
+	CreatedAt    string `redis:"created_at" json:"created_at"`
+	Active       string `redis:"active" json:"active"`
+	AgentName    string `redis:"agent_name" json:"agent_name,omitempty"`
+	Owner        string `redis:"owner" json:"owner,omitempty"`
+	AllowedTools string `redis:"allowed_tools" json:"allowed_tools,omitempty"` // Phase 2: Not yet enforced. Reserved for agent identity.
 }
 
 // GetKeyMetadata retrieves key metadata from Redis using the SHA-256 hash of the raw key.
