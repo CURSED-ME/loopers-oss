@@ -72,6 +72,9 @@ if HAS_OPENAI:
             session_id: Optional[str] = None,
             session_budget: Optional[float] = None,
             max_steps: Optional[int] = None,
+            session_ttl: Optional[int] = None,
+            max_tools: Optional[int] = None,
+            max_servers: Optional[int] = None,
             **kwargs
         ):
             # Intercept event hooks to capture Loopers response headers
@@ -96,6 +99,12 @@ if HAS_OPENAI:
                 default_headers["X-Loopers-Session-Budget"] = str(session_budget)
             if max_steps is not None:
                 default_headers["X-Loopers-Session-Max-Steps"] = str(max_steps)
+            if session_ttl is not None:
+                default_headers["X-Loopers-Session-TTL"] = str(session_ttl)
+            if max_tools is not None:
+                default_headers["X-Loopers-Session-Max-Tools"] = str(max_tools)
+            if max_servers is not None:
+                default_headers["X-Loopers-Session-Max-Servers"] = str(max_servers)
 
             super().__init__(
                 base_url=base_url,
@@ -123,6 +132,9 @@ if HAS_OPENAI:
             session_id: Optional[str] = None,
             session_budget: Optional[float] = None,
             max_steps: Optional[int] = None,
+            session_ttl: Optional[int] = None,
+            max_tools: Optional[int] = None,
+            max_servers: Optional[int] = None,
             **kwargs
         ):
             event_hooks = kwargs.pop("event_hooks", {})
@@ -146,6 +158,12 @@ if HAS_OPENAI:
                 default_headers["X-Loopers-Session-Budget"] = str(session_budget)
             if max_steps is not None:
                 default_headers["X-Loopers-Session-Max-Steps"] = str(max_steps)
+            if session_ttl is not None:
+                default_headers["X-Loopers-Session-TTL"] = str(session_ttl)
+            if max_tools is not None:
+                default_headers["X-Loopers-Session-Max-Tools"] = str(max_tools)
+            if max_servers is not None:
+                default_headers["X-Loopers-Session-Max-Servers"] = str(max_servers)
 
             super().__init__(
                 base_url=base_url,
@@ -237,6 +255,9 @@ if HAS_ANTHROPIC:
             session_id: Optional[str] = None,
             session_budget: Optional[float] = None,
             max_steps: Optional[int] = None,
+            session_ttl: Optional[int] = None,
+            max_tools: Optional[int] = None,
+            max_servers: Optional[int] = None,
             **kwargs
         ):
             event_hooks = kwargs.pop("event_hooks", {})
@@ -259,6 +280,12 @@ if HAS_ANTHROPIC:
                 default_headers["X-Loopers-Session-Budget"] = str(session_budget)
             if max_steps is not None:
                 default_headers["X-Loopers-Session-Max-Steps"] = str(max_steps)
+            if session_ttl is not None:
+                default_headers["X-Loopers-Session-TTL"] = str(session_ttl)
+            if max_tools is not None:
+                default_headers["X-Loopers-Session-Max-Tools"] = str(max_tools)
+            if max_servers is not None:
+                default_headers["X-Loopers-Session-Max-Servers"] = str(max_servers)
 
             super().__init__(
                 base_url=base_url,
@@ -286,6 +313,9 @@ if HAS_ANTHROPIC:
             session_id: Optional[str] = None,
             session_budget: Optional[float] = None,
             max_steps: Optional[int] = None,
+            session_ttl: Optional[int] = None,
+            max_tools: Optional[int] = None,
+            max_servers: Optional[int] = None,
             **kwargs
         ):
             event_hooks = kwargs.pop("event_hooks", {})
@@ -308,6 +338,12 @@ if HAS_ANTHROPIC:
                 default_headers["X-Loopers-Session-Budget"] = str(session_budget)
             if max_steps is not None:
                 default_headers["X-Loopers-Session-Max-Steps"] = str(max_steps)
+            if session_ttl is not None:
+                default_headers["X-Loopers-Session-TTL"] = str(session_ttl)
+            if max_tools is not None:
+                default_headers["X-Loopers-Session-Max-Tools"] = str(max_tools)
+            if max_servers is not None:
+                default_headers["X-Loopers-Session-Max-Servers"] = str(max_servers)
 
             super().__init__(
                 base_url=base_url,

@@ -8,6 +8,9 @@ export interface LoopersClientOptions {
   sessionId?: string;
   sessionBudget?: number;
   maxSteps?: number;
+  sessionTtl?: number;
+  maxTools?: number;
+  maxServers?: number;
 }
 
 function createLoopersFetch(
@@ -16,6 +19,9 @@ function createLoopersFetch(
   sessionId?: string,
   sessionBudget?: number,
   maxSteps?: number,
+  sessionTtl?: number,
+  maxTools?: number,
+  maxServers?: number,
   customFetch?: typeof fetch
 ) {
   const originalFetch = customFetch || (typeof fetch !== 'undefined' ? fetch : undefined);
@@ -40,6 +46,15 @@ function createLoopersFetch(
     }
     if (maxSteps !== undefined) {
       headers.set('X-Loopers-Session-Max-Steps', String(maxSteps));
+    }
+    if (sessionTtl !== undefined) {
+      headers.set('X-Loopers-Session-TTL', String(sessionTtl));
+    }
+    if (maxTools !== undefined) {
+      headers.set('X-Loopers-Session-Max-Tools', String(maxTools));
+    }
+    if (maxServers !== undefined) {
+      headers.set('X-Loopers-Session-Max-Servers', String(maxServers));
     }
 
     const modifiedInit = {
@@ -108,6 +123,9 @@ export class LoopersOpenAI extends OpenAI {
       sessionId,
       sessionBudget,
       maxSteps,
+      sessionTtl,
+      maxTools,
+      maxServers,
       _providerPath,
       ...openaiOptions
     } = options;
@@ -119,6 +137,9 @@ export class LoopersOpenAI extends OpenAI {
       sessionId,
       sessionBudget,
       maxSteps,
+      sessionTtl,
+      maxTools,
+      maxServers,
       baseFetch
     );
 
@@ -168,6 +189,9 @@ export class LoopersAnthropic extends Anthropic {
       sessionId,
       sessionBudget,
       maxSteps,
+      sessionTtl,
+      maxTools,
+      maxServers,
       ...anthropicOptions
     } = options;
 
@@ -178,6 +202,9 @@ export class LoopersAnthropic extends Anthropic {
       sessionId,
       sessionBudget,
       maxSteps,
+      sessionTtl,
+      maxTools,
+      maxServers,
       baseFetch
     );
 
