@@ -310,7 +310,7 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		attribute.String("loopers.enforcement.action", "allowed"),
 	)
 	defer toolSpan.End()
-	
+
 	c.Request = c.Request.WithContext(ctx)
 
 	h.forward(c, targetURL, &keyHash, toolCost)

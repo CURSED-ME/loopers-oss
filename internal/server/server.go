@@ -15,8 +15,6 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/otel"
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	"github.com/CURSED-ME/loopers-oss/internal/provider"
-	"github.com/CURSED-ME/loopers-oss/internal/ratelimit"
-	"github.com/CURSED-ME/loopers-oss/internal/session"
 	"github.com/CURSED-ME/loopers-oss/internal/provider/anthropic"
 	"github.com/CURSED-ME/loopers-oss/internal/provider/azure"
 	"github.com/CURSED-ME/loopers-oss/internal/provider/bedrock"
@@ -33,6 +31,8 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/provider/vllm"
 	"github.com/CURSED-ME/loopers-oss/internal/provider/xai"
 	"github.com/CURSED-ME/loopers-oss/internal/proxy"
+	"github.com/CURSED-ME/loopers-oss/internal/ratelimit"
+	"github.com/CURSED-ME/loopers-oss/internal/session"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/viper"
@@ -56,17 +56,17 @@ const (
 
 // Server coordinates the proxy operations and HTTP routing.
 type Server struct {
-	router       *gin.Engine
-	redis        *budget.Client
-	pricing      *pricing.Store
-	proxy        *proxy.Proxy
-	registry     *provider.Registry
-	alerter      *alerting.Alerter
-	loopDetector *loop.Detector
-	shadowMode   bool
-	proxyGroup   *gin.RouterGroup // exposed so tests can register routes with BodyBuffer applied
-	otelEnabled  bool
-	otelShutdown func(context.Context) error
+	router         *gin.Engine
+	redis          *budget.Client
+	pricing        *pricing.Store
+	proxy          *proxy.Proxy
+	registry       *provider.Registry
+	alerter        *alerting.Alerter
+	loopDetector   *loop.Detector
+	shadowMode     bool
+	proxyGroup     *gin.RouterGroup // exposed so tests can register routes with BodyBuffer applied
+	otelEnabled    bool
+	otelShutdown   func(context.Context) error
 	mcpHandler     *mcp.Handler
 	rateLimiter    *ratelimit.Limiter
 	sessionManager *session.Manager
@@ -136,7 +136,7 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		if err := viper.UnmarshalKey("loop_detection", &loopCfg); err == nil && loopCfg.Enabled {
 			loopDetector = loop.NewDetector(loopCfg, redisClient.GetUnderlyingClient())
 		}
-		
+
 		var rlCfg ratelimit.Config
 		if err := viper.UnmarshalKey("rate_limit", &rlCfg); err == nil && rlCfg.Enabled {
 			rateLimiter = ratelimit.NewLimiter(rlCfg, redisClient.GetUnderlyingClient())
@@ -171,13 +171,13 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 	}
 
 	s := &Server{
-		router:       r,
-		redis:        redisClient,
-		pricing:      pricingStore,
-		registry:     reg,
-		alerter:      alerter,
-		loopDetector: loopDetector,
-		shadowMode:   shadowMode,
+		router:         r,
+		redis:          redisClient,
+		pricing:        pricingStore,
+		registry:       reg,
+		alerter:        alerter,
+		loopDetector:   loopDetector,
+		shadowMode:     shadowMode,
 		otelEnabled:    otelEnabled,
 		otelShutdown:   otelShutdown,
 		mcpHandler:     mcpHandler,
@@ -319,4 +319,3 @@ func (s *Server) GetRegistry() *provider.Registry {
 func detachedTraceContext(ctx context.Context) context.Context {
 	return trace.ContextWithSpanContext(context.Background(), trace.SpanContextFromContext(ctx))
 }
-
