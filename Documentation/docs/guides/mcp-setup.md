@@ -92,6 +92,7 @@ Here is how you would send a `tools/call` request through Loopers to the "github
 curl -X POST http://localhost:8080/mcp/github/ \
   -H "Authorization: Bearer <RAW_LP_KEY>" \
   -H "X-Loopers-Session-ID: session-123" \
+  -H "X-Loopers-Session-Max-Servers: 2" \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -107,7 +108,8 @@ curl -X POST http://localhost:8080/mcp/github/ \
 ### What Happens Behind the Scenes?
 
 1. **Passthrough**: If the method is `tools/list` or `ping`, Loopers passes it straight to the MCP server securely.
-2. **Circuit Breaking**: If the agent sends the exact same `github_api` call 5 times in a row within 60 seconds, Loopers intercepts the 5th call and returns a `429 Too Many Requests` error, breaking the loop.
-3. **Budget Deduction**: Loopers checks `pricing.yaml`, finds that `github_api` costs `$0.001`, and atomically deducts it from the `lp-abc123` key's budget.
+2. **Blast Radius Tracking**: Loopers parses the `X-Loopers-Session-Max-Servers: 2` header. If `session-123` later attempts to touch a 3rd distinct server (e.g., Snowflake), Loopers instantly blocks the lateral movement with a `403 Forbidden`.
+3. **Circuit Breaking**: If the agent sends the exact same `github_api` call 5 times in a row within 60 seconds, Loopers intercepts the 5th call and returns a `429 Too Many Requests` error, breaking the loop.
+4. **Budget Deduction**: Loopers checks `pricing.yaml`, finds that `github_api` costs `$0.001`, and atomically deducts it from the `lp-abc123` key's budget.
 
 And that's it! Your MCP servers are now protected by Loopers.

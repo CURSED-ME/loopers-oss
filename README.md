@@ -24,7 +24,7 @@ Loopers is a baremetal, zero-delay firewall for the agentic era. It intercepts r
 
 We constantly ship updates to make Loopers the fastest, most secure AI firewall. For full configuration details, visit the **[Loopers Documentation](https://docs.tryloopers.com)**.
 
-1. **Model Context Protocol (MCP) Governance** *(Latest)*: Loopers now governs MCP traffic natively. Features include a transparent JSON-RPC 2.0 proxy, per-tool budget enforcement (e.g., $0.05 per Snowflake query), and deterministic tool-call circuit breakers to stop infinite loops. Check out the **[MCP Setup Guide](./Documentation/docs/guides/mcp-setup.md)** to get started in 2 minutes.
+1. **Model Context Protocol (MCP) Governance** *(Latest)*: Loopers now governs MCP traffic natively. Features include a transparent JSON-RPC 2.0 proxy, per-tool budget enforcement (e.g., $0.05 per Snowflake query), deterministic tool-call circuit breakers to stop infinite loops, and strict Blast Radius (lateral movement) prevention. Check out the **[MCP Setup Guide](./Documentation/docs/guides/mcp-setup.md)** to get started in 2 minutes.
 2. **Security Events & OpenTelemetry**: Emits OWASP Top 10 for LLMs security payloads for budget/loop blocks, and supports W3C OTLP tracing with a smart sampling processor designed for EU AI Act compliance.
 3. **Loop Detection Engine v1.1**: Deterministic circuit breakers for autonomous agents, featuring a Fingerprint Ring, Velocity Limiter, and Stall Detector for TOCTOU-safe enforcement.
 4. **Generic OpenAI-Compatible Endpoints**: Bring your own provider! Route traffic to vLLM, local Llama.cpp, or custom proxies while retaining full budget enforcement.
@@ -57,6 +57,7 @@ Loopers is engineered specifically as a high-performance infrastructure-level fi
 | **Storage Security** | **Zero-Storage (Pass-through)** | In-Memory | In-Process | Database Required |
 | **Agent Loop Circuit Breaking** | **Yes** | No | Yes | No |
 | **MCP Tool-Call Enforcement** | **Yes (Cost-based)** | Policy-based only | No | No |
+| **Agent Blast Radius Limits** | **Yes** | No | No | No |
 | **Fail-Closed Guarantee** | **Yes** | Varies | N/A | No |
 
 ---
@@ -277,6 +278,7 @@ The OSS version is the full circuit-breaker engine — everything you need to se
 | LLMjacking anomaly detection & auto-revocation | No | Yes |
 | Agent loop circuit breaker (LLM & MCP) | Yes | Yes |
 | Per-Tool MCP Budgeting | Yes | Yes |
+| MCP Blast Radius Prevention | Yes | Yes |
 | MCP Policy-as-Code (OPA/Rego) | No | Yes |
 | Tamper-proof audit log | No | Yes |
 | Slack / PagerDuty / webhook alerting | No | Yes |
