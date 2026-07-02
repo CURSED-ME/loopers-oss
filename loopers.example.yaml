@@ -1,5 +1,10 @@
 server:
   port: 8080
+  admin_port: 9090
+  read_header_timeout_seconds: 10
+  read_timeout_seconds: 30
+  write_timeout_seconds: 120
+  idle_timeout_seconds: 120
 redis:
   addr: "localhost:6379"
   password: ""
@@ -8,10 +13,17 @@ log:
   level: "info"
 pricing_path: "./pricing.yaml"
 
+policy:
+  enabled: false
+  policy_dir: "./policies"
+  default_action: "deny"
+
 alerting:
   # Loopers always emits structured security events to stdout.
   # Set webhook_url to additionally POST events to a webhook endpoint.
   webhook_url: "https://example.com/webhook"
+  webhook_secret: "" # Optional HMAC-SHA256 signing key (adds X-Loopers-Signature header)
+  buffer_size: 100
   thresholds:
     - percent: 50
       message: "Budget 50% consumed"

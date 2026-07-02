@@ -91,6 +91,7 @@ providers:
 	defer upstream.Close()
 
 	s := NewServer(redisClient, pricingStore)
+	defer s.Shutdown()
 
 	// Register mock provider through the helper so BodyBuffer middleware is correctly applied
 	s.RegisterProviderRoute(&mockProvider{baseURL: upstream.URL})

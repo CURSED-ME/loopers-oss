@@ -3,6 +3,9 @@ package alerting
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -18,8 +21,10 @@ type ThresholdConfig struct {
 }
 
 type AlertingConfig struct {
-	WebhookURL string            `mapstructure:"webhook_url"`
-	Thresholds []ThresholdConfig `mapstructure:"thresholds"`
+	WebhookURL    string            `mapstructure:"webhook_url"`
+	WebhookSecret string            `mapstructure:"webhook_secret"`
+	BufferSize    int               `mapstructure:"buffer_size"`
+	Thresholds    []ThresholdConfig `mapstructure:"thresholds"`
 }
 
 type AlertEvent interface {
@@ -66,11 +71,15 @@ type Alerter struct {
 }
 
 func NewAlerter(cfg AlertingConfig, rdb *redis.Client) *Alerter {
+	bufSize := cfg.BufferSize
+	if bufSize <= 0 {
+		bufSize = 100
+	}
 	a := &Alerter{
 		cfg:    cfg,
 		client: &http.Client{Timeout: 10 * time.Second},
 		rdb:    rdb,
-		ch:     make(chan AlertEvent, 100),
+		ch:     make(chan AlertEvent, bufSize),
 	}
 	go a.worker()
 	return a
@@ -257,7 +266,21 @@ func (a *Alerter) worker() {
 		fmt.Println(string(payload))
 
 		if a.cfg.WebhookURL != "" {
-			resp, err := a.client.Post(a.cfg.WebhookURL, "application/json", bytes.NewReader(payload))
+			req, err := http.NewRequest("POST", a.cfg.WebhookURL, bytes.NewReader(payload))
+			if err != nil {
+				logging.Logger.Error().Err(err).Str("url", a.cfg.WebhookURL).Msg("failed to create webhook request")
+				continue
+			}
+			req.Header.Set("Content-Type", "application/json")
+
+			if a.cfg.WebhookSecret != "" {
+				mac := hmac.New(sha256.New, []byte(a.cfg.WebhookSecret))
+				mac.Write(payload)
+				sig := hex.EncodeToString(mac.Sum(nil))
+				req.Header.Set("X-Loopers-Signature", "sha256="+sig)
+			}
+
+			resp, err := a.client.Do(req)
 			if err != nil {
 				logging.Logger.Error().Err(err).Str("url", a.cfg.WebhookURL).Msg("failed to deliver webhook alert")
 				continue

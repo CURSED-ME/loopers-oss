@@ -12,6 +12,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/event"
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/policy"
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	"github.com/CURSED-ME/loopers-oss/internal/provider"
 	"github.com/CURSED-ME/loopers-oss/internal/proxy"
@@ -88,12 +89,25 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 		return
 	}
 
+	if allowedProviders := meta.ParseAllowedProviders(); len(allowedProviders) > 0 {
+		if !allowedProviders[providerName] {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error": "key not authorized for this provider",
+				"type":  "provider_not_allowed",
+			})
+			return
+		}
+	}
+
 	if s.otelEnabled {
 		span := trace.SpanFromContext(c.Request.Context())
 		span.SetAttributes(
 			attribute.String("gen_ai.system", providerName),
 			attribute.String("loopers.budget.key_hash", keyHash),
 		)
+		if meta.AgentName != "" {
+			span.SetAttributes(attribute.String("loopers.agent.name", meta.AgentName))
+		}
 	}
 
 	if s.rateLimiter != nil {
@@ -161,6 +175,57 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	if s.otelEnabled {
 		span := trace.SpanFromContext(c.Request.Context())
 		span.SetAttributes(attribute.String("gen_ai.request.model", model))
+	}
+
+	if s.policyEngine != nil {
+		decision, err := s.policyEngine.Evaluate(c.Request.Context(), policy.EvalInput{
+			Agent: policy.AgentContext{
+				KeyHash:   keyHash,
+				Name:      meta.Name,
+				AgentName: meta.AgentName,
+				Owner:     meta.Owner,
+				Provider:  meta.Provider,
+				Tags:      meta.ParseTags(),
+			},
+			Request: policy.RequestContext{
+				Provider: providerName,
+				Model:    model,
+				Method:   "llm_call",
+				Path:     c.Request.URL.Path,
+			},
+		})
+		if err != nil {
+			logging.Logger.Error().Err(err).Msg("policy_engine_evaluation_error")
+			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
+				EventType: "policy_evaluation_error",
+				KeyHash:   keyHash,
+				Provider:  providerName,
+				Model:     model,
+				Reason:    "policy_evaluation_error",
+				Detail:    err.Error(),
+			})
+			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
+				"error": "Policy evaluation failed",
+				"type":  "internal_error",
+			})
+			return
+		}
+		if !decision.Allowed {
+			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
+				EventType: "policy_block",
+				KeyHash:   keyHash,
+				Provider:  providerName,
+				Model:     model,
+				Reason:    "policy_denied",
+				Detail:    decision.Reason,
+			})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error":  "request denied by policy",
+				"type":   "policy_denied",
+				"reason": decision.Reason,
+			})
+			return
+		}
 	}
 
 	// 3. Pricing lookup
@@ -258,6 +323,9 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	ctx = context.WithValue(ctx, outputPriceCtx, outputPrice)
 	ctx = context.WithValue(ctx, inputTokensCtx, inputTokens)
 	ctx = context.WithValue(ctx, keyNameCtx, meta.Name)
+	if meta.AgentName != "" {
+		ctx = context.WithValue(ctx, agentNameCtx, meta.AgentName)
+	}
 	ctx = context.WithValue(ctx, requestIDCtx, reqID)
 	if sessionID != "" {
 		ctx = context.WithValue(ctx, sessionIDCtx, sessionID)
@@ -291,7 +359,9 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 		s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, reservedCost, 0)
 		if sessionID != "" {
 			sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
-			_, _ = s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, -reservedCost).Result()
+			if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, -reservedCost).Err(); err != nil {
+				logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
+			}
 		}
 
 		// Record non-200 request metrics
@@ -303,6 +373,9 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 
 	// Set initial headers for both stream and non-stream
 	resp.Header.Set("X-Loopers-Request-Cost-Estimated", fmt.Sprintf("%.6f", reservedCost))
+	if agentName, ok := ctx.Value(agentNameCtx).(string); ok && agentName != "" {
+		resp.Header.Set("X-Loopers-Agent-Name", agentName)
+	}
 
 	if sessionID != "" {
 		sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
@@ -310,9 +383,27 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 		sessionBudgetKey := fmt.Sprintf("loopers:session:%s:budget", sessionID)
 
 		rdb := s.redis.GetUnderlyingClient()
-		spendVal, _ := rdb.Get(ctx, sessionSpendKey).Float64()
-		stepsVal, _ := rdb.Get(ctx, sessionStepsKey).Int64()
-		budgetVal, _ := rdb.Get(ctx, sessionBudgetKey).Float64()
+		vals, _ := rdb.MGet(ctx, sessionSpendKey, sessionStepsKey, sessionBudgetKey).Result()
+		var spendVal float64
+		var stepsVal int64
+		var budgetVal float64
+		if len(vals) == 3 {
+			if vals[0] != nil {
+				if sVal, err := strconv.ParseFloat(fmt.Sprintf("%v", vals[0]), 64); err == nil {
+					spendVal = sVal
+				}
+			}
+			if vals[1] != nil {
+				if stVal, err := strconv.ParseInt(fmt.Sprintf("%v", vals[1]), 10, 64); err == nil {
+					stepsVal = stVal
+				}
+			}
+			if vals[2] != nil {
+				if bVal, err := strconv.ParseFloat(fmt.Sprintf("%v", vals[2]), 64); err == nil {
+					budgetVal = bVal
+				}
+			}
+		}
 
 		resp.Header.Set("X-Loopers-Session-Spend", fmt.Sprintf("%.6f", spendVal))
 		resp.Header.Set("X-Loopers-Session-Steps", fmt.Sprintf("%d", stepsVal))
@@ -340,7 +431,9 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 				s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, totalPaid, actualCost)
 				if sessionID != "" {
 					sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
-					_, _ = s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-totalPaid).Result()
+					if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-totalPaid).Err(); err != nil {
+						logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
+					}
 				}
 
 				// Instrument stream metrics upon completion
@@ -394,12 +487,32 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 			sessionStepsKey := fmt.Sprintf("loopers:session:%s:steps", sessionID)
 			sessionBudgetKey := fmt.Sprintf("loopers:session:%s:budget", sessionID)
 
-			_, _ = s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-reservedCost).Result()
+			if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-reservedCost).Err(); err != nil {
+				logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
+			}
 
 			rdb := s.redis.GetUnderlyingClient()
-			spendVal, _ := rdb.Get(ctx, sessionSpendKey).Float64()
-			stepsVal, _ := rdb.Get(ctx, sessionStepsKey).Int64()
-			budgetVal, _ := rdb.Get(ctx, sessionBudgetKey).Float64()
+			vals, _ := rdb.MGet(ctx, sessionSpendKey, sessionStepsKey, sessionBudgetKey).Result()
+			var spendVal float64
+			var stepsVal int64
+			var budgetVal float64
+			if len(vals) == 3 {
+				if vals[0] != nil {
+					if sVal, err := strconv.ParseFloat(fmt.Sprintf("%v", vals[0]), 64); err == nil {
+						spendVal = sVal
+					}
+				}
+				if vals[1] != nil {
+					if stVal, err := strconv.ParseInt(fmt.Sprintf("%v", vals[1]), 10, 64); err == nil {
+						stepsVal = stVal
+					}
+				}
+				if vals[2] != nil {
+					if bVal, err := strconv.ParseFloat(fmt.Sprintf("%v", vals[2]), 64); err == nil {
+						budgetVal = bVal
+					}
+				}
+			}
 
 			resp.Header.Set("X-Loopers-Session-Spend", fmt.Sprintf("%.6f", spendVal))
 			resp.Header.Set("X-Loopers-Session-Steps", fmt.Sprintf("%d", stepsVal))

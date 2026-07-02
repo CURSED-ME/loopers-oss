@@ -36,6 +36,7 @@ func setupTestServerWithGenericProviders(t *testing.T, genericProvidersCfg inter
 	viper.Set("generic_providers", genericProvidersCfg)
 
 	s := NewServer(redisClient, pricingStore)
+	defer s.Shutdown()
 	cleanup := func() {
 		mr.Close()
 		redisClient.Close()
@@ -77,6 +78,7 @@ providers:
 	defer viper.Set("generic_providers", nil)
 
 	s := NewServer(redisClient, pricingStore)
+	defer s.Shutdown()
 
 	ctx := context.Background()
 	rdb := redisClient.GetUnderlyingClient()

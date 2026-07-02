@@ -86,9 +86,11 @@ func RequestLogger() gin.HandlerFunc {
 
 		latency := time.Since(start)
 		status := c.Writer.Status()
+		clientIP := c.ClientIP()
 
 		logging.Logger.Info().
 			Str("request_id", reqID).
+			Str("client_ip", clientIP).
 			Str("method", c.Request.Method).
 			Str("path", path).
 			Str("query", raw).

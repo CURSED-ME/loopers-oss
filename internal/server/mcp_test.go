@@ -96,6 +96,7 @@ tool_costs:
 	defer viper.Reset()
 
 	s := NewServer(redisClient, pricingStore)
+	defer s.Shutdown()
 	r := s.GetRouter()
 
 	// 3. Register Key and Budget
@@ -250,6 +251,7 @@ tool_costs:
 
 		// We need to re-init server to pick up new config
 		s2 := NewServer(redisClient, pricingStore)
+		defer s2.Shutdown()
 		r2 := s2.GetRouter()
 
 		// Remaining budget is $0.03.

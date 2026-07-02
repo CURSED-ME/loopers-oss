@@ -75,6 +75,7 @@ tool_costs:
 	})
 
 	s := NewServer(redisClient, pricingStore)
+	defer s.Shutdown()
 
 	// Register key
 	rawKey, _ := keyring.GenerateRawKey()

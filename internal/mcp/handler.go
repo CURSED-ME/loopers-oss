@@ -19,6 +19,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/budget"
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/policy"
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	proxyPkg "github.com/CURSED-ME/loopers-oss/internal/proxy"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
@@ -32,12 +33,13 @@ type Handler struct {
 	alerter        *alerting.Alerter
 	circuitBreaker *CircuitBreaker
 	sessionManager *session.Manager
+	policyEngine   *policy.Engine
 	proxy          *Proxy
 	servers        map[string]string
 	allowedMethods map[string]bool
 }
 
-func NewHandler(cfg Config, budgetClient *budget.Client, pricingStore *pricing.Store, alerter *alerting.Alerter, sessionManager *session.Manager) *Handler {
+func NewHandler(cfg Config, budgetClient *budget.Client, pricingStore *pricing.Store, alerter *alerting.Alerter, sessionManager *session.Manager, policyEngine *policy.Engine) *Handler {
 	cb := NewCircuitBreaker(cfg.CircuitBreaker, budgetClient.GetUnderlyingClient())
 
 	servers := make(map[string]string)
@@ -60,6 +62,7 @@ func NewHandler(cfg Config, budgetClient *budget.Client, pricingStore *pricing.S
 		alerter:        alerter,
 		circuitBreaker: cb,
 		sessionManager: sessionManager,
+		policyEngine:   policyEngine,
 		servers:        servers,
 		allowedMethods: allowedMethods,
 	}
@@ -188,6 +191,75 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 	if err != nil || toolParams == nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid tools/call params"})
 		return
+	}
+
+	if allowedTools := meta.ParseAllowedTools(); len(allowedTools) > 0 {
+		if !allowedTools[toolParams.Name] {
+			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
+				EventType: "tool_not_allowed",
+				KeyHash:   keyHash,
+				ToolName:  toolParams.Name,
+				Reason:    "tool_not_in_allowlist",
+				Detail:    "Agent identity restricts tool access",
+			})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error": "tool not allowed for this key",
+				"type":  "tool_not_allowed",
+			})
+			return
+		}
+	}
+
+	if h.policyEngine != nil {
+		decision, err := h.policyEngine.Evaluate(c.Request.Context(), policy.EvalInput{
+			Agent: policy.AgentContext{
+				KeyHash:   keyHash,
+				Name:      meta.Name,
+				AgentName: meta.AgentName,
+				Owner:     meta.Owner,
+				Provider:  meta.Provider,
+				Tags:      meta.ParseTags(),
+			},
+			Request: policy.RequestContext{
+				Provider:  serverName,
+				Method:    "mcp_tool_call",
+				ToolName:  toolParams.Name,
+				MCPServer: serverName,
+				Path:      c.Request.URL.Path,
+			},
+		})
+		if err != nil {
+			logging.Logger.Error().Err(err).Msg("mcp_policy_evaluation_error")
+			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
+				EventType: "policy_evaluation_error",
+				KeyHash:   keyHash,
+				Provider:  serverName,
+				ToolName:  toolParams.Name,
+				Reason:    "policy_evaluation_error",
+				Detail:    err.Error(),
+			})
+			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
+				"error": "Policy evaluation failed",
+				"type":  "internal_error",
+			})
+			return
+		}
+		if !decision.Allowed {
+			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
+				EventType: "policy_block",
+				KeyHash:   keyHash,
+				Provider:  serverName,
+				ToolName:  toolParams.Name,
+				Reason:    "policy_denied",
+				Detail:    decision.Reason,
+			})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error":  "request denied by policy",
+				"type":   "policy_denied",
+				"reason": decision.Reason,
+			})
+			return
+		}
 	}
 
 	span := trace.SpanFromContext(c.Request.Context())
