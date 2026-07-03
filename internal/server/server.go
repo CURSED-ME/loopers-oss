@@ -160,7 +160,7 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 
 	var policyEngine *policy.Engine
 	var policyCfg policy.Config
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	if err := viper.UnmarshalKey("policy", &policyCfg); err == nil && policyCfg.Enabled {
