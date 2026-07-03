@@ -51,6 +51,7 @@ func TestHealthEndpoint(t *testing.T) {
 	}
 
 	s := NewServer(redisClient, pricingStore)
+	defer s.Shutdown()
 	r := s.GetRouter()
 
 	req, _ := http.NewRequest("GET", "/health", nil)
@@ -89,6 +90,7 @@ func TestBudgetStatusEndpoint(t *testing.T) {
 		t.Fatalf("Failed to load pricing store: %v", err)
 	}
 	s := NewServer(redisClient, pricingStore)
+	defer s.Shutdown()
 	r := s.GetRouter()
 
 	ctx := context.Background()
@@ -175,6 +177,7 @@ func TestSessionIDValidation(t *testing.T) {
 	// Load pricing
 	pricingStore, _ := pricing.LoadStore("../../pricing.yaml")
 	s := NewServer(redisClient, pricingStore)
+	defer s.Shutdown()
 
 	// Register mock provider
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -201,9 +204,10 @@ func TestSessionIDValidation(t *testing.T) {
 		wantCode  int
 	}{
 		{"valid standard", "sess-123", http.StatusOK},
-		{"valid email-like", "user@domain.com", http.StatusOK},
-		{"valid url-like", "org/team/session", http.StatusOK},
-		{"valid complex", "org:team:session_123.45-67@domain/path", http.StatusOK},
+		{"valid dotted", "user.name_01", http.StatusOK},
+		{"invalid email-like", "user@domain.com", http.StatusBadRequest},
+		{"invalid url-like", "org/team/session", http.StatusBadRequest},
+		{"invalid colon", "org:team:session", http.StatusBadRequest},
 		{"invalid space", "sess 123", http.StatusBadRequest},
 		{"invalid special char", "sess!123", http.StatusBadRequest},
 		{"invalid quotes", "sess\"123\"", http.StatusBadRequest},

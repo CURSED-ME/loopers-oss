@@ -26,7 +26,7 @@ The loopers command line application allows you to manage keys, budgets, and the
 Create a new proxy key for a specific AI provider.
 
 ```bash
-loopers keys create --name mykey --provider openai
+loopers keys create --name mykey --provider openai --agent-name research-agent --owner alice --tags "env=prod,team=alpha"
 ```
 
 **Flags:**
@@ -35,6 +35,11 @@ loopers keys create --name mykey --provider openai
 |---|---|---|---|
 | --name | string | Yes | Name for the key |
 | --provider | string | Yes | AI provider name (e.g., openai, anthropic, gemini, azure) |
+| --agent-name | string | No | Name of the agent associated with this key |
+| --owner | string | No | Owner of the key (person or team) |
+| --allowed-tools | string | No | Comma-separated list of allowed MCP tools |
+| --allowed-providers | string | No | Comma-separated list of allowed providers |
+| --tags | string | No | Comma-separated key=value tags for policy evaluation (e.g., `env=prod,team=alpha`) |
 
 **Output:**
 ```
@@ -42,6 +47,8 @@ Created key: mykey
   Raw Key:   lp-a1b2c3d4e5f6...  (Copy now, not shown again)
   Key Hash:  sha256:8f3a7b...
 ```
+
+The `agent-name`, `owner`, and `tags` metadata are used by the [Policy Engine](/docs/guides/policy-engine) for ABAC evaluation and are included in OpenTelemetry spans and security events.
 
 ---
 

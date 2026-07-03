@@ -39,8 +39,9 @@ local cutoff        = now - window
 redis.call('ZREMRANGEBYSCORE', ring_key, '-inf', cutoff)
 -- Add current request
 redis.call('ZADD', ring_key, now, hash .. ':' .. member_id)
--- Set TTL slightly larger than window to ensure cleanup
-redis.call('EXPIRE', ring_key, window + 10)
+-- Set TTL slightly larger than window to ensure cleanup (window is in ms)
+local ttl = math.ceil(window / 1000) + 10
+redis.call('EXPIRE', ring_key, ttl)
 
 -- Count elements in window
 local count = redis.call('ZCARD', ring_key)
@@ -73,11 +74,11 @@ func (l *Limiter) Check(ctx context.Context, keyHash string) (allowed bool, rema
 	}
 
 	ringKey := fmt.Sprintf("loopers:ratelimit:key:%s", keyHash)
-	now := time.Now().Unix()
+	now := time.Now().UnixMilli()
 	memberID := strconv.FormatUint(memberCounter.Add(1), 10)
-	windowSeconds := 60 // requests_per_minute is measured over a 60-second sliding window
+	windowMs := 60 * 1000 // requests_per_minute is measured over a 60-second sliding window
 
-	res, err := l.rateScript.Run(ctx, l.rdb, []string{ringKey}, keyHash, strconv.FormatInt(now, 10), strconv.Itoa(windowSeconds), strconv.Itoa(l.cfg.RequestsPerMinute), memberID).Result()
+	res, err := l.rateScript.Run(ctx, l.rdb, []string{ringKey}, keyHash, strconv.FormatInt(now, 10), strconv.Itoa(windowMs), strconv.Itoa(l.cfg.RequestsPerMinute), memberID).Result()
 	if err != nil {
 		return false, 0, fmt.Errorf("rate limiter redis script error: %w", err)
 	}

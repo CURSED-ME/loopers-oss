@@ -21,13 +21,18 @@ import (
 )
 
 var (
-	keyName      string
-	keyProvider  string
-	minuteLimit  string
-	hourlyLimit  string
-	dailyLimit   string
-	weeklyLimit  string
-	monthlyLimit string
+	keyName             string
+	keyProvider         string
+	keyAgentName        string
+	keyOwner            string
+	keyAllowedTools     string
+	keyAllowedProviders string
+	keyTags             string
+	minuteLimit         string
+	hourlyLimit         string
+	dailyLimit          string
+	weeklyLimit         string
+	monthlyLimit        string
 )
 
 func getRedisClient() (*budget.Client, error) {
@@ -118,21 +123,46 @@ var serveCmd = &cobra.Command{
 			adminPort = "9090"
 		}
 
+		readHeaderTimeoutSec := viper.GetInt("server.read_header_timeout_seconds")
+		if readHeaderTimeoutSec <= 0 {
+			readHeaderTimeoutSec = 10
+		}
+		readTimeoutSec := viper.GetInt("server.read_timeout_seconds")
+		if readTimeoutSec <= 0 {
+			readTimeoutSec = 30
+		}
+		writeTimeoutSec := viper.GetInt("server.write_timeout_seconds")
+		if writeTimeoutSec <= 0 {
+			writeTimeoutSec = 120
+		}
+		idleTimeoutSec := viper.GetInt("server.idle_timeout_seconds")
+		if idleTimeoutSec <= 0 {
+			idleTimeoutSec = 120
+		}
+
 		srv := &http.Server{
-			Addr:    ":" + port,
-			Handler: s.GetRouter(),
+			Addr:              ":" + port,
+			Handler:           s.GetRouter(),
+			ReadHeaderTimeout: time.Duration(readHeaderTimeoutSec) * time.Second,
+			ReadTimeout:       time.Duration(readTimeoutSec) * time.Second,
+			WriteTimeout:      time.Duration(writeTimeoutSec) * time.Second,
+			IdleTimeout:       time.Duration(idleTimeoutSec) * time.Second,
 		}
 
 		adminSrv := &http.Server{
-			Addr:    ":" + adminPort,
-			Handler: s.GetAdminRouter(),
+			Addr:              ":" + adminPort,
+			Handler:           s.GetAdminRouter(),
+			ReadHeaderTimeout: time.Duration(readHeaderTimeoutSec) * time.Second,
+			ReadTimeout:       time.Duration(readTimeoutSec) * time.Second,
+			WriteTimeout:      time.Duration(writeTimeoutSec) * time.Second,
+			IdleTimeout:       time.Duration(idleTimeoutSec) * time.Second,
 		}
 
 		certFile := viper.GetString("server.tls_cert_file")
 		keyFile := viper.GetString("server.tls_key_file")
 		insecureDev := viper.GetBool("server.insecure_dev")
 
-		server.ListenAndServeWithGracefulShutdown(srv, adminSrv, redisClient, certFile, keyFile, insecureDev, s.GetOtelShutdown())
+		server.ListenAndServeWithGracefulShutdown(srv, adminSrv, redisClient, certFile, keyFile, insecureDev, s.GetOtelShutdown(), s.Shutdown)
 	},
 }
 
@@ -230,12 +260,29 @@ var keysCreateCmd = &cobra.Command{
 		rdb := redisClient.GetUnderlyingClient()
 
 		key := fmt.Sprintf("loopers:key:%s", hash)
-		err = rdb.HSet(ctx, key, map[string]interface{}{
+		fields := map[string]interface{}{
 			"name":       keyName,
 			"provider":   keyProvider,
 			"created_at": time.Now().UTC().Format(time.RFC3339),
 			"active":     "true",
-		}).Err()
+		}
+		if keyAgentName != "" {
+			fields["agent_name"] = keyAgentName
+		}
+		if keyOwner != "" {
+			fields["owner"] = keyOwner
+		}
+		if keyAllowedTools != "" {
+			fields["allowed_tools"] = keyAllowedTools
+		}
+		if keyAllowedProviders != "" {
+			fields["allowed_providers"] = keyAllowedProviders
+		}
+		if keyTags != "" {
+			fields["tags"] = keyTags
+		}
+
+		err = rdb.HSet(ctx, key, fields).Err()
 
 		if err != nil {
 			logging.Logger.Fatal().Err(err).Msg("failed to store key in redis")
@@ -260,7 +307,7 @@ var keysListCmd = &cobra.Command{
 
 		iter := rdb.Scan(ctx, 0, "loopers:key:*", 0).Iterator()
 
-		headers := []string{"Hash", "Name", "Provider", "Created At", "Active"}
+		headers := []string{"Hash", "Name", "Agent", "Owner", "Provider", "Created At", "Active"}
 		var rows [][]string
 
 		for iter.Next(ctx) {
@@ -285,7 +332,7 @@ var keysListCmd = &cobra.Command{
 					activeStr = "✓"
 				}
 
-				rows = append(rows, []string{displayHash, meta.Name, meta.Provider, timeStr, activeStr})
+				rows = append(rows, []string{displayHash, meta.Name, meta.AgentName, meta.Owner, meta.Provider, timeStr, activeStr})
 			}
 		}
 
@@ -719,6 +766,11 @@ func init() {
 	// Keys commands
 	keysCreateCmd.Flags().StringVar(&keyName, "name", "", "Name of the proxy key (required)")
 	keysCreateCmd.Flags().StringVar(&keyProvider, "provider", "", "Provider for the key (openai|anthropic|gemini|bedrock|azure|mistral|groq|cohere|deepseek|together|ollama|fireworks|xai|vllm) (required)")
+	keysCreateCmd.Flags().StringVar(&keyAgentName, "agent-name", "", "Name of the agent associated with this key (optional)")
+	keysCreateCmd.Flags().StringVar(&keyOwner, "owner", "", "Owner of the key (optional)")
+	keysCreateCmd.Flags().StringVar(&keyAllowedTools, "allowed-tools", "", "Comma-separated list of allowed tools (optional)")
+	keysCreateCmd.Flags().StringVar(&keyAllowedProviders, "allowed-providers", "", "Comma-separated list of allowed providers (optional)")
+	keysCreateCmd.Flags().StringVar(&keyTags, "tags", "", "Comma-separated key=value tags for policy evaluation (optional)")
 	keysCmd.AddCommand(keysCreateCmd)
 	keysCmd.AddCommand(keysListCmd)
 	keysCmd.AddCommand(keysRevokeCmd)

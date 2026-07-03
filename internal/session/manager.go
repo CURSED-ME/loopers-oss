@@ -9,7 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var validSessionID = regexp.MustCompile(`^[a-zA-Z0-9._:@/-]{1,256}$`)
+var validSessionID = regexp.MustCompile(`^[a-zA-Z0-9._-]{1,256}$`)
 
 // IsValidID checks if a session ID conforms to the allowed format.
 func IsValidID(sessionID string) bool {
@@ -34,10 +34,16 @@ func (m *Manager) EnforceAbsoluteTTL(ctx context.Context, sessionID string, maxT
 	createdKey := fmt.Sprintf("loopers:session:%s:created", sessionID)
 	now := time.Now().Unix()
 
-	// Try to set the creation time only if it doesn't exist
-	// We set a very long TTL (e.g., 7 days) so we remember it expired,
-	// but it doesn't live in Redis forever.
-	set, err := m.rdb.SetNX(ctx, createdKey, now, 7*24*time.Hour).Result()
+	// We set the TTL to max(7 days, maxTTLSeconds + 1 day) to ensure
+	// the key doesn't prematurely expire while the session might still be active.
+	// If it expired, it would reset the start time and bypass the limit.
+	ttl := 7 * 24 * time.Hour
+	requiredTTL := time.Duration(maxTTLSeconds)*time.Second + (24 * time.Hour)
+	if requiredTTL > ttl {
+		ttl = requiredTTL
+	}
+
+	set, err := m.rdb.SetNX(ctx, createdKey, now, ttl).Result()
 	if err != nil {
 		return false, fmt.Errorf("redis error checking session TTL: %w", err)
 	}

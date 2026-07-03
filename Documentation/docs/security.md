@@ -39,6 +39,27 @@ When autonomous agents attempt to call arbitrary functions, Loopers proxies the 
 * **Blast Radius Prevention**: By injecting the `X-Loopers-Session-Max-Servers` header, you can strictly limit the number of distinct MCP servers an agent is allowed to access in a single session. If the agent attempts lateral movement to unauthorized servers, Loopers blocks the request instantly with a `403 Forbidden`.
 * **Exact-Match Circuit Breaker**: If a rogue agent gets stuck in an infinite loop sending the exact same payload repeatedly to an MCP tool, Loopers fingerprints the request in a Redis sliding window and halts the connection with a `429 Too Many Requests`.
 
+### Policy-as-Code (OPA/Rego)
+
+Loopers includes an embedded **Open Policy Agent (OPA)** engine that evaluates every request — both LLM calls and MCP tool calls — against your `.rego` policy files before forwarding upstream. This enables:
+
+* **Attribute-Based Access Control (ABAC)**: Write policies that reference agent identity (`owner`, `agent_name`, `tags`), request context (`provider`, `model`, `tool_name`), and session state to make fine-grained allow/deny decisions.
+* **Default-Deny Posture**: Configure `default_action: "deny"` so that any unmapped agent, model, or tool is automatically blocked.
+* **Hot Reload**: Policy files are watched via `fsnotify` and recompiled within 500ms of any change, without dropping active connections.
+* **Deny Overrides Allow**: If both an `allow` and a `deny` rule match for the same request, the deny always wins.
+
+### Agent Identity
+
+Every proxy key can carry rich identity metadata set at creation time:
+
+* `agent_name`: The name of the agent using the key (e.g., `research-agent`).
+* `owner`: The human or team responsible for the key (e.g., `alice`).
+* `allowed_tools`: A comma-separated allowlist of MCP tools the key can invoke.
+* `allowed_providers`: A comma-separated allowlist of providers the key can call.
+* `tags`: Arbitrary key=value pairs for policy evaluation (e.g., `env=prod,team=alpha`).
+
+This metadata is injected into the OPA input on every request, attached to OpenTelemetry trace spans, and included in security event webhook payloads for complete auditability.
+
 ### Loopers Key Security
 
 The keys you create for Loopers (starting with lp) are also secure:

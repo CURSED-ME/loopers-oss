@@ -59,6 +59,7 @@ providers:
 	defer upstream.Close()
 
 	s := NewServer(redisClient, pricingStore)
+	defer s.Shutdown()
 	s.RegisterProviderRoute(&mockProvider{baseURL: upstream.URL})
 
 	ctx := context.Background()

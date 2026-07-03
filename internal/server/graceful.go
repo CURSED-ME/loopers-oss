@@ -13,7 +13,7 @@ import (
 )
 
 // ListenAndServeWithGracefulShutdown starts the HTTP server and listens for SIGTERM/SIGINT.
-func ListenAndServeWithGracefulShutdown(srv *http.Server, adminSrv *http.Server, redisClient interface{ Close() error }, certFile, keyFile string, insecureDev bool, otelShutdown func(context.Context) error) {
+func ListenAndServeWithGracefulShutdown(srv *http.Server, adminSrv *http.Server, redisClient interface{ Close() error }, certFile, keyFile string, insecureDev bool, otelShutdown func(context.Context) error, extraShutdowns ...func()) {
 	// Channel to listen for signals
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -62,6 +62,12 @@ func ListenAndServeWithGracefulShutdown(srv *http.Server, adminSrv *http.Server,
 		logging.Logger.Error().Err(err).Msg("Server forced to shutdown prematurely")
 	} else {
 		logging.Logger.Info().Msg("HTTP server closed gracefully")
+	}
+
+	for _, shutdownFn := range extraShutdowns {
+		if shutdownFn != nil {
+			shutdownFn()
+		}
 	}
 
 	if adminSrv != nil {

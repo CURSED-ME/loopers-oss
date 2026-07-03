@@ -12,14 +12,16 @@ type cacheEntry[V any] struct {
 
 // TTLCache is a thread-safe cache with TTL.
 type TTLCache[K comparable, V any] struct {
-	m   sync.Map
-	ttl time.Duration
+	m      sync.Map
+	ttl    time.Duration
+	stopCh chan struct{}
 }
 
 // NewTTLCache creates a new TTLCache with the specified TTL and starts a background sweep.
 func NewTTLCache[K comparable, V any](ttl time.Duration) *TTLCache[K, V] {
 	c := &TTLCache[K, V]{
-		ttl: ttl,
+		ttl:    ttl,
+		stopCh: make(chan struct{}),
 	}
 	go c.startSweep()
 	return c
@@ -27,15 +29,32 @@ func NewTTLCache[K comparable, V any](ttl time.Duration) *TTLCache[K, V] {
 
 func (c *TTLCache[K, V]) startSweep() {
 	ticker := time.NewTicker(time.Minute)
-	for range ticker.C {
-		now := time.Now()
-		c.m.Range(func(key, value interface{}) bool {
-			entry := value.(cacheEntry[V])
-			if now.After(entry.expiresAt) {
-				c.m.Delete(key)
-			}
-			return true
-		})
+	defer ticker.Stop()
+	for {
+		select {
+		case <-c.stopCh:
+			return
+		case <-ticker.C:
+			now := time.Now()
+			c.m.Range(func(key, value interface{}) bool {
+				entry := value.(cacheEntry[V])
+				if now.After(entry.expiresAt) {
+					c.m.Delete(key)
+				}
+				return true
+			})
+		}
+	}
+}
+
+// Close stops the background sweep goroutine.
+func (c *TTLCache[K, V]) Close() {
+	if c.stopCh != nil {
+		select {
+		case <-c.stopCh:
+		default:
+			close(c.stopCh)
+		}
 	}
 }
 

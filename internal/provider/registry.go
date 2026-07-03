@@ -18,19 +18,20 @@ func NewRegistry() *Registry {
 	}
 }
 
-// Register adds a provider to the registry. It panics if the provider name is empty or already registered.
-func (r *Registry) Register(p Provider) {
+// Register adds a provider to the registry. Returns an error if the provider name is empty or already registered.
+func (r *Registry) Register(p Provider) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	name := p.Name()
 	if name == "" {
-		panic("provider name cannot be empty")
+		return fmt.Errorf("provider name cannot be empty")
 	}
 	if _, exists := r.providers[name]; exists {
-		panic(fmt.Sprintf("provider %q already registered", name))
+		return fmt.Errorf("provider %q already registered", name)
 	}
 	r.providers[name] = p
+	return nil
 }
 
 // Get retrieves a provider by name. Returns an error if not found.

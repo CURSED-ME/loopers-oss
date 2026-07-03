@@ -13,6 +13,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/loop"
 	"github.com/CURSED-ME/loopers-oss/internal/mcp"
 	"github.com/CURSED-ME/loopers-oss/internal/otel"
+	"github.com/CURSED-ME/loopers-oss/internal/policy"
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	"github.com/CURSED-ME/loopers-oss/internal/provider"
 	"github.com/CURSED-ME/loopers-oss/internal/provider/anthropic"
@@ -52,6 +53,7 @@ const (
 	startTimeCtx       serverContextKey = "StartTime"
 	keyNameCtx         serverContextKey = "KeyName"
 	requestIDCtx       serverContextKey = "ProxyRequestID"
+	agentNameCtx       serverContextKey = "AgentName"
 )
 
 // Server coordinates the proxy operations and HTTP routing.
@@ -70,6 +72,9 @@ type Server struct {
 	mcpHandler     *mcp.Handler
 	rateLimiter    *ratelimit.Limiter
 	sessionManager *session.Manager
+	policyEngine   *policy.Engine
+	ctx            context.Context
+	cancel         context.CancelFunc
 }
 
 // NewServer initializes and builds the HTTP server with middlewares and ReverseProxy configuration.
@@ -78,20 +83,25 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 	r := gin.New()
 
 	reg := provider.NewRegistry()
-	reg.Register(openai.NewOpenAIProvider())
-	reg.Register(anthropic.NewAnthropicProvider())
-	reg.Register(gemini.NewGeminiProvider())
-	reg.Register(bedrock.NewBedrockProvider())
-	reg.Register(azure.NewAzureProvider())
-	reg.Register(mistral.NewMistralProvider())
-	reg.Register(groq.NewGroqProvider())
-	reg.Register(cohere.NewCohereProvider())
-	reg.Register(deepseek.NewDeepSeekProvider())
-	reg.Register(together.NewTogetherProvider())
-	reg.Register(ollama.NewOllamaProvider())
-	reg.Register(fireworks.NewFireworksProvider())
-	reg.Register(xai.NewXAIProvider())
-	reg.Register(vllm.NewVLLMProvider())
+	mustRegister := func(p provider.Provider) {
+		if err := reg.Register(p); err != nil {
+			logging.Logger.Fatal().Err(err).Msg("Failed to register provider")
+		}
+	}
+	mustRegister(openai.NewOpenAIProvider())
+	mustRegister(anthropic.NewAnthropicProvider())
+	mustRegister(gemini.NewGeminiProvider())
+	mustRegister(bedrock.NewBedrockProvider())
+	mustRegister(azure.NewAzureProvider())
+	mustRegister(mistral.NewMistralProvider())
+	mustRegister(groq.NewGroqProvider())
+	mustRegister(cohere.NewCohereProvider())
+	mustRegister(deepseek.NewDeepSeekProvider())
+	mustRegister(together.NewTogetherProvider())
+	mustRegister(ollama.NewOllamaProvider())
+	mustRegister(fireworks.NewFireworksProvider())
+	mustRegister(xai.NewXAIProvider())
+	mustRegister(vllm.NewVLLMProvider())
 
 	type GenericProviderConfig struct {
 		Name    string `mapstructure:"name"`
@@ -117,7 +127,10 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 				logging.Logger.Error().Msgf("Generic provider %q conflicts with an already-registered provider; skipping to prevent shadowing", gp.Name)
 				continue
 			}
-			reg.Register(generic.NewGenericProvider(gp.Name, gp.BaseURL))
+			if err := reg.Register(generic.NewGenericProvider(gp.Name, gp.BaseURL)); err != nil {
+				logging.Logger.Error().Err(err).Msgf("Failed to register generic provider %q", gp.Name)
+				continue
+			}
 			logging.Logger.Info().Msgf("Registered generic provider: %s (%s)", gp.Name, gp.BaseURL)
 		}
 	}
@@ -145,11 +158,31 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		sessionManager = session.NewManager(redisClient.GetUnderlyingClient())
 	}
 
+	var policyEngine *policy.Engine
+	var policyCfg policy.Config
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	if err := viper.UnmarshalKey("policy", &policyCfg); err == nil && policyCfg.Enabled {
+		engine, err := policy.NewEngine(policyCfg)
+		if err != nil {
+			logging.Logger.Fatal().Err(err).Msg("Failed to initialize policy engine")
+		}
+		policyEngine = engine
+
+		// Start watcher in background
+		go func() {
+			if err := policyEngine.StartWatcher(ctx); err != nil {
+				logging.Logger.Error().Err(err).Msg("Failed to start policy watcher")
+			}
+		}()
+	}
+
 	var mcpCfg mcp.Config
 	var mcpHandler *mcp.Handler
 	if err := viper.UnmarshalKey("mcp", &mcpCfg); err == nil && mcpCfg.Enabled {
 		if redisClient != nil {
-			mcpHandler = mcp.NewHandler(mcpCfg, redisClient, pricingStore, alerter, sessionManager)
+			mcpHandler = mcp.NewHandler(mcpCfg, redisClient, pricingStore, alerter, sessionManager, policyEngine)
 		} else {
 			logging.Logger.Error().Msg("MCP is enabled but Redis client is not initialized. MCP routing will be disabled.")
 		}
@@ -183,6 +216,9 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		mcpHandler:     mcpHandler,
 		rateLimiter:    rateLimiter,
 		sessionManager: sessionManager,
+		policyEngine:   policyEngine,
+		ctx:            ctx,
+		cancel:         cancel,
 	}
 
 	// Setup custom ReverseProxy with modifyResponse callback
@@ -195,6 +231,16 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 // GetOtelShutdown returns the shutdown function for OpenTelemetry.
 func (s *Server) GetOtelShutdown() func(context.Context) error {
 	return s.otelShutdown
+}
+
+// Shutdown gracefully stops background tasks associated with the Server.
+func (s *Server) Shutdown() {
+	if s.cancel != nil {
+		s.cancel()
+	}
+	if s.alerter != nil {
+		s.alerter.Close()
+	}
 }
 
 func (s *Server) setupRoutes() {
@@ -238,7 +284,7 @@ func (s *Server) setupRoutes() {
 // RegisterProviderRoute registers a provider and adds its route to the proxy group (with BodyBuffer applied).
 // This is intended for use in tests only.
 func (s *Server) RegisterProviderRoute(p provider.Provider) {
-	s.registry.Register(p)
+	_ = s.registry.Register(p)
 	providerName := p.Name()
 	s.proxyGroup.POST("/"+providerName+"/*path", func(c *gin.Context) {
 		s.handleProxy(c, providerName)
