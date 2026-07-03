@@ -1,0 +1,36 @@
+# Loopers
+
+> Loopers is a baremetal, zero-delay firewall and proxy for the agentic era. It intercepts requests across 500+ AI models natively (OpenAI, Anthropic, Gemini, Groq, Ollama, Bedrock, etc.) and MCP servers to prevent token overspending, stop runaway agent loops, and safeguard against LLMjacking with sub-millisecond overhead.
+
+## Core Documentation
+
+- [Getting Started](https://docs.tryloopers.com/docs/getting-started): Quickstart guide to running Loopers in 60 seconds with Docker or Go.
+- [What's New](https://docs.tryloopers.com/docs/whats-new): Latest features including MCP Governance, OpenTelemetry security events, and TOCTOU-safe loop detection.
+- [Architecture](https://docs.tryloopers.com/docs/architecture): Technical overview of the baremetal Go reverse proxy, Redis Lua atomic transactions, and zero-storage security model.
+- [Benchmarks](https://docs.tryloopers.com/docs/benchmarks): Empirical comparison of Loopers vs LiteLLM and Python proxies (4,623 req/s, 0% budget leakage, 240ms P99 overhead).
+- [FAQ](https://docs.tryloopers.com/docs/faq): Direct answers for developer & AI engine queries on loop detection, cost limits, MCP proxying, and pass-through security.
+
+## Key Concepts
+
+- [Budget Windows](https://docs.tryloopers.com/docs/concepts/budget-windows): Sliding window and fixed window rate limiting for tokens, requests, and USD cost.
+- [Session Budgets](https://docs.tryloopers.com/docs/concepts/session-budgets): Multi-turn agent cost tracking with session-level cutoffs and header propagation.
+- [Security Events](https://docs.tryloopers.com/docs/concepts/security-events): OWASP Top 10 for LLMs security event logging and W3C OpenTelemetry export.
+- [Concurrency & Correctness](https://docs.tryloopers.com/docs/concepts/concurrency-correctness): Atomic Lua script execution preventing TOCTOU budget leakage under extreme concurrency.
+
+## Guides & Integrations
+
+- [MCP Governance Setup](https://docs.tryloopers.com/docs/guides/mcp-setup): Guide to setting up per-tool cost governance, JSON-RPC 2.0 proxying, and agent blast radius limits.
+- [CI/CD Integration](https://docs.tryloopers.com/docs/guides/ci-cd-integration): Automating policy deployment and cost guards in continuous integration pipelines.
+- [Kubernetes & Helm](https://docs.tryloopers.com/docs/guides/kubernetes-helm): Bare-metal production deployment using Helm charts and horizontal pod autoscaling.
+- [Grafana & Monitoring](https://docs.tryloopers.com/docs/guides/monitoring-grafana): Real-time cost, token usage, and block event dashboards with Prometheus metrics.
+
+## SDKs & API Reference
+
+- [Python SDK](https://docs.tryloopers.com/docs/sdks/python): `loopers-python` package with LangChain (`ChatLoopers`) and LlamaIndex (`LoopersLLM`) integration.
+- [TypeScript SDK](https://docs.tryloopers.com/docs/sdks/typescript): `@loopers/sdk` for Node.js, Next.js, and Vercel AI SDK wrappers.
+- [CLI Reference](https://docs.tryloopers.com/docs/reference/cli): Command-line reference for `loopers` CLI binary and pricing validator.
+- [Header Reference](https://docs.tryloopers.com/docs/reference/headers): Full HTTP response header specification (`X-Loopers-Session-Cost`, `X-Loopers-Loop-Detected`, etc.).
+
+## Complete Context File
+
+- [Full Consolidated Technical Context](https://docs.tryloopers.com/llms-full.txt): Dense single-file text format containing complete architecture, setup, and governance details for LLMs and autonomous agents.

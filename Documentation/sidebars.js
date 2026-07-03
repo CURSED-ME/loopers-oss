@@ -15,6 +15,11 @@ const sidebars = {
     },
     {
       type: 'doc',
+      id: 'faq',
+      label: 'FAQ',
+    },
+    {
+      type: 'doc',
       id: 'architecture',
       label: 'Architecture',
     },
