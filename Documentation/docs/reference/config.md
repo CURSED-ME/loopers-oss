@@ -59,20 +59,20 @@ alerting:
     - percent: 80
       message: "Budget 80% consumed — approaching limit"
 
+policy:
+  enabled: true
+  policy_dir: "./policies"
+  default_action: "deny"
+
+rate_limit:
+  enabled: true
+  requests_per_minute: 60
+
 otel:
   enabled: true
   endpoint: "localhost:4317"
   protocol: "grpc"
   sampling_rate: 1.0
-
-mcp:
-  enabled: true
-  servers:
-    - name: "filesystem"
-      url: "http://localhost:3001"
-  circuit_breaker:
-    threshold: 5
-    window_seconds: 60
 
 providers:
   openai:
@@ -140,11 +140,26 @@ providers:
 
 | Key | Default | Description |
 |---|---|---|
-| enabled | false | Enable MCP JSON-RPC proxy and governance |
-| servers[].name | | Name of the upstream MCP server |
-| servers[].url | | HTTP URL of the upstream MCP server |
-| circuit_breaker.threshold | 5 | Repetition threshold for identical tool calls |
-| circuit_breaker.window_seconds | 60 | Time window in seconds for the tool circuit breaker |
+| `enabled` | `false` | Enable MCP JSON-RPC proxy and governance |
+| `servers[].name` | | Name of the upstream MCP server |
+| `servers[].url` | | HTTP URL of the upstream MCP server |
+| `circuit_breaker.threshold` | 5 | Repetition threshold for identical tool calls |
+| `circuit_breaker.window_seconds` | 60 | Time window in seconds for the tool circuit breaker |
+
+### policy
+
+| Key | Default | Description |
+|---|---|---|
+| `enabled` | `false` | Enable the embedded OPA/Rego policy engine |
+| `policy_dir` | `"./policies"` | Local directory containing `.rego` policy files |
+| `default_action` | `"deny"` | Default decision when no rule matches (`"allow"` or `"deny"`) |
+
+### rate_limit
+
+| Key | Default | Description |
+|---|---|---|
+| `enabled` | `false` | Enable per-key sliding window rate limiting |
+| `requests_per_minute` | 60 | Maximum requests allowed per key per minute |
 
 ## Environment Variable Overrides
 
