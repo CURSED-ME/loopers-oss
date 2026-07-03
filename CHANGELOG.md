@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.2.0](https://github.com/CURSED-ME/loopers-oss/compare/v1.1.0...v1.2.0) (2026-07-03)
+
+
+### Features
+
+* Implement local policy engine, agent identity, and framework adapters ([639bae1](https://github.com/CURSED-ME/loopers-oss/commit/639bae1ae42abea3c63e7858e0dc21d7cc318af5))
+* MCP Domination Phase 1 implementation ([74467a4](https://github.com/CURSED-ME/loopers-oss/commit/74467a481e26ed47a1f570c86cce068ab2782e59))
+* **sdk:** support Phase 1 session headers ([ec81008](https://github.com/CURSED-ME/loopers-oss/commit/ec81008939fb5c3d9e78fe210d2e6c766bfc99b6))
+
+
+### Bug Fixes
+
+* go mod tidy for golang 1.26.4 pipeline ([2fa97e0](https://github.com/CURSED-ME/loopers-oss/commit/2fa97e0545eab6c1b658fbfebd4e263e606d89fc))
+* gofmt and go mod tidy for pipeline ([024b3bb](https://github.com/CURSED-ME/loopers-oss/commit/024b3bbfb30be0ef0862c671f2e406987e5eea87))
+* gofmt server.go ([34de90a](https://github.com/CURSED-ME/loopers-oss/commit/34de90af3cfaba980a8f406a8b245fc0c26f3992))
+* **oss:** harden enforcement engine (phase 1 audit remediation) ([104a1ba](https://github.com/CURSED-ME/loopers-oss/commit/104a1ba9f6f717850e071bb36ee6830f3d199e67))
+* resolve data race in Alerter between Close() and channel sends ([32462ec](https://github.com/CURSED-ME/loopers-oss/commit/32462ec9d467b578b4cd30e185d1d5fa3bf2bf98))
+* **sdk:** add Phase 1 headers to all adapters, bump to v1.2.0, expand test coverage ([9a40389](https://github.com/CURSED-ME/loopers-oss/commit/9a40389146df62674d53705f500851601181d1cb))
+* update cosign args to use --bundle ([a15a022](https://github.com/CURSED-ME/loopers-oss/commit/a15a022889a35499d53a3293aa8c88943830194b))
+
 ## [1.1.0](https://github.com/CURSED-ME/loopers-oss/compare/v1.0.0...v1.1.0) (2026-06-28)
 
 
