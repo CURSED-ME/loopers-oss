@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/CURSED-ME/loopers-oss/compare/v1.3.0...v1.4.0) (2026-07-04)
+
+
+### Features
+
+* enhance loop detection resilience and synchronize documentation ([15fe1fe](https://github.com/CURSED-ME/loopers-oss/commit/15fe1feb227c244adcb034704582607ee171f8b5))
+
 ## [1.3.0](https://github.com/CURSED-ME/loopers-oss/compare/v1.2.0...v1.3.0) (2026-07-03)
 
 
