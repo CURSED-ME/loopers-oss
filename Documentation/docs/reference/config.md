@@ -42,7 +42,7 @@ loop_detection:
   fingerprint:
     threshold: 3            # repeat prompt count before flagging as loop
     window_seconds: 60      # time window for loop detection in seconds
-    max_distance: 3         # max Hamming distance for SimHash matches
+    similarity_threshold: 0.95 # min Jaccard similarity threshold for bi-gram matching
   velocity:
     max_rps: 0              # maximum requests per second (0=disabled)
     max_endpoint_repeats: 0 # max hits to the same path
@@ -133,7 +133,7 @@ providers:
 | enabled | true | Enable agent loop detection |
 | fingerprint.threshold | 3 | Repeat count before loop detection fires |
 | fingerprint.window_seconds | 60 | Rolling window for loop detection in seconds |
-| fingerprint.max_distance | 3 | Maximum Hamming distance between SimHashes to consider them identical |
+| fingerprint.similarity_threshold | 0.95 | Minimum Jaccard similarity (0.0 to 1.0) on bi-grams to consider two requests identical |
 | velocity.max_rps | 0.0 | Maximum requests per second allowed per session (0 = disabled) |
 | velocity.max_endpoint_repeats | 0 | Max requests to the same endpoint in a window |
 | velocity.repeat_window_seconds | 0 | Window size for endpoint repeat tracking |

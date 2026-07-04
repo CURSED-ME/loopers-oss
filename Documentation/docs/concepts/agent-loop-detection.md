@@ -15,16 +15,16 @@ There are three configurable detection layers: **Fingerprint**, **Velocity**, an
 
 ---
 
-## 1. Fingerprint Detection (Fuzzy SimHash)
+## 1. Fingerprint Detection (Bi-gram Jaccard Similarity)
 
-The primary defense against agent loops is the **Fingerprint Detector**. It looks for highly repetitive requests within a sliding time window.
+The primary defense against agent loops is the **Fingerprint Detector**. It looks for highly repetitive or slightly mutated requests within a sliding time window.
 
-### Polymorphic Loops & SimHash
+### Polymorphic Loops & Jaccard Similarity
 Early iterations of loop detection relied on exact cryptographic hashing (like SHA-256 or FNV-1a). However, modern agents often *mutate* their prompts slightly when retrying (e.g., adding "Attempt 2" to the prompt, or changing a few words). Exact hashing fails to catch these "polymorphic" loops.
 
-To solve this, Loopers normalizes the JSON payload (stripping volatile fields like temperature or seed) and generates a **64-bit Locality Sensitive Hash (SimHash)** using 3-byte trigrams. 
+To solve this, Loopers normalizes the JSON payload (stripping volatile fields like temperature or seed) and extracts a set of overlapping **bi-grams (2-byte character tokens)**. 
 
-When a new request arrives, Loopers compares its SimHash against recent requests in a Redis sliding window. If the **Hamming distance** (the number of differing bits) is less than or equal to `max_distance`, it is considered a match.
+When a new request arrives, Loopers computes the exact **Jaccard Similarity** between the current request's bi-gram set and recent requests in a Redis sliding window. If the similarity is greater than or equal to `similarity_threshold`, it is considered a match.
 
 ### Configuration
 You can configure this in your `loopers.yaml` under `loop_detection.fingerprint`:
@@ -35,10 +35,10 @@ loop_detection:
   fingerprint:
     threshold: 3            # Block after 3 similar requests...
     window_seconds: 60      # ...within a 60-second window.
-    max_distance: 3         # Max Hamming distance (0 = exact match only, 3 = fuzzy match)
+    similarity_threshold: 0.95 # Jaccard similarity threshold (0.95 = 95% similar)
 ```
 
-> **Tip:** A `max_distance` of 3 allows for minor prompt mutations. If you experience false positives (e.g., in a chat application with very short, similar messages), try lowering `max_distance` to 1 or 0.
+> **Tip:** A `similarity_threshold` of 0.95 allows for minor prompt mutations while effectively catching agent retries. If you experience false positives (e.g., in a chat application with very short, similar messages), try increasing `similarity_threshold` to 0.98 or 1.0.
 
 ---
 

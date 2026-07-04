@@ -2,7 +2,6 @@ package loop
 
 import (
 	"encoding/json"
-	"math/bits"
 	"testing"
 )
 
@@ -57,40 +56,40 @@ func TestNormalizeAndHash(t *testing.T) {
 	// So it is deterministic.
 }
 
-func TestSimHashSimilarInputs(t *testing.T) {
-	req1 := []byte(`{"model": "gpt-4", "messages": [{"role": "user", "content": "Let me try again (attempt 0).\nFix the syntax error in main.py"}]}`)
-	req2 := []byte(`{"model": "gpt-4", "messages": [{"role": "user", "content": "Let me try again (attempt 1).\nFix the syntax error in main.py"}]}`)
+func TestJaccardSimilarityMutatedInputs(t *testing.T) {
+	req1 := []byte(`{"model": "gpt-4", "messages": [{"role": "user", "content": "Let me try again (attempt 0).\nFix the syntax error in main.py by reverting to the previous git commit."}]}`)
+	req2 := []byte(`{"model": "gpt-4", "messages": [{"role": "user", "content": "Let me try again (attempt 1).\nFix the syntax error in main.py by reverting to the previous git commit."}]}`)
 
-	h1Str, h1, err1 := NormalizeAndHash(req1)
+	h1Str, _, err1 := NormalizeAndHash(req1)
 	if err1 != nil {
 		t.Fatalf("unexpected error: %v", err1)
 	}
-	h2Str, h2, err2 := NormalizeAndHash(req2)
+	h2Str, _, err2 := NormalizeAndHash(req2)
 	if err2 != nil {
 		t.Fatalf("unexpected error: %v", err2)
 	}
 
-	if h1Str == h2Str {
-		t.Errorf("expected h1Str != h2Str, got identical string %s", h1Str)
-	}
+	g1, _ := DecodeBiGrams(h1Str)
+	g2, _ := DecodeBiGrams(h2Str)
 
-	distance := bits.OnesCount64(h1 ^ h2)
-	// Trigram based SimHash should have a small Hamming distance for small changes
-	if distance > 10 {
-		t.Errorf("expected small Hamming distance, got %d", distance)
+	sim := JaccardSimilarity(g1, g2)
+	if sim < 0.90 {
+		t.Errorf("expected high Jaccard similarity (>= 0.90) for mutated inputs, got %f", sim)
 	}
 }
 
-func TestSimHashDifferentInputs(t *testing.T) {
+func TestJaccardSimilarityDifferentInputs(t *testing.T) {
 	req1 := []byte(`{"model": "gpt-4", "messages": [{"role": "user", "content": "Write a python script for scraping"}]}`)
 	req2 := []byte(`{"model": "gpt-4", "messages": [{"role": "user", "content": "What is the capital of France?"}]}`)
 
-	_, h1, _ := NormalizeAndHash(req1)
-	_, h2, _ := NormalizeAndHash(req2)
+	h1Str, _, _ := NormalizeAndHash(req1)
+	h2Str, _, _ := NormalizeAndHash(req2)
 
-	distance := bits.OnesCount64(h1 ^ h2)
-	// Completely different text should have a Hamming distance greater than the default threshold of 3
-	if distance <= 3 {
-		t.Errorf("expected Hamming distance > 3 for different inputs, got %d", distance)
+	g1, _ := DecodeBiGrams(h1Str)
+	g2, _ := DecodeBiGrams(h2Str)
+
+	sim := JaccardSimilarity(g1, g2)
+	if sim > 0.60 {
+		t.Errorf("expected Jaccard similarity (< 0.60) for different inputs, got %f", sim)
 	}
 }

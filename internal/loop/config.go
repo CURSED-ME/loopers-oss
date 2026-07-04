@@ -17,9 +17,10 @@ type FingerprintConfig struct {
 	// Default: 60 for rapid HFT-style agents. Consider 300 for slower, low-frequency agents.
 	WindowSeconds int `mapstructure:"window_seconds"`
 
-	// MaxDistance is the maximum Hamming distance between two SimHashes to consider them identical.
-	// Default: 3
-	MaxDistance int `mapstructure:"max_distance"`
+	// SimilarityThreshold is the minimum Jaccard similarity (0.0 to 1.0) on bi-grams
+	// required to consider two requests as part of a loop.
+	// Default: 0.95
+	SimilarityThreshold float64 `mapstructure:"similarity_threshold"`
 }
 
 type VelocityConfig struct {
