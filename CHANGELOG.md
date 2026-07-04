@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.0](https://github.com/CURSED-ME/loopers-oss/compare/v1.4.0...v1.5.0) (2026-07-04)
+
+
+### Features
+
+* implement bi-gram jaccard similarity for loop detection ([bb26531](https://github.com/CURSED-ME/loopers-oss/commit/bb265313147c7a2a6cb75a952e57a2e29be8145d))
+* implement bi-gram jaccard similarity for loop detection ([0583552](https://github.com/CURSED-ME/loopers-oss/commit/0583552a138fdf2160a1ff7e194e97d9d48679ac))
+
 ## [1.4.0](https://github.com/CURSED-ME/loopers-oss/compare/v1.3.0...v1.4.0) (2026-07-04)
 
 
