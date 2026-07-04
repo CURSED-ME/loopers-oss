@@ -86,7 +86,7 @@ func (d *Detector) CheckFingerprint(ctx context.Context, sessionID, hash string)
 	if window <= 0 {
 		window = 60
 	}
-	
+
 	maxDist := d.cfg.Fingerprint.MaxDistance
 	if maxDist <= 0 {
 		maxDist = 3
