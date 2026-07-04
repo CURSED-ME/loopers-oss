@@ -81,6 +81,6 @@ This means if the AI starts generating a massive response that you did not ask f
 
 ## Agent Loop Detection
 
-Loopers keeps track of the prompts you send during a session. It hashes each prompt (turning the text into a unique code) and remembers them. If it sees the same prompt repeating over and over again, it knows your AI agent is stuck in a loop. Loopers will block the session immediately to save your budget.
+Loopers keeps track of the prompts you send during a session. It hashes each prompt (turning the text into a unique fingerprint using a fuzzy SimHash algorithm) and remembers them in a Redis sliding window. If it sees the same prompt—or a slightly mutated version of it—repeating over and over again within a configurable Hamming distance, it knows your AI agent is stuck in a loop. Loopers will block the session immediately to save your budget.
 
 See the [Session Budgets](./concepts/session-budgets) guide for more details.

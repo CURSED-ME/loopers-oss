@@ -37,7 +37,7 @@ Loopers also extends its security model to **Model Context Protocol (MCP)** tool
 When autonomous agents attempt to call arbitrary functions, Loopers proxies the traffic and enforces strict boundaries:
 
 * **Blast Radius Prevention**: By injecting the `X-Loopers-Session-Max-Servers` header, you can strictly limit the number of distinct MCP servers an agent is allowed to access in a single session. If the agent attempts lateral movement to unauthorized servers, Loopers blocks the request instantly with a `403 Forbidden`.
-* **Exact-Match Circuit Breaker**: If a rogue agent gets stuck in an infinite loop sending the exact same payload repeatedly to an MCP tool, Loopers fingerprints the request in a Redis sliding window and halts the connection with a `429 Too Many Requests`.
+* **Fuzzy-Match Circuit Breaker**: If a rogue agent gets stuck in a loop, sending similar or identical payloads repeatedly via MCP, Loopers will automatically block the session after the threshold is breached, using its SimHash fingerprinting engine to halt the connection with a `429 Too Many Requests`.
 
 ### Loopers Key Security
 

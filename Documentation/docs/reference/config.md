@@ -23,6 +23,7 @@ server:
   log_level: info          # debug, info, warn, or error
   read_timeout: 30s
   write_timeout: 120s      # increase for long streaming responses
+  max_payload_bytes: 2097152 # 2MB maximum request body size
 
 redis:
   addr: "localhost:6379"
@@ -34,7 +35,6 @@ redis:
   write_timeout: 2s
 
 proxy:
-  max_body_size: 10MB       # maximum request body size
   upstream_timeout: 300s    # maximum time to wait for upstream response
 
 loop_detection:
@@ -42,16 +42,29 @@ loop_detection:
   fingerprint:
     threshold: 3            # repeat prompt count before flagging as loop
     window_seconds: 60      # time window for loop detection in seconds
+    max_distance: 3         # max Hamming distance for SimHash matches
+  velocity:
+    max_rps: 0              # maximum requests per second (0=disabled)
+    max_endpoint_repeats: 0 # max hits to the same path
+    repeat_window_seconds: 60
+  stall:
+    min_hamming_distance: 0 # distance required to be considered 'progressing'
+    low_diversity_threshold: 5
+    action: "warn"          # 'warn' or 'block'
 
 mcp:
   enabled: true
+  max_request_size: 1048576 # 1MB limit for MCP requests
   servers:
     - name: "mock-server"
       url: "http://mcp-server:3001"
   circuit_breaker:
     enabled: true
-    threshold: 5            # repeat exact tool call block threshold
+    threshold: 5            # repeat tool call block threshold
     window_seconds: 60      # time window for circuit breaker
+  sanitizer:
+    max_description_length: 512
+    tool_allowlist: ["mock-server"]
 
 alerting:
   webhook_url: "https://example.com/webhook"
@@ -65,14 +78,6 @@ otel:
   protocol: "grpc"
   sampling_rate: 1.0
 
-mcp:
-  enabled: true
-  servers:
-    - name: "filesystem"
-      url: "http://localhost:3001"
-  circuit_breaker:
-    threshold: 5
-    window_seconds: 60
 
 providers:
   openai:
@@ -94,6 +99,7 @@ providers:
 | log_level | info | Logging verbosity |
 | read_timeout | 30s | HTTP read timeout |
 | write_timeout | 120s | HTTP write timeout (set higher for streaming) |
+| max_payload_bytes | 2097152 | Maximum request body size in bytes (2MB default) |
 
 ### redis
 
@@ -109,7 +115,6 @@ providers:
 
 | Key | Default | Description |
 |---|---|---|
-| max_body_size | 10MB | Maximum request body size |
 | upstream_timeout | 300s | Upstream provider timeout |
 
 ### loop_detection
@@ -119,6 +124,13 @@ providers:
 | enabled | true | Enable agent loop detection |
 | fingerprint.threshold | 3 | Repeat count before loop detection fires |
 | fingerprint.window_seconds | 60 | Rolling window for loop detection in seconds |
+| fingerprint.max_distance | 3 | Maximum Hamming distance between SimHashes to consider them identical |
+| velocity.max_rps | 0.0 | Maximum requests per second allowed per session (0 = disabled) |
+| velocity.max_endpoint_repeats | 0 | Max requests to the same endpoint in a window |
+| velocity.repeat_window_seconds | 0 | Window size for endpoint repeat tracking |
+| stall.min_hamming_distance | 0 | Distance required between hashes to be considered 'progressing' |
+| stall.low_diversity_threshold | 5 | How many sequential low-diversity requests trigger a stall |
+| stall.action | "warn" | Action when stalled (`warn` or `block`) |
 
 ### alerting
 
@@ -141,10 +153,14 @@ providers:
 | Key | Default | Description |
 |---|---|---|
 | enabled | false | Enable MCP JSON-RPC proxy and governance |
+| max_request_size | 1048576 | Max body size for MCP JSON-RPC requests (1MB default) |
 | servers[].name | | Name of the upstream MCP server |
 | servers[].url | | HTTP URL of the upstream MCP server |
+| circuit_breaker.enabled | true | Enable the MCP tool circuit breaker |
 | circuit_breaker.threshold | 5 | Repetition threshold for identical tool calls |
 | circuit_breaker.window_seconds | 60 | Time window in seconds for the tool circuit breaker |
+| sanitizer.max_description_length | 512 | Max length of a string in a tool response |
+| sanitizer.tool_allowlist | [] | List of allowed tool names (empty = allow all) |
 
 ## Environment Variable Overrides
 

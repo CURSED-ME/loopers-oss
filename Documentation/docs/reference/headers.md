@@ -47,7 +47,7 @@ Loopers uses headers to get settings from your application and return informatio
 ```bash
 curl -X POST http://localhost:8080/openai/v1/chat/completions \
   -H "Authorization: Bearer lp-a1b2c3d4" \
-  -H "X-Loopers-Provider-Key: sk-proj-real-key" \
+  -H "X-Loopers-Provider-Key: sk-proj-..." \
   -H "X-Loopers-Session-ID: run-42" \
   -H "X-Loopers-Session-Budget: 5.00" \
   -H "X-Loopers-Session-Max-Steps: 10" \

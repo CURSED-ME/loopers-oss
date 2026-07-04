@@ -26,7 +26,7 @@ We constantly ship updates to make Loopers the fastest, most secure AI firewall.
 
 1. **Model Context Protocol (MCP) Governance** *(Latest)*: Loopers now governs MCP traffic natively. Features include a transparent JSON-RPC 2.0 proxy, per-tool budget enforcement (e.g., $0.05 per Snowflake query), deterministic tool-call circuit breakers to stop infinite loops, and strict Blast Radius (lateral movement) prevention. Check out the **[MCP Setup Guide](./Documentation/docs/guides/mcp-setup.md)** to get started in 2 minutes.
 2. **Security Events & OpenTelemetry**: Emits OWASP Top 10 for LLMs security payloads for budget/loop blocks, and supports W3C OTLP tracing with a smart sampling processor designed for EU AI Act compliance.
-3. **Loop Detection Engine v1.1**: Deterministic circuit breakers for autonomous agents, featuring a Fingerprint Ring, Velocity Limiter, and Stall Detector for TOCTOU-safe enforcement.
+3. **Loop Detection Engine v1.1**: Deterministic and fuzzy circuit breakers for autonomous agents, featuring a SimHash Fingerprint Ring to catch polymorphic/mutating prompts, a Velocity Limiter, and a Stall Detector for TOCTOU-safe enforcement.
 4. **Generic OpenAI-Compatible Endpoints**: Bring your own provider! Route traffic to vLLM, local Llama.cpp, or custom proxies while retaining full budget enforcement.
 5. **Dynamic Pricing Fetcher**: Hands-free token accounting. Loopers automatically synchronizes real-time token prices from a remote JSON endpoint.
 6. **Enterprise-Grade Security**: Dedicated, isolated admin ports (`/metrics`), strict TLS enforcement, and secure Redis configurations for bare-metal deployments.

@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -180,6 +181,17 @@ func BodyBuffer() gin.HandlerFunc {
 
 		_, err := io.Copy(buf, c.Request.Body)
 		if err != nil {
+			var maxBytesErr *http.MaxBytesError
+			if errors.As(err, &maxBytesErr) {
+				c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, gin.H{
+					"error": gin.H{
+						"message": "Request body exceeds maximum allowed size",
+						"type":    "request_entity_too_large",
+						"code":    "payload_too_large",
+					},
+				})
+				return
+			}
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 				"error": gin.H{
 					"message": fmt.Sprintf("Failed to read body: %v", err),

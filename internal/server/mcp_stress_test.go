@@ -263,7 +263,7 @@ func TestMCP_Stress_MemoryPressure(t *testing.T) {
 	_, _, s, rawKey := setupStressServer(t, upstreamHandler)
 	router := s.GetRouter()
 
-	// Generate a 3MB string for large payloads
+	// Generate a 3MB string for large payloads (JSON wrapping will make it slightly larger)
 	largeData := make([]byte, 3*1024*1024)
 	for i := range largeData {
 		largeData[i] = 'a'
@@ -311,17 +311,24 @@ func TestMCP_Stress_MemoryPressure(t *testing.T) {
 			w := newCloseNotifierRecorder()
 			router.ServeHTTP(w, req)
 
-			if w.Code != http.StatusOK {
-				t.Errorf("Request %d failed with code %d: %s", idx, w.Code, w.Body.String())
+			expectedCode := http.StatusOK
+			if isLarge {
+				expectedCode = http.StatusRequestEntityTooLarge
+			}
+
+			if w.Code != expectedCode {
+				t.Errorf("Request %d expected code %d but got %d: %s", idx, expectedCode, w.Code, w.Body.String())
 				return
 			}
 
-			// Parse response to ensure we got correct ID back (ensures no request/response cross-talk)
-			var resp map[string]interface{}
-			_ = json.Unmarshal(w.Body.Bytes(), &resp)
-			idFloat, ok := resp["id"].(float64)
-			if !ok || int(idFloat) != idx {
-				t.Errorf("Mismatch/Corruption: Expected ID %d, got %v", idx, resp["id"])
+			if !isLarge {
+				// Parse response to ensure we got correct ID back (ensures no request/response cross-talk)
+				var resp map[string]interface{}
+				_ = json.Unmarshal(w.Body.Bytes(), &resp)
+				idFloat, ok := resp["id"].(float64)
+				if !ok || int(idFloat) != idx {
+					t.Errorf("Mismatch/Corruption: Expected ID %d, got %v", idx, resp["id"])
+				}
 			}
 		}(i)
 	}

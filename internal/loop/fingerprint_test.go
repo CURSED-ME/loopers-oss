@@ -2,6 +2,7 @@ package loop
 
 import (
 	"encoding/json"
+	"math/bits"
 	"testing"
 )
 
@@ -52,10 +53,44 @@ func TestNormalizeAndHash(t *testing.T) {
 	json.Unmarshal(req1, &raw)
 	delete(raw, "temperature")
 	delete(raw, "stream")
-	norm, _ := json.Marshal(raw)
-	if string(norm) != `{"messages":[{"role":"user","content":"hi"}],"model":"gpt-4"}` &&
-		string(norm) != `{"model":"gpt-4","messages":[{"role":"user","content":"hi"}]}` {
-		// Wait, Go map iteration is random, but json.Marshal sorts map keys!
-		// So it is deterministic.
+	// Wait, Go map iteration is random, but json.Marshal sorts map keys!
+	// So it is deterministic.
+}
+
+func TestSimHashSimilarInputs(t *testing.T) {
+	req1 := []byte(`{"model": "gpt-4", "messages": [{"role": "user", "content": "Let me try again (attempt 0).\nFix the syntax error in main.py"}]}`)
+	req2 := []byte(`{"model": "gpt-4", "messages": [{"role": "user", "content": "Let me try again (attempt 1).\nFix the syntax error in main.py"}]}`)
+
+	h1Str, h1, err1 := NormalizeAndHash(req1)
+	if err1 != nil {
+		t.Fatalf("unexpected error: %v", err1)
+	}
+	h2Str, h2, err2 := NormalizeAndHash(req2)
+	if err2 != nil {
+		t.Fatalf("unexpected error: %v", err2)
+	}
+
+	if h1Str == h2Str {
+		t.Errorf("expected h1Str != h2Str, got identical string %s", h1Str)
+	}
+
+	distance := bits.OnesCount64(h1 ^ h2)
+	// Trigram based SimHash should have a small Hamming distance for small changes
+	if distance > 10 {
+		t.Errorf("expected small Hamming distance, got %d", distance)
+	}
+}
+
+func TestSimHashDifferentInputs(t *testing.T) {
+	req1 := []byte(`{"model": "gpt-4", "messages": [{"role": "user", "content": "Write a python script for scraping"}]}`)
+	req2 := []byte(`{"model": "gpt-4", "messages": [{"role": "user", "content": "What is the capital of France?"}]}`)
+
+	_, h1, _ := NormalizeAndHash(req1)
+	_, h2, _ := NormalizeAndHash(req2)
+
+	distance := bits.OnesCount64(h1 ^ h2)
+	// Completely different text should have a Hamming distance greater than the default threshold of 3
+	if distance <= 3 {
+		t.Errorf("expected Hamming distance > 3 for different inputs, got %d", distance)
 	}
 }
