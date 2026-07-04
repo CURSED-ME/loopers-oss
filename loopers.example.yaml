@@ -39,8 +39,8 @@ loop_detection:
     threshold: 3
     # Default 60s catches rapid HFT-style agents. Consider 300s for slower, low-frequency agents.
     window_seconds: 60
-    # Maximum Hamming distance to consider two requests identical for loop detection
-    max_distance: 3
+    # Minimum Jaccard similarity (0.0 to 1.0) on bi-grams to consider two requests identical for loop detection
+    similarity_threshold: 0.95
   velocity:
     max_rps: 0             # disabled by default; set e.g. 10.0 to enable
     max_endpoint_repeats: 0

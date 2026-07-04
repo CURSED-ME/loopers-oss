@@ -11,9 +11,9 @@ Stay up to date with the newest capabilities we've added to the Loopers cost fir
 
 ---
 
-## Fuzzy SimHash Agent Loop Detection
+## Fuzzy Bi-Gram Jaccard Agent Loop Detection
 We've completely overhauled our agent loop detection engine. Exact-hash detection (like FNV-1a) is often easily bypassed by modern LLMs and agents that slightly mutate their prompts when stuck in a loop (e.g., adding attempt counters or subtle rephrasing). 
-Loopers self-hosted v1.1+ now uses **SimHash** to generate a 64-bit Locality Sensitive Hash fingerprint for every request. It calculates the Hamming distance between prompts, allowing it to catch polymorphic, mutating agent loops that exact matching cannot. You can tune the sensitivity using the new `max_distance` configuration.
+Loopers self-hosted v1.1+ now uses **Bi-Gram Jaccard Similarity** to compare request token sets. It calculates the exact structural similarity between prompts, allowing it to catch polymorphic, mutating agent loops that exact matching cannot. You can tune the sensitivity using the new `similarity_threshold` configuration (default 0.95).
 * **Learn More**: See the new [Agent Loop Detection](/docs/concepts/agent-loop-detection) guide.
 
 ---
