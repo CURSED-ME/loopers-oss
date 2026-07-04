@@ -16,6 +16,10 @@ type FingerprintConfig struct {
 	// WindowSeconds is the sliding window in seconds for the fingerprint ring.
 	// Default: 60 for rapid HFT-style agents. Consider 300 for slower, low-frequency agents.
 	WindowSeconds int `mapstructure:"window_seconds"`
+
+	// MaxDistance is the maximum Hamming distance between two SimHashes to consider them identical.
+	// Default: 3
+	MaxDistance int `mapstructure:"max_distance"`
 }
 
 type VelocityConfig struct {

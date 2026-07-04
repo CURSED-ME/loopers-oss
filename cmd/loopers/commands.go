@@ -676,6 +676,7 @@ var initCmd = &cobra.Command{
 		// Generate loopers.yaml
 		yamlContent := fmt.Sprintf(`server:
   port: 8080
+  max_payload_bytes: 2097152
   # admin_port: 9090
   # tls_cert_file: "/path/to/cert.pem"
   # tls_key_file: "/path/to/key.pem"

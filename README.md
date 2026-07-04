@@ -30,10 +30,11 @@ We constantly ship updates to make Loopers the fastest, most secure AI firewall.
 4. **Per-Key Rate Limiting**: Sliding window rate limiter powered by an atomic Redis Lua script. Set `rate_limit.requests_per_minute` in your config to cap request velocity per key, independent of budget limits.
 5. **Model Context Protocol (MCP) Governance**: Loopers governs MCP traffic natively. Features include a transparent JSON-RPC 2.0 proxy, per-tool budget enforcement (e.g., $0.05 per Snowflake query), deterministic tool-call circuit breakers to stop infinite loops, and strict Blast Radius (lateral movement) prevention. Check out the **[MCP Setup Guide](./Documentation/docs/guides/mcp-setup.md)** to get started in 2 minutes.
 6. **Security Events & OpenTelemetry**: Emits OWASP Top 10 for LLMs security payloads for budget/loop blocks, and supports W3C OTLP tracing with a smart sampling processor designed for EU AI Act compliance.
-7. **Loop Detection Engine v1.1**: Deterministic circuit breakers for autonomous agents, featuring a Fingerprint Ring, Velocity Limiter, and Stall Detector for TOCTOU-safe enforcement.
+7. **Loop Detection Engine v1.1**: Deterministic and fuzzy circuit breakers for autonomous agents, featuring a SimHash Fingerprint Ring to catch polymorphic/mutating prompts, a Velocity Limiter, and a Stall Detector for TOCTOU-safe enforcement.
 8. **Generic OpenAI-Compatible Endpoints**: Bring your own provider! Route traffic to vLLM, local Llama.cpp, or custom proxies while retaining full budget enforcement.
 9. **Dynamic Pricing Fetcher**: Hands-free token accounting. Loopers automatically synchronizes real-time token prices from a remote JSON endpoint.
-10. **LangChain, LlamaIndex, CrewAI & AutoGen Adapters**: Drop-in Python SDK wrappers (`ChatLoopers`, `LoopersLLM`, `get_loopers_crewai_llm`, `get_loopers_autogen_config`) to effortlessly inject session IDs and track step counts in native agent frameworks.
+10. **Enterprise-Grade Security**: Dedicated, isolated admin ports (`/metrics`), strict TLS enforcement, and secure Redis configurations for bare-metal deployments.
+11. **LangChain, LlamaIndex, CrewAI & AutoGen Adapters**: Drop-in Python SDK wrappers (`ChatLoopers`, `LoopersLLM`, `get_loopers_crewai_llm`, `get_loopers_autogen_config`) to effortlessly inject session IDs and track step counts in native agent frameworks.
 
 ---
 

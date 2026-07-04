@@ -1,6 +1,7 @@
 server:
   port: 8080
   admin_port: 9090
+  max_payload_bytes: 2097152 # 2MB default limit
   read_header_timeout_seconds: 10
   read_timeout_seconds: 30
   write_timeout_seconds: 120
@@ -38,6 +39,8 @@ loop_detection:
     threshold: 3
     # Default 60s catches rapid HFT-style agents. Consider 300s for slower, low-frequency agents.
     window_seconds: 60
+    # Maximum Hamming distance to consider two requests identical for loop detection
+    max_distance: 3
   velocity:
     max_rps: 0             # disabled by default; set e.g. 10.0 to enable
     max_endpoint_repeats: 0
@@ -64,11 +67,15 @@ otel:
 
 # mcp:
 #   enabled: false
+#   max_request_size: 1048576   # 1MB limit for MCP JSON-RPC requests
 #   servers:
 #     - name: "filesystem"
 #       url: "http://localhost:3001"
 #     - name: "github"
 #       url: "http://localhost:3002"
 #   circuit_breaker:
-#     threshold: 5        # Trip after 5 identical tool calls
+#     threshold: 5        # Trip after 5 similar tool calls (SimHash fuzzy match)
 #     window_seconds: 60  # Within a 60-second window
+#   sanitizer:
+#     max_description_length: 512
+#     tool_allowlist: []  # Empty = allow all tools

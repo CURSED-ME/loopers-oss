@@ -247,7 +247,12 @@ func (s *Server) setupRoutes() {
 	s.router.Use(RequestID())
 	s.router.Use(Recovery())
 	s.router.Use(RequestLogger())
-	s.router.Use(MaxBytesReader(10 << 20)) // Wrap request body with 10MB limit
+
+	maxPayloadBytes := int64(viper.GetInt("server.max_payload_bytes"))
+	if maxPayloadBytes <= 0 {
+		maxPayloadBytes = 2 << 20 // 2MB default
+	}
+	s.router.Use(MaxBytesReader(maxPayloadBytes)) // Wrap request body with configurable limit
 	s.router.Use(KeyExtractor())
 
 	s.router.GET("/health", s.handleHealth)

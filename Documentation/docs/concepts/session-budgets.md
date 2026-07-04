@@ -37,14 +37,16 @@ You can configure sessions using these headers:
 
 Loopers keeps track of the prompts you send in each session. If you send the exact same prompt multiple times, Loopers realizes that your agent is stuck in a loop and blocks it.
 
-1. Loopers hashes each normalized JSON payload using FNV-1a. This converts the payload into a unique fingerprint.
+1. Loopers hashes each normalized JSON payload using **SimHash** (a Locality Sensitive Hash). This converts the payload into a unique fingerprint.
 2. The hash is saved in a Redis list.
-3. If the same hash is sent more than the loop threshold count within the session, Loopers blocks the request.
+3. If a new payload's hash falls within the `max_distance` (Hamming distance) of a previous hash more than the loop threshold count within the session, Loopers blocks the request.
 4. The session is flagged as blocked, and all future requests for that session will be stopped immediately.
 
-### Why do we use FNV-1a?
+### Why do we use SimHash?
 
-FNV-1a is a fast non-cryptographic hash function that turns normalized JSON payloads (with volatile fields like temperature stripped) into a unique fingerprint. If two prompts have the exact same structure and content, they will have the exact same fingerprint. This is a very fast and accurate way to detect if your program is repeating the same message over and over again.
+Modern LLMs and agents rarely repeat the *exact* same text when they get stuck in a loop. They often mutate the prompt slightly (e.g., "Let me try again (attempt 0)" vs "(attempt 1)"). A strict cryptographic hash (like SHA-256 or FNV-1a) would completely change if a single character is altered, allowing the loop to bypass detection. 
+
+SimHash uses 3-byte trigrams to generate a 64-bit signature where *similar* JSON bodies have a very small Hamming distance. By configuring the `max_distance` threshold (default is 3 bits), Loopers accurately catches polymorphic and mutating agent loops while still ignoring completely different prompts.
 
 ## Using the Python SDK
 
@@ -79,5 +81,5 @@ print(f"Steps used: {response.loopers_session_steps}")
 | Session budget limits | Yes | Yes |
 | Step counters | Yes | Yes |
 | Prompt repeat detection | Yes | Yes |
-| Smart similarity detection | No | Yes |
+| Smart similarity detection | Yes | Yes |
 | Slack or PagerDuty alerts | No | Yes |

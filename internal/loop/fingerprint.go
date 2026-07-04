@@ -12,17 +12,47 @@ import (
 
 var memberCounter atomic.Uint64
 
+// computeSimHash generates a 64-bit Locality Sensitive Hash using 3-byte trigrams.
+func computeSimHash(data []byte) uint64 {
+	// If the data is too short for trigrams, return a direct hash to prevent 0 collision
+	if len(data) < 3 {
+		h := fnv.New64a()
+		h.Write(data)
+		return h.Sum64()
+	}
+
+	var v [64]int32
+	h := fnv.New64a()
+	for i := 0; i < len(data)-2; i++ {
+		h.Reset()
+		h.Write(data[i : i+3])
+		hashVal := h.Sum64()
+		for b := 0; b < 64; b++ {
+			if ((hashVal >> b) & 1) == 1 {
+				v[b]++
+			} else {
+				v[b]--
+			}
+		}
+	}
+	var simhash uint64
+	for b := 0; b < 64; b++ {
+		if v[b] > 0 {
+			simhash |= (1 << b)
+		}
+	}
+	return simhash
+}
+
 // NormalizeAndHash strips volatile fields from the body and returns
-// a stable hex-encoded FNV-1a hash of the normalized content.
+// a stable hex-encoded SimHash of the normalized content.
 // It also returns the raw uint64 hash value.
 func NormalizeAndHash(body []byte) (string, uint64, error) {
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(body, &raw); err != nil {
 		// If we can't parse, hash the raw bytes directly (safe fallback)
-		h := fnv.New64a()
-		h.Write(body)
-		v := h.Sum64()
-		return fmt.Sprintf("%x", v), v, nil
+		v := computeSimHash(body)
+		return fmt.Sprintf("%016x", v), v, nil
 	}
 
 	// Volatile fields to strip before hashing
@@ -36,10 +66,8 @@ func NormalizeAndHash(body []byte) (string, uint64, error) {
 		return "", 0, err
 	}
 
-	h := fnv.New64a()
-	h.Write(normalized)
-	v := h.Sum64()
-	return fmt.Sprintf("%x", v), v, nil
+	v := computeSimHash(normalized)
+	return fmt.Sprintf("%016x", v), v, nil
 }
 
 // CheckFingerprint checks whether the request hash has appeared >= threshold
@@ -59,7 +87,12 @@ func (d *Detector) CheckFingerprint(ctx context.Context, sessionID, hash string)
 		window = 60
 	}
 
-	res, err := d.fpScript.Run(ctx, d.rdb, []string{ringKey}, hash, strconv.FormatInt(now, 10), strconv.FormatInt(window, 10), strconv.Itoa(d.cfg.Fingerprint.Threshold), memberID).Result()
+	maxDist := d.cfg.Fingerprint.MaxDistance
+	if maxDist <= 0 {
+		maxDist = 3
+	}
+
+	res, err := d.fpScript.Run(ctx, d.rdb, []string{ringKey}, hash, strconv.FormatInt(now, 10), strconv.FormatInt(window, 10), strconv.Itoa(d.cfg.Fingerprint.Threshold), memberID, strconv.Itoa(maxDist)).Result()
 	if err != nil {
 		return false, 0, fmt.Errorf("fingerprint redis script error: %w", err)
 	}
