@@ -72,6 +72,15 @@ alerting:
     - percent: 80
       message: "Budget 80% consumed — approaching limit"
 
+policy:
+  enabled: true
+  policy_dir: "./policies"
+  default_action: "deny"
+
+rate_limit:
+  enabled: true
+  requests_per_minute: 60
+
 otel:
   enabled: true
   endpoint: "localhost:4317"
@@ -152,15 +161,30 @@ providers:
 
 | Key | Default | Description |
 |---|---|---|
-| enabled | false | Enable MCP JSON-RPC proxy and governance |
-| max_request_size | 1048576 | Max body size for MCP JSON-RPC requests (1MB default) |
-| servers[].name | | Name of the upstream MCP server |
-| servers[].url | | HTTP URL of the upstream MCP server |
-| circuit_breaker.enabled | true | Enable the MCP tool circuit breaker |
-| circuit_breaker.threshold | 5 | Repetition threshold for identical tool calls |
-| circuit_breaker.window_seconds | 60 | Time window in seconds for the tool circuit breaker |
-| sanitizer.max_description_length | 512 | Max length of a string in a tool response |
-| sanitizer.tool_allowlist | [] | List of allowed tool names (empty = allow all) |
+| `enabled` | `false` | Enable MCP JSON-RPC proxy and governance |
+| `max_request_size` | `1048576` | Max body size for MCP JSON-RPC requests (1MB default) |
+| `servers[].name` | | Name of the upstream MCP server |
+| `servers[].url` | | HTTP URL of the upstream MCP server |
+| `circuit_breaker.enabled` | `true` | Enable the MCP tool circuit breaker |
+| `circuit_breaker.threshold` | `5` | Repetition threshold for identical tool calls |
+| `circuit_breaker.window_seconds` | `60` | Time window in seconds for the tool circuit breaker |
+| `sanitizer.max_description_length` | `512` | Max length of a string in a tool response |
+| `sanitizer.tool_allowlist` | `[]` | List of allowed tool names (empty = allow all) |
+
+### policy
+
+| Key | Default | Description |
+|---|---|---|
+| `enabled` | `false` | Enable the embedded OPA/Rego policy engine |
+| `policy_dir` | `"./policies"` | Local directory containing `.rego` policy files |
+| `default_action` | `"deny"` | Default decision when no rule matches (`"allow"` or `"deny"`) |
+
+### rate_limit
+
+| Key | Default | Description |
+|---|---|---|
+| `enabled` | `false` | Enable per-key sliding window rate limiting |
+| `requests_per_minute` | `60` | Maximum requests allowed per key per minute |
 
 ## Environment Variable Overrides
 

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
@@ -64,10 +65,13 @@ type LoopDetectedAlert struct {
 }
 
 type Alerter struct {
-	cfg    AlertingConfig
-	client *http.Client
-	rdb    *redis.Client
-	ch     chan AlertEvent
+	cfg       AlertingConfig
+	client    *http.Client
+	rdb       *redis.Client
+	ch        chan AlertEvent
+	closed    bool
+	mu        sync.Mutex
+	closeOnce sync.Once
 }
 
 func NewAlerter(cfg AlertingConfig, rdb *redis.Client) *Alerter {
@@ -100,11 +104,17 @@ func (a *Alerter) TriggerBlockAlert(ctx context.Context, requestID, keyHash, key
 		BlockedRequestCostUSD: blockedCost,
 	}
 	event := NewBudgetBlockEvent(ctx, requestID, details)
+	a.mu.Lock()
+	if a.closed {
+		a.mu.Unlock()
+		return
+	}
 	select {
 	case a.ch <- event:
 	default:
 		logging.Logger.Warn().Msg("Alert channel full, dropping budget exceeded alert")
 	}
+	a.mu.Unlock()
 }
 
 func (a *Alerter) TriggerLoopAlert(ctx context.Context, requestID, keyHash, keyName, provider, sessionID, rule, detail string, blocked bool) {
@@ -129,11 +139,17 @@ func (a *Alerter) TriggerLoopAlert(ctx context.Context, requestID, keyHash, keyN
 		event = NewLoopWarnEvent(ctx, requestID, details)
 	}
 
+	a.mu.Lock()
+	if a.closed {
+		a.mu.Unlock()
+		return
+	}
 	select {
 	case a.ch <- event:
 	default:
 		logging.Logger.Warn().Msg("Alert channel full, dropping loop detected alert")
 	}
+	a.mu.Unlock()
 }
 
 func (a *Alerter) TriggerAuthFail(ctx context.Context, requestID, reason string) {
@@ -141,11 +157,17 @@ func (a *Alerter) TriggerAuthFail(ctx context.Context, requestID, reason string)
 		return
 	}
 	event := NewAuthFailEvent(ctx, requestID, reason, nil)
+	a.mu.Lock()
+	if a.closed {
+		a.mu.Unlock()
+		return
+	}
 	select {
 	case a.ch <- event:
 	default:
 		logging.Logger.Warn().Msg("Alert channel full, dropping auth failure alert")
 	}
+	a.mu.Unlock()
 }
 
 func (a *Alerter) TriggerFailClosed(ctx context.Context, requestID, reason string) {
@@ -153,11 +175,17 @@ func (a *Alerter) TriggerFailClosed(ctx context.Context, requestID, reason strin
 		return
 	}
 	event := NewFailClosedEvent(ctx, requestID, reason, nil)
+	a.mu.Lock()
+	if a.closed {
+		a.mu.Unlock()
+		return
+	}
 	select {
 	case a.ch <- event:
 	default:
 		logging.Logger.Warn().Msg("Alert channel full, dropping fail-closed alert")
 	}
+	a.mu.Unlock()
 }
 
 func (a *Alerter) TriggerThresholdAlerts(ctx context.Context, requestID, keyHash, keyName, provider string, currentSpends map[string]float64, limits map[string]float64) {
@@ -198,11 +226,17 @@ func (a *Alerter) TriggerThresholdAlerts(ctx context.Context, requestID, keyHash
 						Message:          t.Message,
 					}
 					event := NewBudgetThresholdEvent(ctx, requestID, details)
+					a.mu.Lock()
+					if a.closed {
+						a.mu.Unlock()
+						continue
+					}
 					select {
 					case a.ch <- event:
 					default:
 						logging.Logger.Warn().Msg("Alert channel full, dropping threshold alert")
 					}
+					a.mu.Unlock()
 				}
 			}
 		}
@@ -295,7 +329,15 @@ func (a *Alerter) worker() {
 }
 
 func (a *Alerter) Close() {
-	if a != nil && a.ch != nil {
-		close(a.ch)
+	if a == nil {
+		return
 	}
+	a.closeOnce.Do(func() {
+		a.mu.Lock()
+		a.closed = true
+		a.mu.Unlock()
+		if a.ch != nil {
+			close(a.ch)
+		}
+	})
 }

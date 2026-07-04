@@ -44,6 +44,8 @@ const sidebars = {
       type: 'category',
       label: 'Guides',
       items: [
+        'guides/policy-engine',
+        'guides/framework-adapters',
         'guides/mcp-setup',
         'guides/ci-cd-integration',
         'guides/kubernetes-helm',

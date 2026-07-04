@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/CURSED-ME/loopers-oss/compare/sdk-python-v1.3.0...sdk-python-v1.4.0) (2026-07-03)
+
+
+### Features
+
+* Implement local policy engine, agent identity, and framework adapters ([639bae1](https://github.com/CURSED-ME/loopers-oss/commit/639bae1ae42abea3c63e7858e0dc21d7cc318af5))
+
 ## [1.3.0](https://github.com/CURSED-ME/loopers-oss/compare/sdk-python-v1.2.0...sdk-python-v1.3.0) (2026-06-28)
 
 
