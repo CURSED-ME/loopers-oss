@@ -275,10 +275,10 @@ func TestSybilAttackPrevention(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+rawKey)
 		req.Header.Set("X-Loopers-Provider-Key", "dummy")
 		req.Header.Set("X-Loopers-Session-ID", fmt.Sprintf("sybil-sess-%d", i))
-		
+
 		w := newCloseNotifierRecorder()
 		s.GetRouter().ServeHTTP(w, req)
-		
+
 		if i <= 5 {
 			if w.Code != http.StatusOK {
 				t.Errorf("Expected request %d to succeed with 200, got %d. Body: %s", i, w.Code, w.Body.String())
