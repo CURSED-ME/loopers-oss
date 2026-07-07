@@ -110,7 +110,7 @@ func (s *Server) enforceBudgetWithFallback(c *gin.Context, providerName, model s
 }
 
 func (s *Server) enforceSessionLimits(c *gin.Context, providerName, model, sessionID string, sessionBudget float64, sessionMaxSteps int, estimatedCost float64, keyHash string, meta *keyring.KeyMetadata, reqID string) error {
-	allowed, val1, val2, status, err := s.redis.CheckAndReserveSession(c.Request.Context(), sessionID, estimatedCost, sessionBudget, sessionMaxSteps, 3600)
+	allowed, val1, val2, status, err := s.redis.CheckAndReserveSession(c.Request.Context(), keyHash, sessionID, estimatedCost, sessionBudget, sessionMaxSteps, 3600)
 	if err != nil {
 		// Refund key budget reservation
 		s.redis.LeaseManager.ReconcileSpend(c.Request.Context(), keyHash, estimatedCost, 0)
@@ -144,8 +144,8 @@ func (s *Server) enforceSessionLimits(c *gin.Context, providerName, model, sessi
 			shadowBlockedTotal.WithLabelValues(providerName, windowName).Inc()
 
 			// Manually commit the session reservation since the script blocked it
-			sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
-			sessionStepsKey := fmt.Sprintf("loopers:session:%s:steps", sessionID)
+			sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
+			sessionStepsKey := fmt.Sprintf("loopers:session:%s:%s:steps", keyHash, sessionID)
 			rdb := s.redis.GetUnderlyingClient()
 			rdb.IncrByFloat(c.Request.Context(), sessionSpendKey, estimatedCost)
 			rdb.IncrBy(c.Request.Context(), sessionStepsKey, 1)
@@ -186,7 +186,7 @@ func (s *Server) enforceLoopDetection(c *gin.Context, providerName, model, sessi
 
 			// Refund key budget reservation
 			s.redis.LeaseManager.ReconcileSpend(c.Request.Context(), keyHash, estimatedCost, 0)
-			sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
+			sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
 			_, _ = s.redis.GetUnderlyingClient().IncrByFloat(c.Request.Context(), sessionSpendKey, -estimatedCost).Result()
 
 			logging.Logger.Warn().

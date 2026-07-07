@@ -170,7 +170,7 @@ func TestSessionEnforcement(t *testing.T) {
 	defer rdb.Del(ctx, spendKey, budgetKey, stepsKey, maxStepsKey)
 
 	// First session reservation: cost=0.50, budget=1.00, max_steps=2
-	allowed, spend, steps, status, err := client.CheckAndReserveSession(ctx, sessionID, 0.50, 1.00, 2, 3600)
+	allowed, spend, steps, status, err := client.CheckAndReserveSession(ctx, "hash1", sessionID, 0.50, 1.00, 2, 3600)
 	if err != nil {
 		t.Fatalf("CheckAndReserveSession failed: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestSessionEnforcement(t *testing.T) {
 	}
 
 	// Second reservation: cost=0.60 -> should fail session budget limit (0.50 + 0.60 = 1.10 > 1.00)
-	allowed, val1, val2, status, err := client.CheckAndReserveSession(ctx, sessionID, 0.60, 0, 0, 3600)
+	allowed, val1, val2, status, err := client.CheckAndReserveSession(ctx, "hash1", sessionID, 0.60, 0, 0, 3600)
 	if err != nil {
 		t.Fatalf("CheckAndReserveSession failed: %v", err)
 	}
@@ -188,7 +188,7 @@ func TestSessionEnforcement(t *testing.T) {
 	}
 
 	// Third reservation: cost=0.10 -> should pass, step count becomes 2
-	allowed, spend, steps, status, err = client.CheckAndReserveSession(ctx, sessionID, 0.10, 0, 0, 3600)
+	allowed, spend, steps, status, err = client.CheckAndReserveSession(ctx, "hash1", sessionID, 0.10, 0, 0, 3600)
 	if err != nil {
 		t.Fatalf("CheckAndReserveSession failed: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestSessionEnforcement(t *testing.T) {
 	}
 
 	// Fourth reservation: cost=0.10 -> should fail session max steps limit (current steps=2, max_steps=2)
-	allowed, val1, val2, status, err = client.CheckAndReserveSession(ctx, sessionID, 0.10, 0, 0, 3600)
+	allowed, val1, val2, status, err = client.CheckAndReserveSession(ctx, "hash1", sessionID, 0.10, 0, 0, 3600)
 	if err != nil {
 		t.Fatalf("CheckAndReserveSession failed: %v", err)
 	}

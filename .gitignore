@@ -25,3 +25,4 @@ dist/
 # Excluded by user request
 raw/
 Documentation/icon.svg
+docs/reference/test-results.md

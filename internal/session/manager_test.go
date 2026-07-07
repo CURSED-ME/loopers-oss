@@ -26,7 +26,7 @@ func TestSessionManager_EnforceAbsoluteTTL(t *testing.T) {
 	sessionID := "test-session"
 
 	// 1. Initial check (new session) -> should be valid
-	valid, err := manager.EnforceAbsoluteTTL(ctx, sessionID, 1)
+	valid, err := manager.EnforceAbsoluteTTL(ctx, "hash1", sessionID, 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestSessionManager_EnforceAbsoluteTTL(t *testing.T) {
 	}
 
 	// 2. Immediate second check -> should still be valid
-	valid, err = manager.EnforceAbsoluteTTL(ctx, sessionID, 1)
+	valid, err = manager.EnforceAbsoluteTTL(ctx, "hash1", sessionID, 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestSessionManager_EnforceAbsoluteTTL(t *testing.T) {
 	time.Sleep(2100 * time.Millisecond)
 
 	// 4. Check again after TTL expiry -> should be invalid
-	valid, err = manager.EnforceAbsoluteTTL(ctx, sessionID, 1)
+	valid, err = manager.EnforceAbsoluteTTL(ctx, "hash1", sessionID, 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestSessionManager_CheckBlastRadius(t *testing.T) {
 	sessionID := "test-session-blast"
 
 	// 1. Add server 1 (limit = 2) -> allowed
-	allowed, err := manager.CheckBlastRadius(ctx, sessionID, "server1", 2)
+	allowed, err := manager.CheckBlastRadius(ctx, "hash1", sessionID, "server1", 2)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestSessionManager_CheckBlastRadius(t *testing.T) {
 	}
 
 	// 2. Add server 1 again -> allowed (already member)
-	allowed, err = manager.CheckBlastRadius(ctx, sessionID, "server1", 2)
+	allowed, err = manager.CheckBlastRadius(ctx, "hash1", sessionID, "server1", 2)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestSessionManager_CheckBlastRadius(t *testing.T) {
 	}
 
 	// 3. Add server 2 -> allowed
-	allowed, err = manager.CheckBlastRadius(ctx, sessionID, "server2", 2)
+	allowed, err = manager.CheckBlastRadius(ctx, "hash1", sessionID, "server2", 2)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestSessionManager_CheckBlastRadius(t *testing.T) {
 	}
 
 	// 4. Add server 3 -> blocked (exceeds limit 2)
-	allowed, err = manager.CheckBlastRadius(ctx, sessionID, "server3", 2)
+	allowed, err = manager.CheckBlastRadius(ctx, "hash1", sessionID, "server3", 2)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

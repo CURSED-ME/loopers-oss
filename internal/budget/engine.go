@@ -244,11 +244,11 @@ func (c *Client) GetBudgetStatus(ctx context.Context, keyHash string) (map[strin
 
 // CheckAndReserveSession checks session budgets and max steps and reserves estimated spend and step increments.
 // Returns (allowed, val1, val2, status, error)
-func (c *Client) CheckAndReserveSession(ctx context.Context, sessionID string, estCost float64, inputBudget float64, inputMaxSteps int, ttlSeconds int) (bool, float64, float64, string, error) {
-	spendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
-	budgetKey := fmt.Sprintf("loopers:session:%s:budget", sessionID)
-	stepsKey := fmt.Sprintf("loopers:session:%s:steps", sessionID)
-	maxStepsKey := fmt.Sprintf("loopers:session:%s:max_steps", sessionID)
+func (c *Client) CheckAndReserveSession(ctx context.Context, keyHash, sessionID string, estCost float64, inputBudget float64, inputMaxSteps int, ttlSeconds int) (bool, float64, float64, string, error) {
+	spendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
+	budgetKey := fmt.Sprintf("loopers:session:%s:%s:budget", keyHash, sessionID)
+	stepsKey := fmt.Sprintf("loopers:session:%s:%s:steps", keyHash, sessionID)
+	maxStepsKey := fmt.Sprintf("loopers:session:%s:%s:max_steps", keyHash, sessionID)
 
 	budgetArg := ""
 	if inputBudget > 0 {

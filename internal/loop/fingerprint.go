@@ -120,25 +120,60 @@ func JaccardSimilarity(a, b []uint16) float64 {
 	return float64(intersection) / float64(union)
 }
 
+func truncateLongStrings(val any) any {
+	switch v := val.(type) {
+	case string:
+		if len(v) > 256 {
+			return "<long_string>"
+		}
+	case map[string]any:
+		for k, valItem := range v {
+			v[k] = truncateLongStrings(valItem)
+		}
+	case []any:
+		for i, valItem := range v {
+			v[i] = truncateLongStrings(valItem)
+		}
+	}
+	return val
+}
+
 // NormalizeAndHash strips volatile fields from the body and returns:
 // 1. base64 encoded bi-gram set representation (for Jaccard fingerprinting)
 // 2. 64-bit SimHash (for Stall checking)
 // 3. error if any
-func NormalizeAndHash(body []byte) (string, uint64, error) {
+func NormalizeAndHash(body []byte, defeatPadding bool) (string, uint64, error) {
 	var normalized []byte
-	var raw map[string]json.RawMessage
-
-	if err := json.Unmarshal(body, &raw); err != nil {
-		normalized = body
-	} else {
-		volatileFields := []string{"stream", "max_tokens", "temperature", "seed", "n", "user"}
-		for _, f := range volatileFields {
-			delete(raw, f)
+	if defeatPadding {
+		var raw map[string]any
+		if err := json.Unmarshal(body, &raw); err == nil {
+			volatileFields := []string{"stream", "max_tokens", "temperature", "seed", "n", "user"}
+			for _, f := range volatileFields {
+				delete(raw, f)
+			}
+			raw = truncateLongStrings(raw).(map[string]any)
+			var err error
+			normalized, err = json.Marshal(raw)
+			if err != nil {
+				return "", 0, err
+			}
+		} else {
+			normalized = body
 		}
-		var err error
-		normalized, err = json.Marshal(raw)
-		if err != nil {
-			return "", 0, err
+	} else {
+		var raw map[string]json.RawMessage
+		if err := json.Unmarshal(body, &raw); err != nil {
+			normalized = body
+		} else {
+			volatileFields := []string{"stream", "max_tokens", "temperature", "seed", "n", "user"}
+			for _, f := range volatileFields {
+				delete(raw, f)
+			}
+			var err error
+			normalized, err = json.Marshal(raw)
+			if err != nil {
+				return "", 0, err
+			}
 		}
 	}
 
