@@ -37,12 +37,16 @@ redis:
 proxy:
   upstream_timeout: 300s    # maximum time to wait for upstream response
 
+session:
+  max_per_key: 0            # maximum concurrent active sessions per API key (0 = disabled)
+
 loop_detection:
   enabled: true
   fingerprint:
     threshold: 3            # repeat prompt count before flagging as loop
     window_seconds: 60      # time window for loop detection in seconds
     similarity_threshold: 0.95 # min Jaccard similarity threshold for bi-gram matching
+    defeat_padding: false   # truncate large string values (>256 chars) to prevent semantic padding
   velocity:
     max_rps: 0              # maximum requests per second (0=disabled)
     max_endpoint_repeats: 0 # max hits to the same path
@@ -126,6 +130,12 @@ providers:
 |---|---|---|
 | upstream_timeout | 300s | Upstream provider timeout |
 
+### session
+
+| Key | Default | Description |
+|---|---|---|
+| max_per_key | 0 | The maximum number of concurrent active sessions allowed per API key (0 = disabled) |
+
 ### loop_detection
 
 | Key | Default | Description |
@@ -134,6 +144,7 @@ providers:
 | fingerprint.threshold | 3 | Repeat count before loop detection fires |
 | fingerprint.window_seconds | 60 | Rolling window for loop detection in seconds |
 | fingerprint.similarity_threshold | 0.95 | Minimum Jaccard similarity (0.0 to 1.0) on bi-grams to consider two requests identical |
+| fingerprint.defeat_padding | false | Enables structural truncation of large JSON strings (>256 chars) to defeat semantic padding bypasses |
 | velocity.max_rps | 0.0 | Maximum requests per second allowed per session (0 = disabled) |
 | velocity.max_endpoint_repeats | 0 | Max requests to the same endpoint in a window |
 | velocity.repeat_window_seconds | 0 | Window size for endpoint repeat tracking |

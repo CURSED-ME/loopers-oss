@@ -18,6 +18,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/proxy"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -271,10 +272,28 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			return
 		}
 
+		if s.sessionManager != nil {
+			maxSessions := viper.GetInt("session.max_per_key")
+			if maxSessions <= 0 {
+				maxSessions = 100 // Default to 100 concurrent sessions per key
+			}
+			allowed, err := s.sessionManager.TrackAndLimitSessions(c.Request.Context(), keyHash, sessionID, maxSessions)
+			if err != nil {
+				logging.Logger.Error().Err(err).Msg("failed_session_track_limit")
+			} else if !allowed {
+				requestsTotal.WithLabelValues(providerName, model, "429").Inc()
+				c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+					"error": "maximum concurrent sessions per key exceeded",
+					"type":  "session_limit_exceeded",
+				})
+				return
+			}
+		}
+
 		if ttlHeader := c.GetHeader("X-Loopers-Session-TTL"); ttlHeader != "" {
 			if ttl, err := strconv.Atoi(ttlHeader); err == nil && ttl > 0 {
 				if s.sessionManager != nil {
-					valid, err := s.sessionManager.EnforceAbsoluteTTL(c.Request.Context(), sessionID, ttl)
+					valid, err := s.sessionManager.EnforceAbsoluteTTL(c.Request.Context(), keyHash, sessionID, ttl)
 					if err != nil {
 						logging.Logger.Error().Err(err).Msg("failed_session_ttl_check")
 					} else if !valid {
@@ -358,7 +377,7 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 	if resp.StatusCode != http.StatusOK {
 		s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, reservedCost, 0)
 		if sessionID != "" {
-			sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
+			sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
 			if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, -reservedCost).Err(); err != nil {
 				logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
 			}
@@ -378,9 +397,9 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 	}
 
 	if sessionID != "" {
-		sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
-		sessionStepsKey := fmt.Sprintf("loopers:session:%s:steps", sessionID)
-		sessionBudgetKey := fmt.Sprintf("loopers:session:%s:budget", sessionID)
+		sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
+		sessionStepsKey := fmt.Sprintf("loopers:session:%s:%s:steps", keyHash, sessionID)
+		sessionBudgetKey := fmt.Sprintf("loopers:session:%s:%s:budget", keyHash, sessionID)
 
 		rdb := s.redis.GetUnderlyingClient()
 		vals, _ := rdb.MGet(ctx, sessionSpendKey, sessionStepsKey, sessionBudgetKey).Result()
@@ -429,8 +448,9 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 			},
 			func(actualCost float64, inTokens, outTokens int, forcedCut bool) {
 				s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, totalPaid, actualCost)
+				s.checkBudgetOverdrawAsync(ctx, keyHash, provName, model)
 				if sessionID != "" {
-					sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
+					sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
 					if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-totalPaid).Err(); err != nil {
 						logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
 					}
@@ -480,12 +500,13 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 
 		actualCost := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
 		s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, reservedCost, actualCost)
+		s.checkBudgetOverdrawAsync(ctx, keyHash, provName, model)
 		resp.Header.Set("X-Loopers-Request-Cost", fmt.Sprintf("%.6f", actualCost))
 
 		if sessionID != "" {
-			sessionSpendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
-			sessionStepsKey := fmt.Sprintf("loopers:session:%s:steps", sessionID)
-			sessionBudgetKey := fmt.Sprintf("loopers:session:%s:budget", sessionID)
+			sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
+			sessionStepsKey := fmt.Sprintf("loopers:session:%s:%s:steps", keyHash, sessionID)
+			sessionBudgetKey := fmt.Sprintf("loopers:session:%s:%s:budget", keyHash, sessionID)
 
 			if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-reservedCost).Err(); err != nil {
 				logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
@@ -547,4 +568,30 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 	}
 
 	return nil
+}
+
+func (s *Server) checkBudgetOverdrawAsync(ctx context.Context, keyHash, providerName, model string) {
+	go func() {
+		detached := detachedTraceContext(ctx)
+		statusMap, err := s.redis.GetBudgetStatus(detached, keyHash)
+		if err != nil {
+			logging.Logger.Warn().Err(err).Msg("failed to check budget status async")
+			return
+		}
+
+		for window, status := range statusMap {
+			if status.Limit > 0 && status.CurrentSpend > status.Limit {
+				event.EmitBlockEvent(detached, event.BlockEvent{
+					EventType: "budget_overdrawn",
+					KeyHash:   keyHash,
+					Provider:  providerName,
+					Model:     model,
+					Reason:    "burst_overdraw",
+					Detail:    fmt.Sprintf("Budget overdrawn in %s window: spend %.6f exceeded limit %.6f", window, status.CurrentSpend, status.Limit),
+				})
+				// Only emit one alert per check
+				break
+			}
+		}
+	}()
 }

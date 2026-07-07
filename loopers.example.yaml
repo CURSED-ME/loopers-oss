@@ -14,6 +14,11 @@ log:
   level: "info"
 pricing_path: "./pricing.yaml"
 
+session:
+  # The maximum number of concurrent active sessions allowed per API key.
+  # Set to 0 to disable this limit. Default is disabled.
+  max_per_key: 0
+
 policy:
   enabled: false
   policy_dir: "./policies"
@@ -41,6 +46,10 @@ loop_detection:
     window_seconds: 60
     # Minimum Jaccard similarity (0.0 to 1.0) on bi-grams to consider two requests identical for loop detection
     similarity_threshold: 0.95
+    # Enables structural truncation of large JSON string values (>256 chars) to prevent semantic padding attacks.
+    # Set to true to defeat agent-injected random noise bypasses.
+    # Default is false to preserve strict sub-millisecond JSON parsing latency.
+    defeat_padding: false
   velocity:
     max_rps: 0             # disabled by default; set e.g. 10.0 to enable
     max_endpoint_repeats: 0

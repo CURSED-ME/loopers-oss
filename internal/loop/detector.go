@@ -59,7 +59,7 @@ func (d *Detector) Check(ctx context.Context, sessionID, providerPath string, bo
 	defer cancel()
 
 	// 1. Compute Hash
-	hashStr, hashVal, err := NormalizeAndHash(body)
+	hashStr, hashVal, err := NormalizeAndHash(body, d.cfg.Fingerprint.DefeatPadding)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash request body: %w", err)
 	}

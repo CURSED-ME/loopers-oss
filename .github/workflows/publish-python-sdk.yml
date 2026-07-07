@@ -27,9 +27,8 @@ jobs:
     - name: Install dependencies and test
       working-directory: ./sdk/python
       run: |
-        python -m pip install --upgrade build==1.2.1
-        python -m pip install -e .[dev]
-        pytest
+        python -m pip install --require-hashes -r requirements-build.txt
+        bash scripts/test.sh
 
     - name: Build package
       working-directory: ./sdk/python

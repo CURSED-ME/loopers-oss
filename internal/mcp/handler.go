@@ -324,7 +324,7 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 			}
 		}
 		if maxServers > 0 {
-			allowed, err := h.sessionManager.CheckBlastRadius(c.Request.Context(), sessionID, serverName, maxServers)
+			allowed, err := h.sessionManager.CheckBlastRadius(c.Request.Context(), keyHash, sessionID, serverName, maxServers)
 			if err != nil {
 				logging.Logger.Error().Err(err).Msg("MCP blast radius check failed")
 			} else if !allowed {

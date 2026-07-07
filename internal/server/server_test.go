@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
+	"github.com/spf13/viper"
 )
 
 type closeNotifierRecorder struct {
@@ -225,5 +227,66 @@ func TestSessionIDValidation(t *testing.T) {
 				t.Errorf("Expected status %d, got %d. Body: %s", tt.wantCode, w.Code, w.Body.String())
 			}
 		})
+	}
+}
+
+func TestSybilAttackPrevention(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	defer mr.Close()
+
+	redisClient, err := budget.NewClient(mr.Addr(), "", 0)
+	if err != nil {
+		t.Fatalf("Failed to create redis client: %v", err)
+	}
+	defer redisClient.Close()
+
+	// Load pricing
+	pricingStore, _ := pricing.LoadStore("../../pricing.yaml")
+	s := NewServer(redisClient, pricingStore)
+	defer s.Shutdown()
+
+	// Register mock provider
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"result":"ok"}`))
+	}))
+	defer upstream.Close()
+	s.RegisterProviderRoute(&mockProvider{baseURL: upstream.URL})
+
+	rawKey, _ := keyring.GenerateRawKey()
+	keyHash := keyring.HashKey(rawKey)
+	ctx := context.Background()
+	rdb := redisClient.GetUnderlyingClient()
+	rdb.HSet(ctx, "loopers:key:"+keyHash, map[string]interface{}{
+		"name":     "test-key",
+		"provider": "mock",
+		"active":   "true",
+	})
+	defer rdb.Del(ctx, "loopers:key:"+keyHash)
+
+	viper.Set("session.max_per_key", 5)
+	defer viper.Reset()
+
+	for i := 1; i <= 6; i++ {
+		req, _ := http.NewRequest("POST", "/mock/v1/chat", bytes.NewBuffer([]byte(`{"model":"mock-model"}`)))
+		req.Header.Set("Authorization", "Bearer "+rawKey)
+		req.Header.Set("X-Loopers-Provider-Key", "dummy")
+		req.Header.Set("X-Loopers-Session-ID", fmt.Sprintf("sybil-sess-%d", i))
+
+		w := newCloseNotifierRecorder()
+		s.GetRouter().ServeHTTP(w, req)
+
+		if i <= 5 {
+			if w.Code != http.StatusOK {
+				t.Errorf("Expected request %d to succeed with 200, got %d. Body: %s", i, w.Code, w.Body.String())
+			}
+		} else {
+			if w.Code != http.StatusTooManyRequests {
+				t.Errorf("Expected Sybil attack request %d to be blocked with 429, got %d. Body: %s", i, w.Code, w.Body.String())
+			}
+		}
 	}
 }

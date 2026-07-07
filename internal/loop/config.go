@@ -21,6 +21,11 @@ type FingerprintConfig struct {
 	// required to consider two requests as part of a loop.
 	// Default: 0.95
 	SimilarityThreshold float64 `mapstructure:"similarity_threshold"`
+
+	// DefeatPadding enables structural truncation of large JSON string values
+	// to prevent semantic padding attacks.
+	// Default: false (due to potential CPU overhead on massive payloads)
+	DefeatPadding bool `mapstructure:"defeat_padding"`
 }
 
 type VelocityConfig struct {
