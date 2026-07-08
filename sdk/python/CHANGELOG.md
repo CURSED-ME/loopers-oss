@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1](https://github.com/CURSED-ME/loopers-oss/compare/sdk-python-v1.4.0...sdk-python-v1.4.1) (2026-07-07)
+
+
+### Bug Fixes
+
+* Replace test shell script with Makefile for Scorecard ([fb471ce](https://github.com/CURSED-ME/loopers-oss/commit/fb471ceabf6a9d6e1d6e2e6736777d8a02070a5b))
+* Resolve GitHub Scorecard Pinned-Dependencies vulnerabilities ([0648364](https://github.com/CURSED-ME/loopers-oss/commit/064836476ebb6e268a2d0f52b901a557f780172d))
+
 ## [1.4.0](https://github.com/CURSED-ME/loopers-oss/compare/sdk-python-v1.3.0...sdk-python-v1.4.0) (2026-07-03)
 
 
