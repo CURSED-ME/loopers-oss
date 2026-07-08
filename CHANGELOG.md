@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.2](https://github.com/CURSED-ME/loopers-oss/compare/v1.5.1...v1.5.2) (2026-07-08)
+
+
+### Bug Fixes
+
+* explicit tomli requirement to fix python sdk ci build ([c173d2f](https://github.com/CURSED-ME/loopers-oss/commit/c173d2fa452e4b02394f8663982fa670ec852c83))
+* explicit tomli requirement to fix python sdk ci build ([a764be4](https://github.com/CURSED-ME/loopers-oss/commit/a764be42f84efc164ab99f37d0145f5aeb043c14))
+
 ## [1.5.1](https://github.com/CURSED-ME/loopers-oss/compare/v1.5.0...v1.5.1) (2026-07-07)
 
 
