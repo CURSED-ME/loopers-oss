@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/CURSED-ME/loopers-oss/compare/sdk-ts-v1.3.0...sdk-ts-v1.3.1) (2026-07-07)
+
+
+### Bug Fixes
+
+* Resolve GitHub Scorecard Pinned-Dependencies vulnerabilities ([0648364](https://github.com/CURSED-ME/loopers-oss/commit/064836476ebb6e268a2d0f52b901a557f780172d))
+
 ## [1.3.0](https://github.com/CURSED-ME/loopers-oss/compare/sdk-ts-v1.2.0...sdk-ts-v1.3.0) (2026-06-28)
 
 
