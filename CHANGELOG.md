@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.0](https://github.com/CURSED-ME/loopers-oss/compare/v1.5.2...v1.6.0) (2026-07-14)
+
+
+### Features
+
+* add community engagement call-to-action prompts and update assets ([87b8844](https://github.com/CURSED-ME/loopers-oss/commit/87b88448c3105548d0a06038c542f40ab2b154e5))
+* add community engagement call-to-action prompts and update assets ([51d3267](https://github.com/CURSED-ME/loopers-oss/commit/51d32677a3c59c5579ed5507d0a9b9d54c154fe2))
+
 ## [1.5.2](https://github.com/CURSED-ME/loopers-oss/compare/v1.5.1...v1.5.2) (2026-07-08)
 
 
