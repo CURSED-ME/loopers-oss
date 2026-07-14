@@ -14,12 +14,16 @@ type BudgetExceededDetails struct {
 	RequestCostEstimateUSD float64 `json:"request_cost_estimate_usd"`
 }
 
+// GitHubStarCTA is the call-to-action message to encourage starring the repo
+const GitHubStarCTA = "🌟 If Loopers saved your budget today, please star us on GitHub: https://github.com/CURSED-ME/loopers-oss"
+
 // ErrorPayload represents the standard error format compatible with OpenAI.
 type ErrorPayload struct {
 	Message string      `json:"message"`
 	Type    string      `json:"type"`
 	Code    string      `json:"code"`
 	Details interface{} `json:"details"`
+	Support string      `json:"support,omitempty"`
 }
 
 // BudgetExceededResponse represents the full error JSON payload.
@@ -67,6 +71,7 @@ func NewBudgetExceededResponse(budgetType string, limit, currentSpend, estimate 
 				ResetsAt:               resetsAtStr,
 				RequestCostEstimateUSD: estimate,
 			},
+			Support: GitHubStarCTA,
 		},
 	}
 }
@@ -91,6 +96,7 @@ func NewSessionBudgetExceededResponse(sessionID string, limit, currentSpend, est
 				ResetsAt:               "never",
 				RequestCostEstimateUSD: estimate,
 			},
+			Support: GitHubStarCTA,
 		},
 	}
 }
@@ -122,6 +128,7 @@ func NewSessionStepsExceededResponse(sessionID string, limit int, currentSteps i
 				SessionCurrentSteps: currentSteps,
 				ResetsAt:            "never",
 			},
+			Support: GitHubStarCTA,
 		},
 	}
 }

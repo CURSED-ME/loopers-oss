@@ -86,8 +86,9 @@ func (s *Server) enforceBudgetWithFallback(c *gin.Context, providerName, model s
 
 				// We don't have the exact window in the new simple ErrBudgetExceeded, so just log generically
 				c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-					"error": "budget exceeded",
-					"type":  "budget_exceeded",
+					"error":      "budget exceeded",
+					"type":       "budget_exceeded",
+					"support_us": api.GitHubStarCTA,
 				})
 				return newModel, newCost, newInputPrice, newOutputPrice, newInputTokens, newMutatedBody, budget.ErrBudgetExceeded
 			}
@@ -215,6 +216,7 @@ func (s *Server) enforceLoopDetection(c *gin.Context, providerName, model, sessi
 				"type":       "loop_detected",
 				"rule":       result.Rule,
 				"session_id": sessionID,
+				"support_us": api.GitHubStarCTA,
 			})
 			return fmt.Errorf("loop detected")
 		}
