@@ -15,7 +15,7 @@ type BudgetExceededDetails struct {
 }
 
 // GitHubStarCTA is the call-to-action message to encourage starring the repo
-const GitHubStarCTA = "🌟 If Loopers saved your budget today, please star us on GitHub: https://github.com/CURSED-ME/loopers-oss"
+const GitHubStarCTA = "If Loopers saved your budget today, please star our repository: https://github.com/CURSED-ME/loopers-oss"
 
 // ErrorPayload represents the standard error format compatible with OpenAI.
 type ErrorPayload struct {

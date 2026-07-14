@@ -17,8 +17,8 @@
 </p>
 
 > [!TIP]
-> **We need your support! 🌟**
-> Loopers is fully open-source and MIT-licensed. If it helped you secure your API keys, stop a runaway agent loop, or protect your AI budget today, please **[star our repository on GitHub](https://github.com/CURSED-ME/loopers-oss)**! Every star helps us grow the community and keep building the ultimate agent security gate.
+> **We need your support!**
+> Loopers is fully open-source and MIT-licensed. If it helped you secure your API keys, stop a runaway agent loop, or protect your AI budget today, please **star this repository**! Every star helps us grow the community and keep building the ultimate agent security gate.
 > 
 > Want to help make Loopers better? We love community contributions! Check out our [Contributing Guide](./CONTRIBUTING.md) to see how you can get involved.
 

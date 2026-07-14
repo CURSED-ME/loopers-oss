@@ -81,7 +81,7 @@ var serveCmd = &cobra.Command{
 		logging.InitLogger(logLevel)
 
 		logging.Logger.Info().Msg("Starting Loopers server...")
-		fmt.Println("\n🌟 If Loopers saved your budget today, please star us on GitHub: https://github.com/CURSED-ME/loopers-oss")
+		fmt.Println("\nIf Loopers saved your budget today, please star our repository: https://github.com/CURSED-ME/loopers-oss")
 
 		pricingPath := viper.GetString("pricing_path")
 		if pricingPath == "" {
@@ -290,7 +290,7 @@ var keysCreateCmd = &cobra.Command{
 		}
 
 		ui.PrintKeyCard(keyName, keyProvider, rawKey, hash)
-		fmt.Println("\n🌟 If Loopers saved your budget today, please star us on GitHub: https://github.com/CURSED-ME/loopers-oss")
+		fmt.Println("\nIf Loopers saved your budget today, please star our repository: https://github.com/CURSED-ME/loopers-oss")
 	},
 }
 
@@ -532,7 +532,7 @@ var budgetSetCmd = &cobra.Command{
 		}
 
 		ui.Success("Budget set successfully.")
-		fmt.Println("\n🌟 If Loopers saved your budget today, please star us on GitHub: https://github.com/CURSED-ME/loopers-oss")
+		fmt.Println("\nIf Loopers saved your budget today, please star our repository: https://github.com/CURSED-ME/loopers-oss")
 	},
 }
 
