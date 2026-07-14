@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.5.2](https://github.com/CURSED-ME/loopers-oss/compare/v1.5.1...v1.5.2) (2026-07-08)
+
+
+### Bug Fixes
+
+* explicit tomli requirement to fix python sdk ci build ([c173d2f](https://github.com/CURSED-ME/loopers-oss/commit/c173d2fa452e4b02394f8663982fa670ec852c83))
+* explicit tomli requirement to fix python sdk ci build ([a764be4](https://github.com/CURSED-ME/loopers-oss/commit/a764be42f84efc164ab99f37d0145f5aeb043c14))
+
+## [1.5.1](https://github.com/CURSED-ME/loopers-oss/compare/v1.5.0...v1.5.1) (2026-07-07)
+
+
+### Bug Fixes
+
+* enhance session limits and payload inspection for security ([a15a552](https://github.com/CURSED-ME/loopers-oss/commit/a15a55247837916b7130d7e6fc8858542c459a6e))
+* Replace test shell script with Makefile for Scorecard ([fb471ce](https://github.com/CURSED-ME/loopers-oss/commit/fb471ceabf6a9d6e1d6e2e6736777d8a02070a5b))
+* Resolve GitHub Scorecard Pinned-Dependencies vulnerabilities ([0648364](https://github.com/CURSED-ME/loopers-oss/commit/064836476ebb6e268a2d0f52b901a557f780172d))
+
 ## [1.5.0](https://github.com/CURSED-ME/loopers-oss/compare/v1.4.0...v1.5.0) (2026-07-04)
 
 
