@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./docs/logo.svg" alt="Loopers" width="800"/>
+  <img src="./docs/logo.jpg" alt="Loopers" width="800"/>
 </p>
 
 # Loopers – The firewall for the agentic era
@@ -15,6 +15,13 @@
   <a href="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml"><img src="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml/badge.svg" alt="Build Status" /></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/CURSED-ME/loopers-oss"><img src="https://api.securityscorecards.dev/projects/github.com/CURSED-ME/loopers-oss/badge?style=for-the-badge" alt="OpenSSF Scorecard" /></a>
 </p>
+
+> [!TIP]
+> **We need your support! 🌟**
+> Loopers is fully open-source and MIT-licensed. If it helped you secure your API keys, stop a runaway agent loop, or protect your AI budget today, please **[star our repository on GitHub](https://github.com/CURSED-ME/loopers-oss)**! Every star helps us grow the community and keep building the ultimate agent security gate.
+> 
+> Want to help make Loopers better? We love community contributions! Check out our [Contributing Guide](./CONTRIBUTING.md) to see how you can get involved.
+
 
 Loopers is a baremetal, zero-delay firewall for the agentic era. It intercepts requests across **500+ AI models natively** (across 14 providers like OpenAI, Anthropic, Gemini, Groq, Ollama, vLLM, and more), plus **any OpenAI-compatible endpoint**, to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
 
