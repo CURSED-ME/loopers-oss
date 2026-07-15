@@ -108,6 +108,7 @@ providers:
 | Key | Default | Description |
 |---|---|---|
 | port | 8080 | Port that the proxy listens on |
+| admin_host | 127.0.0.1 | Host interface for the admin/metrics server. Set to 0.0.0.0 in Docker/K8s. |
 | admin_port | 9090 | Port that the admin and metrics server listens on |
 | log_level | info | Logging verbosity |
 | read_timeout | 30s | HTTP read timeout |

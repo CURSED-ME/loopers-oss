@@ -142,6 +142,9 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 					cost := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
 					// Check if we have enough budget
 					if !checkBudget(cost) {
+						// Flush the final chunk containing usage stats that triggered the cutoff.
+						// This ensures accurate client-side tracking before we sever the connection.
+						_, _ = sr.pipeWriter.Write(outChunk)
 						_, _ = sr.pipeWriter.Write(prov.FormatBudgetExceededSSE())
 						onStreamEnd(cost, totalInputTokens, totalOutputTokens, true)
 						return
@@ -192,7 +195,9 @@ func (sr *SSEStreamReader) processBedrockStream(ctx context.Context, original io
 				if inTokens > 0 || outTokens > 0 {
 					cost := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
 					if !checkBudget(cost) {
-						// Write exception frame and stop
+						// Flush the final frame containing usage stats that triggered the cutoff
+						// before writing the exception frame and stopping.
+						_, _ = sr.pipeWriter.Write(frameBytes)
 						_, _ = sr.pipeWriter.Write(prov.FormatBudgetExceededSSE())
 						onStreamEnd(cost, totalInputTokens, totalOutputTokens, true)
 						return

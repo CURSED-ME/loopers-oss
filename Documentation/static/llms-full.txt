@@ -70,6 +70,7 @@ Primary Objectives:
 version: "1.0"
 server:
   port: 8080
+  admin_host: 127.0.0.1
   admin_port: 9090
   tls:
     enabled: false

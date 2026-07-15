@@ -70,7 +70,6 @@ jobs:
           go test -fuzz=FuzzCountGeminiTokensFallback -fuzztime=10s ./internal/provider/gemini
 
       - name: Go Vuln Check
-        continue-on-error: true
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
           govulncheck ./...

@@ -124,6 +124,11 @@ var serveCmd = &cobra.Command{
 			adminPort = "9090"
 		}
 
+		adminHost := viper.GetString("server.admin_host")
+		if adminHost == "" {
+			adminHost = "127.0.0.1"
+		}
+
 		readHeaderTimeoutSec := viper.GetInt("server.read_header_timeout_seconds")
 		if readHeaderTimeoutSec <= 0 {
 			readHeaderTimeoutSec = 10
@@ -151,7 +156,7 @@ var serveCmd = &cobra.Command{
 		}
 
 		adminSrv := &http.Server{
-			Addr:              ":" + adminPort,
+			Addr:              adminHost + ":" + adminPort,
 			Handler:           s.GetAdminRouter(),
 			ReadHeaderTimeout: time.Duration(readHeaderTimeoutSec) * time.Second,
 			ReadTimeout:       time.Duration(readTimeoutSec) * time.Second,
@@ -680,6 +685,7 @@ var initCmd = &cobra.Command{
 		yamlContent := fmt.Sprintf(`server:
   port: 8080
   max_payload_bytes: 2097152
+  # admin_host: 127.0.0.1
   # admin_port: 9090
   # tls_cert_file: "/path/to/cert.pem"
   # tls_key_file: "/path/to/key.pem"
@@ -736,6 +742,7 @@ services:
       - REDIS_ADDR=redis:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-demo-pass}
       - SERVER_PORT=8080
+      - SERVER_ADMIN_HOST=0.0.0.0
       - PRICING_PATH=/app/pricing.yaml
     depends_on:
       redis:
