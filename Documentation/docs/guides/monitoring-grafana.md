@@ -85,6 +85,7 @@ services:
       - 9090:9090
     environment:
       - REDIS_ADDR=redis:6379
+      - SERVER_ADMIN_HOST=0.0.0.0
 
   prometheus:
     image: prom/prometheus:latest

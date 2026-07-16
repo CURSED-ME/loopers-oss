@@ -53,5 +53,6 @@ externalRedis:
 # Loopers configuration parameters
 config:
   logLevel: "info"
+  adminHost: "0.0.0.0"
   alerting:
     webhookUrl: ""

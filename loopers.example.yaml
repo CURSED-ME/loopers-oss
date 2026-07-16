@@ -1,5 +1,6 @@
 server:
   port: 8080
+  # admin_host: 127.0.0.1
   admin_port: 9090
   max_payload_bytes: 2097152 # 2MB default limit
   read_header_timeout_seconds: 10

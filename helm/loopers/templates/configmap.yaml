@@ -8,6 +8,7 @@ data:
   loopers.yaml: |
     server:
       port: 8080
+      admin_host: "{{ .Values.config.adminHost }}"
     redis:
       addr: {{ if .Values.redis.enabled }}"{{ .Release.Name }}-redis-master:6379"{{ else }}"{{ .Values.externalRedis.host }}:{{ .Values.externalRedis.port }}"{{ end }}
       password: {{ if .Values.redis.enabled }}""{{ else }}"{{ .Values.externalRedis.password }}"{{ end }}

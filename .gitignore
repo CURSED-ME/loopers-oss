@@ -6,6 +6,7 @@ internal/budget/budget-leak-test-results.md
 loopers-oom-crash-report.md
 throughput test results.md
 docs/reference/prod-testing-results.md
+docs/reference/gap-research.md
 docs/*.md
 graphify-out/
 bin/

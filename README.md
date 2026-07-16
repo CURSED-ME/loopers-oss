@@ -266,7 +266,7 @@ For a detailed system overview and sequence diagram, please see our [Architectur
 
 ## Monitoring
 
-Loopers exposes a Prometheus metrics endpoint out of the box on a dedicated, isolated admin port (default: `9090`). A pre-built Grafana dashboard is included in [`./grafana/`](./grafana/) for instant observability into request throughput, budget block rates, and latency percentiles.
+Loopers exposes a Prometheus metrics endpoint out of the box on a dedicated, isolated admin port (default: `127.0.0.1:9090`). This is secure by default for bare-metal deployments. In Docker/Kubernetes environments, this must be explicitly bound to `0.0.0.0` via the `SERVER_ADMIN_HOST` environment variable to allow external scraping. A pre-built Grafana dashboard is included in [`./grafana/`](./grafana/) for instant observability into request throughput, budget block rates, and latency percentiles.
 
 ---
 

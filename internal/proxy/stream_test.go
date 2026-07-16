@@ -85,7 +85,8 @@ func TestAnthropicEventParsing(t *testing.T) {
 
 func TestStreamBudgetCutoff(t *testing.T) {
 	stream := "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\n\n" +
-		"event: message_delta\ndata: {\"type\":\"message_delta\",\"usage\":{\"output_tokens\":5}}\n\n"
+		"event: message_delta\ndata: {\"type\":\"message_delta\",\"usage\":{\"output_tokens\":5}}\n\n" +
+		"event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"delta\":{\"text\":\"forbidden_text\"}}\n\n"
 
 	reader := &mockReadCloser{Reader: strings.NewReader(stream)}
 
@@ -100,7 +101,10 @@ func TestStreamBudgetCutoff(t *testing.T) {
 	if !strings.Contains(output, "Budget exceeded mid-stream") {
 		t.Error("expected output to contain budget exceeded error event")
 	}
-	if strings.Contains(output, "message_delta") {
-		t.Error("expected stream to be cut off before message_delta was written to client")
+	if !strings.Contains(output, "message_delta") {
+		t.Error("expected stream to flush final message_delta chunk before severing")
+	}
+	if strings.Contains(output, "forbidden_text") {
+		t.Error("expected stream to be cut off before subsequent chunks are written")
 	}
 }
