@@ -10,7 +10,7 @@
 
 <p align="left">
   <img src="https://img.shields.io/badge/license-MIT-black.svg?style=for-the-badge" alt="License" />
-  <img src="https://img.shields.io/badge/go-1.26.4-black.svg?style=for-the-badge" alt="Go Version" />
+  <img src="https://img.shields.io/badge/go-1.26.5-black.svg?style=for-the-badge" alt="Go Version" />
   <img src="https://img.shields.io/badge/models-500%2B%20Supported-black.svg?style=for-the-badge" alt="Models Supported" />
   <a href="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml"><img src="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml/badge.svg" alt="Build Status" /></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/CURSED-ME/loopers-oss"><img src="https://api.securityscorecards.dev/projects/github.com/CURSED-ME/loopers-oss/badge?style=for-the-badge" alt="OpenSSF Scorecard" /></a>

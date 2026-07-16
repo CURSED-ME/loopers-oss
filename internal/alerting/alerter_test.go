@@ -57,8 +57,16 @@ func TestAlerterDelivery(t *testing.T) {
 	// 1. Test Block Event Alert
 	alerter.TriggerBlockAlert(context.Background(), "req-1", "test-hash", "test-key", "openai", "gpt-4o", "daily", 10.05, 10.00, 0.05)
 
-	// Wait for delivery
-	time.Sleep(100 * time.Millisecond)
+	// Wait for delivery (up to 2 seconds)
+	for i := 0; i < 20; i++ {
+		time.Sleep(100 * time.Millisecond)
+		mu.Lock()
+		if len(received) >= 1 {
+			mu.Unlock()
+			break
+		}
+		mu.Unlock()
+	}
 
 	mu.Lock()
 	if len(received) != 1 {
