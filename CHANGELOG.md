@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.0](https://github.com/CURSED-ME/loopers-oss/compare/v1.6.0...v1.7.0) (2026-07-17)
+
+
+### Features
+
+* enhance proxy security and streaming reliability ([0924576](https://github.com/CURSED-ME/loopers-oss/commit/0924576f8867e7e31786c76552128a2a77e387ba))
+* enhance proxy security and streaming reliability ([c211483](https://github.com/CURSED-ME/loopers-oss/commit/c2114830f82354dd6d06d5c9cee03e91665de2bb))
+
 ## [1.6.0](https://github.com/CURSED-ME/loopers-oss/compare/v1.5.2...v1.6.0) (2026-07-14)
 
 
