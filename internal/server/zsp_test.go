@@ -100,7 +100,7 @@ func TestZSPAuthRouting(t *testing.T) {
 		}
 		alg, _ := serverKey.Algorithm()
 		signed, _ := jwt.Sign(tok, jwt.WithKey(alg, serverKey))
-		
+
 		if tampered {
 			return string(signed) + "tamper"
 		}
@@ -117,12 +117,12 @@ func TestZSPAuthRouting(t *testing.T) {
 		tok.Set("htm", method)
 		tok.Set("htu", url)
 		tok.Set(jwt.IssuedAtKey, time.Now())
-		
+
 		hdrs := jws.NewHeaders()
 		hdrs.Set(jws.TypeKey, "dpop+jwt")
 		pubKey, _ := clientKey.PublicKey()
 		hdrs.Set(jws.JWKKey, pubKey)
-		
+
 		signed, _ := jwt.Sign(tok, jwt.WithKey(jwa.RS256(), clientKey, jws.WithProtectedHeaders(hdrs)))
 		return string(signed)
 	}
@@ -214,12 +214,12 @@ func TestZSPAuthRouting(t *testing.T) {
 		rawKey, _ := keyring.GenerateRawKey()
 		keyHash := keyring.HashKey(rawKey)
 		rdb.HSet(ctx, "loopers:key:"+keyHash, map[string]interface{}{
-			"name":       "revoked-key",
-			"provider":   "mock",
-			"active":     "false", // revoked
+			"name":     "revoked-key",
+			"provider": "mock",
+			"active":   "false", // revoked
 		})
 		defer rdb.Del(ctx, "loopers:key:"+keyHash)
-		
+
 		w := makeReq(rawKey, "", false)
 		if w.Code != http.StatusUnauthorized {
 			t.Errorf("expected 401 for revoked key, got %d", w.Code)

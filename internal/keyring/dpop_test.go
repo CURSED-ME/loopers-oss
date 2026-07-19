@@ -44,7 +44,7 @@ func TestValidateDPoP(t *testing.T) {
 	// 3. Create JWS headers
 	hdrs := jws.NewHeaders()
 	hdrs.Set(jws.TypeKey, "dpop+jwt")
-	
+
 	// Create public key for the header
 	pubKey, err := key.PublicKey()
 	if err != nil {

@@ -60,25 +60,25 @@ const (
 
 // Server coordinates the proxy operations and HTTP routing.
 type Server struct {
-	router         *gin.Engine
-	redis          *budget.Client
-	pricing        *pricing.Store
-	proxy          *proxy.Proxy
-	registry       *provider.Registry
-	alerter        *alerting.Alerter
-	loopDetector   *loop.Detector
-	shadowMode     bool
-	proxyGroup     *gin.RouterGroup // exposed so tests can register routes with BodyBuffer applied
-	otelEnabled    bool
-	otelShutdown   func(context.Context) error
-	mcpHandler     *mcp.Handler
-	rateLimiter    *ratelimit.Limiter
+	router           *gin.Engine
+	redis            *budget.Client
+	pricing          *pricing.Store
+	proxy            *proxy.Proxy
+	registry         *provider.Registry
+	alerter          *alerting.Alerter
+	loopDetector     *loop.Detector
+	shadowMode       bool
+	proxyGroup       *gin.RouterGroup // exposed so tests can register routes with BodyBuffer applied
+	otelEnabled      bool
+	otelShutdown     func(context.Context) error
+	mcpHandler       *mcp.Handler
+	rateLimiter      *ratelimit.Limiter
 	sessionManager   *session.Manager
 	policyEngine     *policy.Engine
 	escalationBroker *a2a.EscalationBroker
 	jwksValidator    *keyring.JWKSValidator
 	ctx              context.Context
-	cancel         context.CancelFunc
+	cancel           context.CancelFunc
 }
 
 // NewServer initializes and builds the HTTP server with middlewares and ReverseProxy configuration.

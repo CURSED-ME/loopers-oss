@@ -19,7 +19,7 @@ type EscalationBroker struct {
 }
 
 // NewEscalationBroker initializes a new escalation broker.
-// It is highly recommended to pass a dedicated redis.Client to prevent pub/sub 
+// It is highly recommended to pass a dedicated redis.Client to prevent pub/sub
 // subscriptions from exhausting the primary connection pool used for hot-path budget checks.
 func NewEscalationBroker(rdb *redis.Client, secret string) *EscalationBroker {
 	return &EscalationBroker{rdb: rdb, secret: secret}
@@ -46,11 +46,11 @@ func (b *EscalationBroker) RequestEscalation(ctx context.Context, req Escalation
 
 	req.Nonce = fmt.Sprintf("%d", time.Now().UnixNano())
 	reqData, _ := json.Marshal(req)
-	
+
 	// Hash session ID to prevent channel collision/injection
 	hash := sha256.Sum256([]byte(req.SessionID))
 	channel := fmt.Sprintf("loopers:escalation:%x", hash)
-	
+
 	// Start subscribing to the specific session channel
 	pubsub := b.rdb.Subscribe(ctx, channel)
 	defer pubsub.Close()
@@ -78,13 +78,13 @@ func (b *EscalationBroker) RequestEscalation(ctx context.Context, req Escalation
 		if err := json.Unmarshal([]byte(msg.Payload), &resp); err != nil {
 			return nil, fmt.Errorf("invalid response payload: %w", err)
 		}
-		
+
 		// Verify HMAC signature
 		mac := hmac.New(sha256.New, []byte(b.secret))
 		mac.Write([]byte(req.Nonce))
 		mac.Write([]byte(fmt.Sprintf("%t", resp.Approved)))
 		expectedSig := hex.EncodeToString(mac.Sum(nil))
-		
+
 		if b.secret != "" && resp.Signature != expectedSig {
 			return nil, fmt.Errorf("invalid escalation signature")
 		}

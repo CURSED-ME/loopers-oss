@@ -34,7 +34,7 @@ func ValidateDPoP(tokenString, method, requestURL, expectedJkt string) (string, 
 	}
 
 	hdrs := msg.Signatures()[0].ProtectedHeaders()
-	
+
 	typ, ok := hdrs.Type()
 	if !ok || !strings.EqualFold(typ, "dpop+jwt") {
 		return "", errors.New("invalid typ header, must be dpop+jwt")
