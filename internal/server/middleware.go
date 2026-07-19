@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	"github.com/CURSED-ME/loopers-oss/internal/proxy"
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,7 @@ const (
 	// Context keys
 	RequestIDKey   = "RequestID"
 	RequestBodyCtx = "RequestBody"
+	JWTClaimsCtx   = "JWTClaims"
 )
 
 // RequestID injects X-Request-ID into context and response headers.
@@ -110,13 +112,12 @@ func MaxBytesReader(limit int64) gin.HandlerFunc {
 }
 
 // KeyExtractor extracts X-Loopers-Provider-Key and stores it in context, stripping it from headers.
-// It also extracts the Authorization header containing the Loopers proxy key.
-func KeyExtractor() gin.HandlerFunc {
+// It also extracts the Authorization header containing the Loopers proxy key or JWT.
+func KeyExtractor(jwks *keyring.JWKSValidator) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		providerKey := c.GetHeader("X-Loopers-Provider-Key")
 		c.Request.Header.Del("X-Loopers-Provider-Key")
 
-		// Extract proxy key from Authorization header: "Bearer lp-..." or "lp-..."
 		authHeader := c.GetHeader("Authorization")
 		var proxyKey string
 		if strings.HasPrefix(authHeader, "Bearer ") {
@@ -128,9 +129,21 @@ func KeyExtractor() gin.HandlerFunc {
 		if providerKey != "" {
 			c.Set(proxy.ProviderKeyCtx, providerKey)
 		}
+
 		if proxyKey != "" {
-			// We store the raw proxy key in context temporarily; keyring validation will convert to hash
-			c.Set("RawProxyKey", proxyKey)
+			// A valid JWT has exactly two dots (Header.Payload.Signature)
+			if jwks != nil && strings.Count(proxyKey, ".") == 2 {
+				meta, err := jwks.ValidateJWT(c.Request.Context(), proxyKey)
+				if err == nil {
+					c.Set(JWTClaimsCtx, meta)
+				} else {
+					logging.Logger.Warn().Err(err).Msg("JWT validation failed in KeyExtractor")
+					c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid JWT token"})
+					return
+				}
+			} else {
+				c.Set("RawProxyKey", proxyKey)
+			}
 		}
 		c.Next()
 	}

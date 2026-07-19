@@ -7,8 +7,10 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/CURSED-ME/loopers-oss/internal/a2a"
 	"github.com/CURSED-ME/loopers-oss/internal/event"
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
@@ -28,50 +30,85 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	startTime := time.Now()
 
 	// 1. Auth check
-	rawProxyKey, exists := c.Get("RawProxyKey")
-	if !exists {
-		reqID := c.GetString("RequestID")
-		requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
-		if s.otelEnabled {
-			// In OTEL, promote the span if it needs to be sampled for errors
-			// otel.PromoteToSampled is not a standard OTEL function, this is pseudo-code in the original
-			// Assuming we just keep it as it was in server.go
+	var meta *keyring.KeyMetadata
+	var keyHash string
+	reqID := c.GetString("RequestID")
+
+	if claims, exists := c.Get(JWTClaimsCtx); exists {
+		meta = claims.(*keyring.KeyMetadata)
+		if rawProxyKey, ok := c.Get("RawProxyKey"); ok {
+			keyHash = keyring.HashKey(rawProxyKey.(string))
+		} else {
+			keyHash = keyring.HashKey(meta.Name)
 		}
+
+		// DPoP Validation
+		dpopHeader := c.GetHeader("DPoP")
+		if dpopHeader != "" {
+			requestURL := "https://" + c.Request.Host + c.Request.URL.Path
+			if pub := viper.GetString("server.public_url"); pub != "" {
+				requestURL = strings.TrimSuffix(pub, "/") + c.Request.URL.Path
+			}
+			jti, err := keyring.ValidateDPoP(dpopHeader, c.Request.Method, requestURL, meta.Jkt)
+			if err != nil {
+				zspAuthFailuresTotal.WithLabelValues("dpop_invalid").Inc()
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid DPoP token"})
+				return
+			}
+			// Replay protection check
+			jtiKey := "loopers:dpop_jti:" + jti
+			rdb := s.redis.GetUnderlyingClient()
+			set, err := rdb.SetNX(c.Request.Context(), jtiKey, "1", 5*time.Minute).Result()
+			if err != nil || !set {
+				zspAuthFailuresTotal.WithLabelValues("dpop_replayed").Inc()
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "DPoP token replay detected"})
+				return
+			}
+		} else if meta.Jkt != "" {
+			// Required DPoP but missing
+			zspAuthFailuresTotal.WithLabelValues("dpop_missing").Inc()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing DPoP header"})
+			return
+		}
+
+	} else if rawProxyKey, exists := c.Get("RawProxyKey"); exists {
+		rawKeyStr := rawProxyKey.(string)
+
+		if !keyring.ValidateLoopersKey(rawKeyStr) {
+			requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
+			if s.alerter != nil {
+				go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Invalid loopers key format")
+			}
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid loopers key format"})
+			return
+		}
+
+		keyHash = keyring.HashKey(rawKeyStr)
+		var err error
+		meta, err = keyring.GetKeyMetadata(c.Request.Context(), s.redis.GetUnderlyingClient(), keyHash)
+		if err != nil {
+			if err.Error() == "key does not exist" {
+				requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
+				if s.alerter != nil {
+					go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Key not registered")
+				}
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
+			} else {
+				logging.Logger.Error().Err(err).Msg("failed to get key metadata")
+				requestsTotal.WithLabelValues(providerName, "unknown", "503").Inc()
+				if s.alerter != nil {
+					go s.alerter.TriggerFailClosed(detachedTraceContext(c.Request.Context()), reqID, "Failed to get key metadata")
+				}
+				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "Service Unavailable: internal error"})
+			}
+			return
+		}
+	} else {
+		requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
 		if s.alerter != nil {
 			go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Missing Authorization header")
 		}
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
-		return
-	}
-	rawKeyStr := rawProxyKey.(string)
-	reqID := c.GetString("RequestID")
-
-	if !keyring.ValidateLoopersKey(rawKeyStr) {
-		requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
-		if s.alerter != nil {
-			go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Invalid loopers key format")
-		}
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid loopers key format"})
-		return
-	}
-
-	keyHash := keyring.HashKey(rawKeyStr)
-	meta, err := keyring.GetKeyMetadata(c.Request.Context(), s.redis.GetUnderlyingClient(), keyHash)
-	if err != nil {
-		if err.Error() == "key does not exist" {
-			requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
-			if s.alerter != nil {
-				go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Key not registered")
-			}
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
-		} else {
-			logging.Logger.Error().Err(err).Msg("failed to get key metadata")
-			requestsTotal.WithLabelValues(providerName, "unknown", "503").Inc()
-			if s.alerter != nil {
-				go s.alerter.TriggerFailClosed(detachedTraceContext(c.Request.Context()), reqID, "Failed to get key metadata")
-			}
-			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "Service Unavailable: internal error"})
-		}
 		return
 	}
 	if meta.Active != "true" {
@@ -125,21 +162,46 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				Detail:    rlErr.Error(),
 			})
 		} else if !allowed {
-			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
-				EventType: "rate_limit_block",
-				KeyHash:   keyHash,
-				Provider:  providerName,
-				Reason:    "rate_limited",
-				Detail:    "Rate limit exceeded",
-			})
-			rateLimitBlocksTotal.WithLabelValues(providerName).Inc()
-			requestsTotal.WithLabelValues(providerName, "unknown", "429").Inc()
-			c.Header("X-RateLimit-Remaining", "0")
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "rate limit exceeded",
-				"type":  "rate_limit_exceeded",
-			})
-			return
+			if s.escalationBroker != nil {
+				sessionID := c.GetHeader("X-Loopers-Session-ID")
+				if sessionID == "" {
+					sessionID = reqID
+				}
+				req := a2a.EscalationRequest{
+					SessionID: sessionID,
+					Reason:    "rate_limited",
+					AgentName: meta.AgentName,
+				}
+				resp, escErr := s.escalationBroker.RequestEscalation(c.Request.Context(), req, 5*time.Second)
+				if escErr == nil && resp.Approved {
+					escalationsApprovedTotal.WithLabelValues("rate_limited").Inc()
+					logging.Logger.Info().Str("session_id", sessionID).Msg("rate limit block escalated and approved")
+					allowed = true
+				} else if escErr != nil {
+					escalationsTimeoutTotal.WithLabelValues("rate_limited").Inc()
+					logging.Logger.Warn().Err(escErr).Str("session_id", sessionID).Msg("escalation request timed out or failed")
+				}
+			}
+
+			if !allowed {
+				event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
+					EventType: "rate_limit_block",
+					KeyHash:   keyHash,
+					Provider:  providerName,
+					Reason:    "rate_limited",
+					Detail:    "Rate limit exceeded",
+				})
+				rateLimitBlocksTotal.WithLabelValues(providerName).Inc()
+				requestsTotal.WithLabelValues(providerName, "unknown", "429").Inc()
+				c.Header("X-RateLimit-Remaining", "0")
+				c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+					"error": "rate limit exceeded",
+					"type":  "rate_limit_exceeded",
+				})
+				return
+			} else {
+				c.Header("X-RateLimit-Remaining", "0")
+			}
 		} else {
 			c.Header("X-RateLimit-Remaining", strconv.Itoa(remaining))
 		}

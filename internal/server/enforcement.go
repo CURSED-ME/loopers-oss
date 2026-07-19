@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
+	"github.com/CURSED-ME/loopers-oss/internal/a2a"
 	"github.com/CURSED-ME/loopers-oss/internal/budget"
 	"github.com/CURSED-ME/loopers-oss/internal/event"
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
@@ -70,6 +72,27 @@ func (s *Server) enforceBudgetWithFallback(c *gin.Context, providerName, model s
 				newCost = 0
 				return newModel, newCost, newInputPrice, newOutputPrice, newInputTokens, newMutatedBody, nil
 			} else {
+				if s.escalationBroker != nil {
+					sessionID := c.GetHeader("X-Loopers-Session-ID")
+					if sessionID == "" {
+						sessionID = reqID
+					}
+					req := a2a.EscalationRequest{
+						SessionID: sessionID,
+						Reason:    "budget_exceeded",
+						AgentName: meta.AgentName,
+					}
+					resp, escErr := s.escalationBroker.RequestEscalation(c.Request.Context(), req, 5*time.Second)
+					if escErr == nil && resp.Approved {
+						escalationsApprovedTotal.WithLabelValues("budget_exceeded").Inc()
+						logging.Logger.Info().Str("session_id", sessionID).Msg("budget block escalated and approved")
+						return newModel, newCost, newInputPrice, newOutputPrice, newInputTokens, newMutatedBody, nil
+					} else if escErr != nil {
+						escalationsTimeoutTotal.WithLabelValues("budget_exceeded").Inc()
+						logging.Logger.Warn().Err(escErr).Str("session_id", sessionID).Msg("escalation request timed out or failed")
+					}
+				}
+
 				event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
 					EventType: "budget_block",
 					KeyHash:   keyHash,

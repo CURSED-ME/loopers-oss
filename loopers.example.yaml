@@ -75,6 +75,15 @@ otel:
   # headers:
   #   "x-honeycomb-team": "your-api-key"
 
+zsp:
+  # Enable Zero-trust Security Protocol for agent-to-agent communication and verifiable JWTs.
+  enabled: false
+  # URL to fetch the JWKS JSON for JWT validation
+  jwks_url: "https://auth.loopers.dev/.well-known/jwks.json"
+  # Enable escalations (temporarily overriding blocks via external approval over Redis Pub/Sub)
+  escalation_enabled: false
+  escalation_secret: "your-hmac-secret-for-a2a-governance"
+
 # mcp:
 #   enabled: false
 #   max_request_size: 1048576   # 1MB limit for MCP JSON-RPC requests

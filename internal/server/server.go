@@ -4,8 +4,10 @@ import (
 	"context"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 
+	"github.com/CURSED-ME/loopers-oss/internal/a2a"
 	"github.com/CURSED-ME/loopers-oss/internal/alerting"
 	"github.com/CURSED-ME/loopers-oss/internal/budget"
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
@@ -71,9 +73,11 @@ type Server struct {
 	otelShutdown   func(context.Context) error
 	mcpHandler     *mcp.Handler
 	rateLimiter    *ratelimit.Limiter
-	sessionManager *session.Manager
-	policyEngine   *policy.Engine
-	ctx            context.Context
+	sessionManager   *session.Manager
+	policyEngine     *policy.Engine
+	escalationBroker *a2a.EscalationBroker
+	jwksValidator    *keyring.JWKSValidator
+	ctx              context.Context
 	cancel         context.CancelFunc
 }
 
@@ -203,22 +207,37 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		}
 	}
 
+	var jwksValidator *keyring.JWKSValidator
+	var escalationBroker *a2a.EscalationBroker
+	if viper.GetBool("zsp.enabled") {
+		var err error
+		jwksValidator, err = keyring.NewJWKSValidator(ctx, viper.GetString("zsp.jwks_url"))
+		if err != nil {
+			logging.Logger.Fatal().Err(err).Msg("Failed to initialize JWKS validator")
+		}
+		if redisClient != nil {
+			escalationBroker = a2a.NewEscalationBroker(redisClient.GetUnderlyingClient(), viper.GetString("zsp.escalation_secret"))
+		}
+	}
+
 	s := &Server{
-		router:         r,
-		redis:          redisClient,
-		pricing:        pricingStore,
-		registry:       reg,
-		alerter:        alerter,
-		loopDetector:   loopDetector,
-		shadowMode:     shadowMode,
-		otelEnabled:    otelEnabled,
-		otelShutdown:   otelShutdown,
-		mcpHandler:     mcpHandler,
-		rateLimiter:    rateLimiter,
-		sessionManager: sessionManager,
-		policyEngine:   policyEngine,
-		ctx:            ctx,
-		cancel:         cancel,
+		router:           r,
+		redis:            redisClient,
+		pricing:          pricingStore,
+		registry:         reg,
+		alerter:          alerter,
+		loopDetector:     loopDetector,
+		shadowMode:       shadowMode,
+		otelEnabled:      otelEnabled,
+		otelShutdown:     otelShutdown,
+		mcpHandler:       mcpHandler,
+		rateLimiter:      rateLimiter,
+		sessionManager:   sessionManager,
+		policyEngine:     policyEngine,
+		escalationBroker: escalationBroker,
+		jwksValidator:    jwksValidator,
+		ctx:              ctx,
+		cancel:           cancel,
 	}
 
 	// Setup custom ReverseProxy with modifyResponse callback
@@ -253,10 +272,10 @@ func (s *Server) setupRoutes() {
 		maxPayloadBytes = 2 << 20 // 2MB default
 	}
 	s.router.Use(MaxBytesReader(maxPayloadBytes)) // Wrap request body with configurable limit
-	s.router.Use(KeyExtractor())
+	s.router.Use(KeyExtractor(s.jwksValidator))
 
 	s.router.GET("/health", s.handleHealth)
-	s.router.GET("/budget/status", s.handleBudgetStatus)
+	s.router.GET("/budget/status", s.ipRateLimiter(60, time.Minute), s.handleBudgetStatus)
 
 	s.proxyGroup = s.router.Group("/")
 
@@ -315,23 +334,60 @@ func (s *Server) handleHealth(c *gin.Context) {
 }
 
 func (s *Server) handleBudgetStatus(c *gin.Context) {
-	rawProxyKey, exists := c.Get("RawProxyKey")
-	if !exists {
+	var meta *keyring.KeyMetadata
+	var keyHash string
+
+	if claims, exists := c.Get(JWTClaimsCtx); exists {
+		meta = claims.(*keyring.KeyMetadata)
+		if rawProxyKey, ok := c.Get("RawProxyKey"); ok {
+			keyHash = keyring.HashKey(rawProxyKey.(string))
+		} else {
+			keyHash = keyring.HashKey(meta.Name)
+		}
+
+		dpopHeader := c.GetHeader("DPoP")
+		if dpopHeader != "" {
+			requestURL := "https://" + c.Request.Host + c.Request.URL.Path
+			if pub := viper.GetString("server.public_url"); pub != "" {
+				requestURL = strings.TrimSuffix(pub, "/") + c.Request.URL.Path
+			}
+			jti, err := keyring.ValidateDPoP(dpopHeader, c.Request.Method, requestURL, meta.Jkt)
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid DPoP token"})
+				return
+			}
+			// Replay protection check
+			jtiKey := "loopers:dpop_jti:" + jti
+			rdb := s.redis.GetUnderlyingClient()
+			set, err := rdb.SetNX(c.Request.Context(), jtiKey, "1", 5*time.Minute).Result()
+			if err != nil || !set {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "DPoP token replay detected"})
+				return
+			}
+		} else if meta.Jkt != "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing DPoP header"})
+			return
+		}
+
+	} else if rawProxyKey, exists := c.Get("RawProxyKey"); exists {
+		rawKeyStr := rawProxyKey.(string)
+		if !keyring.ValidateLoopersKey(rawKeyStr) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid loopers key format"})
+			return
+		}
+
+		keyHash = keyring.HashKey(rawKeyStr)
+		var err error
+		meta, err = keyring.GetKeyMetadata(c.Request.Context(), s.redis.GetUnderlyingClient(), keyHash)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
+			return
+		}
+	} else {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
 		return
 	}
-	rawKeyStr := rawProxyKey.(string)
-	if !keyring.ValidateLoopersKey(rawKeyStr) {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid loopers key format"})
-		return
-	}
 
-	keyHash := keyring.HashKey(rawKeyStr)
-	meta, err := keyring.GetKeyMetadata(c.Request.Context(), s.redis.GetUnderlyingClient(), keyHash)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
-		return
-	}
 	if meta.Active != "true" {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key has been revoked"})
 		return
@@ -369,4 +425,34 @@ func (s *Server) GetRegistry() *provider.Registry {
 // This is used for firing alerts in goroutines without risking cancellation of the original context.
 func detachedTraceContext(ctx context.Context) context.Context {
 	return trace.ContextWithSpanContext(context.Background(), trace.SpanContextFromContext(ctx))
+}
+
+// ipRateLimiter provides a simple fixed-window IP-based rate limit to prevent abuse of endpoints.
+func (s *Server) ipRateLimiter(limit int64, window time.Duration) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ip := c.ClientIP()
+		if ip == "" {
+			c.Next()
+			return
+		}
+
+		key := "loopers:rl:ip:" + ip
+		ctx := c.Request.Context()
+		rdb := s.redis.GetUnderlyingClient()
+
+		pipe := rdb.Pipeline()
+		incr := pipe.Incr(ctx, key)
+		pipe.Expire(ctx, key, window)
+		_, err := pipe.Exec(ctx)
+
+		if err == nil && incr.Val() > limit {
+			c.Header("X-RateLimit-Remaining", "0")
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+				"error": "rate limit exceeded for this endpoint",
+				"type":  "rate_limit_exceeded",
+			})
+			return
+		}
+		c.Next()
+	}
 }

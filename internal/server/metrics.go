@@ -66,4 +66,19 @@ var (
 		Name: "loopers_rate_limit_blocks_total",
 		Help: "Total number of AI requests blocked by Loopers rate limiting",
 	}, []string{"provider"})
+
+	zspAuthFailuresTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "loopers_zsp_auth_failures_total",
+		Help: "Total ZSP JWT validation failures",
+	}, []string{"reason"})
+
+	escalationsApprovedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "loopers_escalations_approved_total",
+		Help: "Total ZSP escalations approved",
+	}, []string{"reason"})
+
+	escalationsTimeoutTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "loopers_escalations_timeout_total",
+		Help: "Total ZSP escalations timed out",
+	}, []string{"reason"})
 )

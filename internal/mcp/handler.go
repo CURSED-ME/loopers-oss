@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/event"
 	"go.opentelemetry.io/otel"
@@ -24,6 +25,7 @@ import (
 	proxyPkg "github.com/CURSED-ME/loopers-oss/internal/proxy"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 type Handler struct {
@@ -119,24 +121,61 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		return
 	}
 
-	// Auth check using the same lp-xxx key system
-	rawProxyKey, exists := c.Get("RawProxyKey")
-	if !exists {
+	// Auth check using the same dual-mode system (JWT or static key)
+	var meta *keyring.KeyMetadata
+	var keyHash string
+
+	if claims, exists := c.Get("JWTClaims"); exists {
+		meta = claims.(*keyring.KeyMetadata)
+		if rawProxyKey, ok := c.Get("RawProxyKey"); ok {
+			keyHash = keyring.HashKey(rawProxyKey.(string))
+		} else {
+			keyHash = keyring.HashKey(meta.Name)
+		}
+
+		dpopHeader := c.GetHeader("DPoP")
+		if dpopHeader != "" {
+			requestURL := "https://" + c.Request.Host + c.Request.URL.Path
+			if pub := viper.GetString("server.public_url"); pub != "" {
+				requestURL = strings.TrimSuffix(pub, "/") + c.Request.URL.Path
+			}
+			jti, err := keyring.ValidateDPoP(dpopHeader, c.Request.Method, requestURL, meta.Jkt)
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid DPoP token"})
+				return
+			}
+			// Replay protection check
+			jtiKey := "loopers:dpop_jti:" + jti
+			rdb := h.budgetClient.GetUnderlyingClient()
+			set, err := rdb.SetNX(c.Request.Context(), jtiKey, "1", 5*time.Minute).Result()
+			if err != nil || !set {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "DPoP token replay detected"})
+				return
+			}
+		} else if meta.Jkt != "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing DPoP header"})
+			return
+		}
+
+	} else if rawProxyKey, exists := c.Get("RawProxyKey"); exists {
+		rawKeyStr := rawProxyKey.(string)
+		if !keyring.ValidateLoopersKey(rawKeyStr) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid loopers key format"})
+			return
+		}
+
+		keyHash = keyring.HashKey(rawKeyStr)
+		var err error
+		meta, err = keyring.GetKeyMetadata(c.Request.Context(), h.budgetClient.GetUnderlyingClient(), keyHash)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
+			return
+		}
+	} else {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
 		return
 	}
-	rawKeyStr := rawProxyKey.(string)
-	if !keyring.ValidateLoopersKey(rawKeyStr) {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid loopers key format"})
-		return
-	}
 
-	keyHash := keyring.HashKey(rawKeyStr)
-	meta, err := keyring.GetKeyMetadata(c.Request.Context(), h.budgetClient.GetUnderlyingClient(), keyHash)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
-		return
-	}
 	if meta.Active != "true" {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key has been revoked"})
 		return

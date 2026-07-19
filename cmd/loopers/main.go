@@ -86,6 +86,7 @@ func initConfig() {
 	viper.BindEnv("server.insecure_dev", "SERVER_INSECURE_DEV")
 	viper.BindEnv("pricing_path", "PRICING_PATH")
 	viper.BindEnv("log.level", "LOG_LEVEL")
+	viper.BindEnv("zsp.escalation_secret", "LOOPERS_ZSP_ESCALATION_SECRET")
 
 	if err := viper.ReadInConfig(); err == nil {
 		// Log will be initialized properly in serve command, but let's initialize a basic logger here

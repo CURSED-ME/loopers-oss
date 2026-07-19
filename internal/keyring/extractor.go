@@ -31,6 +31,7 @@ type KeyMetadata struct {
 	AllowedTools     string `redis:"allowed_tools" json:"allowed_tools,omitempty"`
 	AllowedProviders string `redis:"allowed_providers" json:"allowed_providers,omitempty"`
 	Tags             string `redis:"tags" json:"tags,omitempty"`
+	Jkt              string `redis:"jkt" json:"jkt,omitempty"`
 }
 
 // ParseAllowedTools parses the comma-separated allowed tools into a set.
