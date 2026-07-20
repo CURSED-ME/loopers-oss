@@ -527,7 +527,7 @@ var budgetSetCmd = &cobra.Command{
 			logging.Logger.Fatal().Msg("key not found in registry")
 		}
 
-		configKey := fmt.Sprintf("loopers:budget:%s:config", hash)
+		configKey := fmt.Sprintf("loopers:budget:{%s}:config", hash)
 
 		fields := make(map[string]interface{})
 		if minuteLimit != "" {

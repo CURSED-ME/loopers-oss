@@ -40,7 +40,7 @@ func TestBudgetRaceCondition(t *testing.T) {
 	defer rdb.Del(ctx, "loopers:key:"+keyHash)
 
 	// Setup budget config: $5.00 limit for daily window
-	configKey := "loopers:budget:" + keyHash + ":config"
+	configKey := "loopers:budget:{" + keyHash + "}:config"
 	rdb.HSet(ctx, configKey, "daily", "5.00")
 	defer rdb.Del(ctx, configKey)
 
@@ -103,7 +103,7 @@ func TestBudgetWindowExpansion(t *testing.T) {
 	defer rdb.Del(ctx, "loopers:key:"+keyHash)
 
 	// Set minute limit of 0.20 and weekly limit of 0.50
-	configKey := "loopers:budget:" + keyHash + ":config"
+	configKey := "loopers:budget:{" + keyHash + "}:config"
 	rdb.HSet(ctx, configKey, map[string]interface{}{
 		"minute": "0.20",
 		"weekly": "0.50",

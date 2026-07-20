@@ -91,7 +91,7 @@ var doctorCmd = &cobra.Command{
 				ui.Warn("No keys found. Run 'loopers keys create' to create one.")
 			} else {
 				// Check if any budgets exist
-				budgets, _ := rdb.Keys(ctx, "loopers:budget:*:config").Result()
+				budgets, _ := rdb.Keys(ctx, "loopers:budget:{*}:config").Result()
 				if len(budgets) == 0 {
 					ui.Warn("Keys exist, but no budgets configured. Run 'loopers budget set'.")
 				} else {
