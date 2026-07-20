@@ -295,8 +295,20 @@ func (c *Client) CheckAndReserveSession(ctx context.Context, keyHash, sessionID 
 	val2Str, _ := slice[2].(string)
 	status, _ := slice[3].(string)
 
-	val1, _ := strconv.ParseFloat(val1Str, 64)
-	val2, _ := strconv.ParseFloat(val2Str, 64)
+	val1Raw, _ := strconv.ParseInt(val1Str, 10, 64)
+	val2Raw, _ := strconv.ParseInt(val2Str, 10, 64)
+
+	var val1, val2 float64
+	if status == "session_steps_exceeded" {
+		val1 = float64(val1Raw)
+		val2 = float64(val2Raw)
+	} else if status == "session_budget_exceeded" {
+		val1 = FromNano(val1Raw)
+		val2 = FromNano(val2Raw)
+	} else { // status == "ok"
+		val1 = FromNano(val1Raw)
+		val2 = float64(val2Raw)
+	}
 
 	return allowed == 1, val1, val2, status, nil
 }
