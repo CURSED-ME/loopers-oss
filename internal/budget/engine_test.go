@@ -162,10 +162,10 @@ func TestSessionEnforcement(t *testing.T) {
 	rdb := client.GetUnderlyingClient()
 	sessionID := "test-sess-" + uuid.New().String()
 
-	spendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
-	budgetKey := fmt.Sprintf("loopers:session:%s:budget", sessionID)
-	stepsKey := fmt.Sprintf("loopers:session:%s:steps", sessionID)
-	maxStepsKey := fmt.Sprintf("loopers:session:%s:max_steps", sessionID)
+	spendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", "hash1", sessionID)
+	budgetKey := fmt.Sprintf("loopers:session:{%s}:%s:budget", "hash1", sessionID)
+	stepsKey := fmt.Sprintf("loopers:session:{%s}:%s:steps", "hash1", sessionID)
+	maxStepsKey := fmt.Sprintf("loopers:session:{%s}:%s:max_steps", "hash1", sessionID)
 
 	defer rdb.Del(ctx, spendKey, budgetKey, stepsKey, maxStepsKey)
 

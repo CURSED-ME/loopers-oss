@@ -459,7 +459,7 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 	if resp.StatusCode != http.StatusOK {
 		s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, reservedCost, 0)
 		if sessionID != "" {
-			sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
+			sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
 			if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, -reservedCost).Err(); err != nil {
 				logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
 			}
@@ -479,7 +479,7 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 	}
 
 	if sessionID != "" {
-		sessionStepsKey := fmt.Sprintf("loopers:session:%s:%s:steps", keyHash, sessionID)
+		sessionStepsKey := fmt.Sprintf("loopers:session:{%s}:%s:steps", keyHash, sessionID)
 
 		rdb := s.redis.GetUnderlyingClient()
 		vals, _ := rdb.MGet(ctx, sessionStepsKey).Result()
@@ -514,7 +514,7 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 				s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, totalPaid, actualCost)
 				s.checkBudgetOverdrawAsync(ctx, keyHash, provName, model)
 				if sessionID != "" {
-					sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
+					sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
 					if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-totalPaid).Err(); err != nil {
 						logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
 					}
@@ -572,8 +572,8 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 		resp.Header.Set("X-Loopers-Request-Cost", fmt.Sprintf("%.6f", actualCost))
 
 		if sessionID != "" {
-			sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
-			sessionStepsKey := fmt.Sprintf("loopers:session:%s:%s:steps", keyHash, sessionID)
+			sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
+			sessionStepsKey := fmt.Sprintf("loopers:session:{%s}:%s:steps", keyHash, sessionID)
 
 			if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-reservedCost).Err(); err != nil {
 				logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")

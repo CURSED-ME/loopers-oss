@@ -167,8 +167,8 @@ func (s *Server) enforceSessionLimits(c *gin.Context, providerName, model, sessi
 			shadowBlockedTotal.WithLabelValues(providerName, windowName).Inc()
 
 			// Manually commit the session reservation since the script blocked it
-			sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
-			sessionStepsKey := fmt.Sprintf("loopers:session:%s:%s:steps", keyHash, sessionID)
+			sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
+			sessionStepsKey := fmt.Sprintf("loopers:session:{%s}:%s:steps", keyHash, sessionID)
 			rdb := s.redis.GetUnderlyingClient()
 			rdb.IncrByFloat(c.Request.Context(), sessionSpendKey, estimatedCost)
 			rdb.IncrBy(c.Request.Context(), sessionStepsKey, 1)
@@ -205,7 +205,7 @@ func (s *Server) enforceLoopDetection(c *gin.Context, providerName, model, sessi
 
 		// Refund key budget reservation
 		s.redis.LeaseManager.ReconcileSpend(c.Request.Context(), keyHash, estimatedCost, 0)
-		sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
+		sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
 		_, _ = s.redis.GetUnderlyingClient().IncrByFloat(c.Request.Context(), sessionSpendKey, -estimatedCost).Result()
 
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
@@ -221,7 +221,7 @@ func (s *Server) enforceLoopDetection(c *gin.Context, providerName, model, sessi
 
 			// Refund key budget reservation
 			s.redis.LeaseManager.ReconcileSpend(c.Request.Context(), keyHash, estimatedCost, 0)
-			sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
+			sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
 			_, _ = s.redis.GetUnderlyingClient().IncrByFloat(c.Request.Context(), sessionSpendKey, -estimatedCost).Result()
 
 			logging.Logger.Warn().
