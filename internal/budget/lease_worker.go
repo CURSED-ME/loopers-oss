@@ -33,7 +33,9 @@ func (lm *LeaseManager) sendHeartbeats(ctx context.Context) {
 	lm.leases.Range(func(key, value interface{}) bool {
 		lease := value.(*LocalLease)
 
+		lease.mu.Lock()
 		leaseID := lease.LeaseID
+		lease.mu.Unlock()
 		if leaseID == "" {
 			return true // No active lease ID yet
 		}
@@ -64,7 +66,10 @@ func (lm *LeaseManager) sendHeartbeats(ctx context.Context) {
 				logging.Logger.Warn().Str("lease_id", leaseID).Msg("Lease is dead in Redis. Invalidating local lease.")
 				// Zero out the remaining nano so it stops fast-pathing
 				lease.RemainingNano.Store(0)
+
+				lease.mu.Lock()
 				lease.LeaseID = ""
+				lease.mu.Unlock()
 			}
 		}
 
@@ -118,7 +123,10 @@ func (lm *LeaseManager) runGuardCheck(ctx context.Context) {
 
 		// Only check keys that have an active Redis lease.
 		// Keys with no LeaseID have never hit Redis, skip them.
-		if lease.LeaseID == "" {
+		lease.mu.Lock()
+		leaseID := lease.LeaseID
+		lease.mu.Unlock()
+		if leaseID == "" {
 			return true
 		}
 
