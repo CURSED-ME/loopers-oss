@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -81,7 +82,7 @@ func TestJWKSValidator(t *testing.T) {
 	if meta.AllowedTools != "search,calculator" {
 		t.Errorf("expected allowed_tools search,calculator, got %s", meta.AllowedTools)
 	}
-	if meta.Active != "true" {
+	if !strings.EqualFold(meta.Active, "true") {
 		t.Errorf("expected active true, got %s", meta.Active)
 	}
 }

@@ -8,13 +8,26 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
 )
+
+var alertsDroppedTotal = prometheus.NewCounter(prometheus.CounterOpts{
+	Name: "loopers_alerts_dropped_total",
+	Help: "Total number of security alerts dropped due to buffer overflow",
+})
+
+func init() {
+	prometheus.MustRegister(alertsDroppedTotal)
+}
 
 type ThresholdConfig struct {
 	Percent float64 `mapstructure:"percent"`
@@ -112,6 +125,7 @@ func (a *Alerter) TriggerBlockAlert(ctx context.Context, requestID, keyHash, key
 	select {
 	case a.ch <- event:
 	default:
+		alertsDroppedTotal.Inc()
 		logging.Logger.Warn().Msg("Alert channel full, dropping budget exceeded alert")
 	}
 	a.mu.Unlock()
@@ -147,6 +161,7 @@ func (a *Alerter) TriggerLoopAlert(ctx context.Context, requestID, keyHash, keyN
 	select {
 	case a.ch <- event:
 	default:
+		alertsDroppedTotal.Inc()
 		logging.Logger.Warn().Msg("Alert channel full, dropping loop detected alert")
 	}
 	a.mu.Unlock()
@@ -165,6 +180,7 @@ func (a *Alerter) TriggerAuthFail(ctx context.Context, requestID, reason string)
 	select {
 	case a.ch <- event:
 	default:
+		alertsDroppedTotal.Inc()
 		logging.Logger.Warn().Msg("Alert channel full, dropping auth failure alert")
 	}
 	a.mu.Unlock()
@@ -183,6 +199,7 @@ func (a *Alerter) TriggerFailClosed(ctx context.Context, requestID, reason strin
 	select {
 	case a.ch <- event:
 	default:
+		alertsDroppedTotal.Inc()
 		logging.Logger.Warn().Msg("Alert channel full, dropping fail-closed alert")
 	}
 	a.mu.Unlock()
@@ -234,6 +251,7 @@ func (a *Alerter) TriggerThresholdAlerts(ctx context.Context, requestID, keyHash
 					select {
 					case a.ch <- event:
 					default:
+						alertsDroppedTotal.Inc()
 						logging.Logger.Warn().Msg("Alert channel full, dropping threshold alert")
 					}
 					a.mu.Unlock()
@@ -300,6 +318,11 @@ func (a *Alerter) worker() {
 		fmt.Println(string(payload))
 
 		if a.cfg.WebhookURL != "" {
+			if isPrivateURL(a.cfg.WebhookURL) && !viper.GetBool("testing.allow_private_urls") {
+				logging.Logger.Error().Str("url", a.cfg.WebhookURL).Msg("SECURITY WARNING: Webhook URL resolves to a private IP. Dropping alert.")
+				continue
+			}
+
 			req, err := http.NewRequest("POST", a.cfg.WebhookURL, bytes.NewReader(payload))
 			if err != nil {
 				logging.Logger.Error().Err(err).Str("url", a.cfg.WebhookURL).Msg("failed to create webhook request")
@@ -340,4 +363,26 @@ func (a *Alerter) Close() {
 			close(a.ch)
 		}
 	})
+}
+
+// isPrivateURL checks if a given URL resolves to a private or link-local IP address.
+func isPrivateURL(rawURL string) bool {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return true // Fail closed on invalid URLs
+	}
+
+	ips, err := net.LookupIP(parsed.Hostname())
+	if err != nil {
+		return true // Fail closed if DNS resolution fails
+	}
+
+	for _, ip := range ips {
+		if ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+			if !viper.GetBool("testing.allow_private_urls") {
+				return true
+			}
+		}
+	}
+	return false
 }

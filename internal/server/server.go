@@ -2,10 +2,14 @@ package server
 
 import (
 	"context"
+	"net"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 
 	"github.com/CURSED-ME/loopers-oss/internal/a2a"
 	"github.com/CURSED-ME/loopers-oss/internal/alerting"
@@ -126,6 +130,13 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 				logging.Logger.Error().Msgf("Invalid generic provider name %q: only alphanumeric, dash, and underscore are allowed", gp.Name)
 				continue
 			}
+
+			// SSRF protection
+			if isPrivateURL(gp.BaseURL) {
+				logging.Logger.Error().Msgf("SSRF protection: rejecting generic provider %q because base URL %q resolves to a private or unresolvable IP", gp.Name, gp.BaseURL)
+				continue
+			}
+
 			// S1 & S3: Detect collision with built-in or previously registered provider
 			if _, err := reg.Get(gp.Name); err == nil {
 				logging.Logger.Error().Msgf("Generic provider %q conflicts with an already-registered provider; skipping to prevent shadowing", gp.Name)
@@ -339,8 +350,8 @@ func (s *Server) handleBudgetStatus(c *gin.Context) {
 
 	if claims, exists := c.Get(JWTClaimsCtx); exists {
 		meta = claims.(*keyring.KeyMetadata)
-		if rawProxyKey, ok := c.Get("RawProxyKey"); ok {
-			keyHash = keyring.HashKey(rawProxyKey.(string))
+		if keyHashCtx, ok := c.Get("KeyHash"); ok {
+			keyHash = keyHashCtx.(string)
 		} else {
 			keyHash = keyring.HashKey(meta.Name)
 		}
@@ -351,17 +362,9 @@ func (s *Server) handleBudgetStatus(c *gin.Context) {
 			if pub := viper.GetString("server.public_url"); pub != "" {
 				requestURL = strings.TrimSuffix(pub, "/") + c.Request.URL.Path
 			}
-			jti, err := keyring.ValidateDPoP(dpopHeader, c.Request.Method, requestURL, meta.Jkt)
+			_, err := keyring.ValidateDPoPAndReplay(c.Request.Context(), s.redis.GetUnderlyingClient(), dpopHeader, c.Request.Method, requestURL, meta.Jkt)
 			if err != nil {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid DPoP token"})
-				return
-			}
-			// Replay protection check
-			jtiKey := "loopers:dpop_jti:" + jti
-			rdb := s.redis.GetUnderlyingClient()
-			set, err := rdb.SetNX(c.Request.Context(), jtiKey, "1", 5*time.Minute).Result()
-			if err != nil || !set {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "DPoP token replay detected"})
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 				return
 			}
 		} else if meta.Jkt != "" {
@@ -369,14 +372,8 @@ func (s *Server) handleBudgetStatus(c *gin.Context) {
 			return
 		}
 
-	} else if rawProxyKey, exists := c.Get("RawProxyKey"); exists {
-		rawKeyStr := rawProxyKey.(string)
-		if !keyring.ValidateLoopersKey(rawKeyStr) {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid loopers key format"})
-			return
-		}
-
-		keyHash = keyring.HashKey(rawKeyStr)
+	} else if keyHashCtx, exists := c.Get("KeyHash"); exists {
+		keyHash = keyHashCtx.(string)
 		var err error
 		meta, err = keyring.GetKeyMetadata(c.Request.Context(), s.redis.GetUnderlyingClient(), keyHash)
 		if err != nil {
@@ -388,7 +385,7 @@ func (s *Server) handleBudgetStatus(c *gin.Context) {
 		return
 	}
 
-	if meta.Active != "true" {
+	if !strings.EqualFold(meta.Active, "true") {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key has been revoked"})
 		return
 	}
@@ -440,12 +437,15 @@ func (s *Server) ipRateLimiter(limit int64, window time.Duration) gin.HandlerFun
 		ctx := c.Request.Context()
 		rdb := s.redis.GetUnderlyingClient()
 
-		pipe := rdb.Pipeline()
-		incr := pipe.Incr(ctx, key)
-		pipe.Expire(ctx, key, window)
-		_, err := pipe.Exec(ctx)
+		count, err := redis.NewScript(`
+			local c = redis.call('INCR', KEYS[1])
+			if c == 1 then
+				redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1]))
+			end
+			return c
+		`).Run(ctx, rdb, []string{key}, int(window.Seconds())).Int64()
 
-		if err == nil && incr.Val() > limit {
+		if err == nil && count > limit {
 			c.Header("X-RateLimit-Remaining", "0")
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
 				"error": "rate limit exceeded for this endpoint",
@@ -455,4 +455,28 @@ func (s *Server) ipRateLimiter(limit int64, window time.Duration) gin.HandlerFun
 		}
 		c.Next()
 	}
+}
+
+// isPrivateURL checks if a given URL resolves to a private or link-local IP address.
+func isPrivateURL(rawURL string) bool {
+	if viper.GetBool("testing.allow_private_urls") {
+		return false
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return true // invalid URL is considered unsafe
+	}
+	hostname := u.Hostname()
+
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		return true // unresolvable is unsafe
+	}
+
+	for _, ip := range ips {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+			return true
+		}
+	}
+	return false
 }

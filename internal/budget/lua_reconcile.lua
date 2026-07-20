@@ -13,7 +13,7 @@ local window_ttl    = tonumber(ARGV[3])
 local delta = actual_cost - reserved_cost
 
 if delta ~= 0 then
-    redis.call('INCRBYFLOAT', spend_key, delta)
+    redis.call('INCRBY', spend_key, delta)
     redis.call('EXPIRE', spend_key, window_ttl)
 end
 

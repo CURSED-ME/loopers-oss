@@ -111,7 +111,6 @@ func (s *Server) enforceBudgetWithFallback(c *gin.Context, providerName, model s
 				c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
 					"error":      "budget exceeded",
 					"type":       "budget_exceeded",
-					"support_us": api.GitHubStarCTA,
 				})
 				return newModel, newCost, newInputPrice, newOutputPrice, newInputTokens, newMutatedBody, budget.ErrBudgetExceeded
 			}
@@ -202,8 +201,20 @@ func (s *Server) enforceLoopDetection(c *gin.Context, providerName, model, sessi
 
 	result, err := s.loopDetector.Check(c.Request.Context(), sessionID, providerName+c.Request.URL.Path, body)
 	if err != nil {
-		// Log but never block on internal error — loop detection failure is not a fail-closed event
-		logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("loop_detection_check_failed")
+		logging.Logger.Error().Err(err).Str("session_id", sessionID).Msg("loop_detection_check_failed")
+		
+		// Refund key budget reservation
+		s.redis.LeaseManager.ReconcileSpend(c.Request.Context(), keyHash, estimatedCost, 0)
+		sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
+		_, _ = s.redis.GetUnderlyingClient().IncrByFloat(c.Request.Context(), sessionSpendKey, -estimatedCost).Result()
+
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error": gin.H{
+				"message": "Internal loop detection error",
+				"type":    "internal_server_error",
+			},
+		})
+		return err
 	} else if result != nil && result.Detected {
 		if result.ShouldBlock {
 			loopBlocksTotal.WithLabelValues(providerName, result.Rule).Inc()
@@ -239,7 +250,7 @@ func (s *Server) enforceLoopDetection(c *gin.Context, providerName, model, sessi
 				"type":       "loop_detected",
 				"rule":       result.Rule,
 				"session_id": sessionID,
-				"support_us": api.GitHubStarCTA,
+				"detail":     result.Detail,
 			})
 			return fmt.Errorf("loop detected")
 		}

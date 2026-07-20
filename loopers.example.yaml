@@ -1,12 +1,16 @@
 server:
   port: 8080
-  # admin_host: 127.0.0.1
+  admin_host: "127.0.0.1"
   admin_port: 9090
+  # SECURITY: Production deployments MUST set this to a random secure string.
+  # If empty, key storage hashes will fall back to unsalted SHA-256.
+  server_secret: ""
   max_payload_bytes: 2097152 # 2MB default limit
   read_header_timeout_seconds: 10
   read_timeout_seconds: 30
   write_timeout_seconds: 120
   idle_timeout_seconds: 120
+  concurrency_timeout_seconds: 5
 redis:
   addr: "localhost:6379"
   password: ""
@@ -19,6 +23,14 @@ session:
   # The maximum number of concurrent active sessions allowed per API key.
   # Set to 0 to disable this limit. Default is disabled.
   max_per_key: 0
+  # SECURITY: Allow clients to override session limits and budget via HTTP headers.
+  # Should be set to false when SaaS control plane is managing policies.
+  allow_client_budget_override: false
+
+mcp:
+  # SECURITY: Allow clients to override MCP constraints via HTTP headers.
+  allow_client_max_tools_override: false
+  allow_client_max_servers_override: false
 
 policy:
   enabled: false
@@ -79,6 +91,7 @@ zsp:
   # Enable Zero-trust Security Protocol for agent-to-agent communication and verifiable JWTs.
   enabled: false
   # URL to fetch the JWKS JSON for JWT validation
+  jwt_only: false
   jwks_url: "https://auth.loopers.dev/.well-known/jwks.json"
   # Enable escalations (temporarily overriding blocks via external approval over Redis Pub/Sub)
   escalation_enabled: false

@@ -35,7 +35,7 @@ end
 for i = 1, num_windows do
     local spend_key = KEYS[i]
     local window_ttl = tonumber(ARGV[i + 1 + (num_windows * 2)])
-    redis.call('INCRBYFLOAT', spend_key, est_cost)
+    redis.call('INCRBY', spend_key, est_cost)
     redis.call('EXPIRE', spend_key, window_ttl)
 end
 

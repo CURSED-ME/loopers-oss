@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"os"
@@ -41,6 +42,11 @@ func getRedisClient() (*budget.Client, error) {
 		addr = "localhost:6379"
 	}
 	password := viper.GetString("redis.password")
+	
+	if password == "" && addr != "localhost:6379" && addr != "127.0.0.1:6379" && !strings.HasPrefix(addr, "localhost:") && !strings.HasPrefix(addr, "127.0.0.1:") {
+		logging.Logger.Warn().Msg("SECURITY WARNING: Redis password is empty but address is not localhost. Ensure your Redis instance is protected by a firewall or VPC.")
+	}
+	
 	db := viper.GetInt("redis.db")
 
 	return budget.NewClient(addr, password, db)
@@ -97,6 +103,7 @@ var serveCmd = &cobra.Command{
 			logging.Logger.Fatal().Err(err).Msg("Failed to connect to Redis")
 		}
 
+		budget.InitConfigCache()
 		s := server.NewServer(redisClient, pricingStore)
 
 		// Start background lease workers
@@ -127,6 +134,12 @@ var serveCmd = &cobra.Command{
 		adminHost := viper.GetString("server.admin_host")
 		if adminHost == "" {
 			adminHost = "127.0.0.1"
+		} else if adminHost == "0.0.0.0" {
+			logging.Logger.Warn().Msg("SECURITY WARNING: Admin port bound to 0.0.0.0. Unauthenticated metrics are exposed.")
+		}
+
+		if viper.GetString("server.server_secret") == "" {
+			logging.Logger.Warn().Msg("SECURITY WARNING: server.server_secret is empty. Key storage hash will fall back to unsalted SHA-256. Production deployments MUST set this.")
 		}
 
 		readHeaderTimeoutSec := viper.GetInt("server.read_header_timeout_seconds")
@@ -146,6 +159,10 @@ var serveCmd = &cobra.Command{
 			idleTimeoutSec = 120
 		}
 
+		tlsConfig := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+
 		srv := &http.Server{
 			Addr:              ":" + port,
 			Handler:           s.GetRouter(),
@@ -153,6 +170,7 @@ var serveCmd = &cobra.Command{
 			ReadTimeout:       time.Duration(readTimeoutSec) * time.Second,
 			WriteTimeout:      time.Duration(writeTimeoutSec) * time.Second,
 			IdleTimeout:       time.Duration(idleTimeoutSec) * time.Second,
+			TLSConfig:         tlsConfig,
 		}
 
 		adminSrv := &http.Server{
@@ -162,6 +180,7 @@ var serveCmd = &cobra.Command{
 			ReadTimeout:       time.Duration(readTimeoutSec) * time.Second,
 			WriteTimeout:      time.Duration(writeTimeoutSec) * time.Second,
 			IdleTimeout:       time.Duration(idleTimeoutSec) * time.Second,
+			TLSConfig:         tlsConfig,
 		}
 
 		certFile := viper.GetString("server.tls_cert_file")

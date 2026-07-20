@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/viper"
+
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	"github.com/CURSED-ME/loopers-oss/internal/proxy"
@@ -32,13 +34,19 @@ func RequestID() gin.HandlerFunc {
 		if reqID == "" {
 			reqID = uuid.New().String()
 		} else {
-			// Sanitize to prevent log injection
+			// Sanitize to prevent log injection (alphanumeric and hyphens only, max 64 chars)
+			if len(reqID) > 64 {
+				reqID = reqID[:64]
+			}
 			reqID = strings.Map(func(r rune) rune {
-				if r < 32 || r >= 127 {
-					return -1
+				if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' {
+					return r
 				}
-				return r
+				return -1
 			}, reqID)
+			if reqID == "" {
+				reqID = uuid.New().String()
+			}
 		}
 		c.Set(RequestIDKey, reqID)
 		c.Header("X-Request-ID", reqID)
@@ -142,7 +150,16 @@ func KeyExtractor(jwks *keyring.JWKSValidator) gin.HandlerFunc {
 					return
 				}
 			} else {
-				c.Set("RawProxyKey", proxyKey)
+				if viper.GetBool("zsp.jwt_only") {
+					logging.Logger.Warn().Msg("Rejected non-JWT token because zsp.jwt_only is true")
+					c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Only JWT tokens are allowed"})
+					return
+				}
+				if !keyring.ValidateLoopersKey(proxyKey) {
+					c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid loopers key format"})
+					return
+				}
+				c.Set("KeyHash", keyring.HashKey(proxyKey))
 			}
 		}
 		c.Next()
@@ -162,11 +179,15 @@ var bufferPool = sync.Pool{
 func ConcurrencyLimiter(maxInflight int) gin.HandlerFunc {
 	sema := make(chan struct{}, maxInflight)
 	return func(c *gin.Context) {
+		timeout := viper.GetInt("server.concurrency_timeout_seconds")
+		if timeout <= 0 {
+			timeout = 5
+		}
 		select {
 		case sema <- struct{}{}:
 			defer func() { <-sema }()
 			c.Next()
-		case <-time.After(5 * time.Second):
+		case <-time.After(time.Duration(timeout) * time.Second):
 			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
 				"error": gin.H{
 					"message": "Service overloaded, too many concurrent requests",
@@ -216,10 +237,10 @@ func BodyBuffer() gin.HandlerFunc {
 		}
 
 		// buf.Bytes() is a slice pointing to the buffer's underlying array.
-		// It is safe to use within the request lifecycle because this middleware
-		// waits for c.Next() (and the ReverseProxy) to complete before returning
-		// the buffer to the pool via defer.
-		bodyBytes := buf.Bytes()
+		// Copy it into a new slice to prevent cross-request race conditions
+		// if downstream middleware or async tasks retain the slice after c.Next()
+		// when the buffer is returned to the pool.
+		bodyBytes := append([]byte(nil), buf.Bytes()...)
 
 		// Restore r.Body for downstream
 		c.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))

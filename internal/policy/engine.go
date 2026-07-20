@@ -2,6 +2,8 @@ package policy
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -88,12 +90,18 @@ func (e *Engine) Reload() error {
 
 	modules := make(map[string]*ast.Module)
 
+	absDir, err := filepath.Abs(e.cfg.PolicyDir)
+	if err != nil {
+		return fmt.Errorf("invalid policy dir: %w", err)
+	}
+	e.cfg.PolicyDir = absDir
+
 	// Check if directory exists
 	info, err := os.Stat(e.cfg.PolicyDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			logging.Logger.Warn().Str("policy_dir", e.cfg.PolicyDir).Msg("Policy directory does not exist, creating it")
-			if err := os.MkdirAll(e.cfg.PolicyDir, 0750); err != nil {
+			if err := os.MkdirAll(e.cfg.PolicyDir, 0700); err != nil {
 				return fmt.Errorf("failed to create policy directory: %w", err)
 			}
 		} else {
@@ -110,11 +118,21 @@ func (e *Engine) Reload() error {
 		if info.IsDir() || !strings.HasSuffix(info.Name(), ".rego") {
 			return nil
 		}
+		
+		// VULN-033: Prevent directory traversal via symlinks
+		absPath, absErr := filepath.Abs(path)
+		if absErr != nil || !strings.HasPrefix(absPath, e.cfg.PolicyDir) {
+			return nil
+		}
 
 		content, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to read policy file %s: %w", path, err)
 		}
+
+		hash := sha256.Sum256(content)
+		checksum := hex.EncodeToString(hash[:])
+		logging.Logger.Debug().Str("file", path).Str("sha256", checksum).Msg("Loaded policy file")
 
 		module, err := ast.ParseModule(path, string(content))
 		if err != nil {

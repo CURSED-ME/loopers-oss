@@ -2,7 +2,9 @@ package a2a
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -23,7 +25,7 @@ func TestEscalationBroker(t *testing.T) {
 		Addr: mr.Addr(),
 	})
 
-	broker := NewEscalationBroker(rdb, "")
+	broker := NewEscalationBroker(rdb, "test_secret")
 
 	ctx := context.Background()
 
@@ -43,19 +45,24 @@ func TestEscalationBroker(t *testing.T) {
 		json.Unmarshal([]byte(res), &req)
 
 		// Approve and publish response
+		mac := hmac.New(sha256.New, []byte("test_secret"))
+		mac.Write([]byte(req.Nonce))
+		mac.Write([]byte("true"))
+
 		resp := EscalationResponse{
-			Approved: true,
-			Message:  "Approved by admin",
+			Approved:  true,
+			Message:   "Approved by admin",
+			Signature: hex.EncodeToString(mac.Sum(nil)),
 		}
 		respData, _ := json.Marshal(resp)
 
 		hash := sha256.Sum256([]byte(req.SessionID))
-		channel := fmt.Sprintf("loopers:escalation:%x", hash)
+		channel := fmt.Sprintf("loopers:escalation:%x:%s", hash, req.Nonce[:8])
 		rdb.Publish(ctx, channel, respData)
 	}()
 
 	req := EscalationRequest{
-		SessionID: "session-123",
+		SessionID: "123e4567-e89b-12d3-a456-426614174000",
 		Reason:    "Need extra budget",
 		AgentName: "TestAgent",
 	}
@@ -81,11 +88,11 @@ func TestEscalationBrokerTimeout(t *testing.T) {
 		Addr: mr.Addr(),
 	})
 
-	broker := NewEscalationBroker(rdb, "")
+	broker := NewEscalationBroker(rdb, "test_secret")
 	ctx := context.Background()
 
 	req := EscalationRequest{
-		SessionID: "session-456",
+		SessionID: "456e1234-e89b-12d3-a456-426614174000",
 		Reason:    "Will timeout",
 		AgentName: "TestAgent",
 	}
@@ -108,7 +115,7 @@ func TestEscalationBrokerInvalidSessionID(t *testing.T) {
 		Addr: mr.Addr(),
 	})
 
-	broker := NewEscalationBroker(rdb, "")
+	broker := NewEscalationBroker(rdb, "test_secret")
 	ctx := context.Background()
 
 	req := EscalationRequest{

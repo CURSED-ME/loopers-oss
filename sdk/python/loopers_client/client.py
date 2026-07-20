@@ -15,11 +15,9 @@ def _set_last_headers(headers: dict):
 def _response_hook(response: httpx.Response):
     headers = response.headers
     loopers_headers = {
-        "cost": headers.get("X-Loopers-Request-Cost"),
-        "cost_estimated": headers.get("X-Loopers-Request-Cost-Estimated"),
-        "session_spend": headers.get("X-Loopers-Session-Spend"),
+        "request_cost": headers.get("X-Loopers-Request-Cost"),
+        "estimated_cost": headers.get("X-Loopers-Request-Cost-Estimated"),
         "session_steps": headers.get("X-Loopers-Session-Steps"),
-        "session_remaining": headers.get("X-Loopers-Session-Remaining"),
     }
     _set_last_headers(loopers_headers)
 

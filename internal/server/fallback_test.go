@@ -78,7 +78,7 @@ providers:
 	// Set a budget that blocks expensive-model but allows cheap-model
 	// expensive-model est cost = 50 * 10/1M + 100 * 30/1M = 0.0005 + 0.003 = 0.0035
 	// cheap-model est cost = 50 * 0.1/1M + 100 * 0.3/1M = 0.000005 + 0.00003 = 0.000035
-	configKey := "loopers:budget:" + keyHash + ":config"
+	configKey := "loopers:budget:{" + keyHash + "}:config"
 	rdb.HSet(ctx, configKey, "minute", "0.001") // Limits expensive, allows cheap
 	defer rdb.Del(ctx, configKey)
 	defer rdb.Del(ctx, "loopers:spend:"+keyHash+":minute:"+time.Now().UTC().Format("2006-01-02T15:04"))

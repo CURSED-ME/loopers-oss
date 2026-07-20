@@ -75,10 +75,8 @@ def test_openai_metrics_parsing():
             json={"id": "chatcmpl-123", "choices": [], "object": "chat.completion"},
             headers={
                 "X-Loopers-Request-Cost": "0.01",
-                "X-Loopers-Session-Spend": "0.05",
-                "X-Loopers-Session-Steps": "3",
-                "X-Loopers-Session-Remaining": "4.95",
-            }
+                "X-Loopers-Session-Steps": "1",
+            },
         )
     )
 

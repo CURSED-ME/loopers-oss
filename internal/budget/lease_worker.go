@@ -2,7 +2,7 @@ package budget
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
@@ -40,11 +40,9 @@ func (lm *LeaseManager) sendHeartbeats(ctx context.Context) {
 
 		// Swap out the spent nano atomically to get what we've spent since the last heartbeat
 		spentNano := lease.SpentNano.Swap(0)
-		spentUSD := FromNano(spentNano)
-
 		args := []interface{}{
 			leaseID,
-			fmt.Sprintf("%f", spentUSD),
+			strconv.FormatInt(spentNano, 10),
 		}
 
 		// Run the lua script

@@ -34,6 +34,7 @@ func setupTestServerWithGenericProviders(t *testing.T, genericProvidersCfg inter
 	pricingStore, _ := pricing.LoadStore(tmpFile.Name())
 
 	viper.Set("generic_providers", genericProvidersCfg)
+	viper.Set("testing.allow_private_urls", true)
 
 	s := NewServer(redisClient, pricingStore)
 	defer s.Shutdown()
@@ -75,7 +76,9 @@ providers:
 	viper.Set("generic_providers", []map[string]interface{}{
 		{"name": "my-upstream", "base_url": upstream.URL},
 	})
+	viper.Set("testing.allow_private_urls", true)
 	defer viper.Set("generic_providers", nil)
+	defer viper.Set("testing.allow_private_urls", false)
 
 	s := NewServer(redisClient, pricingStore)
 	defer s.Shutdown()

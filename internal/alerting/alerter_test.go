@@ -13,7 +13,12 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
 )
+
+func init() {
+	viper.Set("testing.allow_private_urls", true)
+}
 
 func TestAlerterDelivery(t *testing.T) {
 	// Spin up mock webhook receiver

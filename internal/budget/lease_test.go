@@ -39,7 +39,7 @@ func TestStreamingCut_RefundsUnusedReservation(t *testing.T) {
 	keyHash := "stream_cut_refund_" + uuid.New().String()
 
 	// Set a very tight budget of $0.10 for the minute window
-	configKey := "loopers:budget:" + keyHash + ":config"
+	configKey := "loopers:budget:{" + keyHash + "}:config"
 	rdb.HSet(ctx, configKey, "minute", "0.10")
 
 	// Create LeaseManager
@@ -103,7 +103,7 @@ func TestMicroBatcher_Accuracy(t *testing.T) {
 	keyHash := "microbatcher_accuracy_" + uuid.New().String()
 
 	// 5.00 limit
-	configKey := "loopers:budget:" + keyHash + ":config"
+	configKey := "loopers:budget:{" + keyHash + "}:config"
 	rdb.HSet(ctx, configKey, "daily", "5.00")
 
 	lm := client.LeaseManager

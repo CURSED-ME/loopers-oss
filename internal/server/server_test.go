@@ -139,7 +139,7 @@ func TestBudgetStatusEndpoint(t *testing.T) {
 	defer rdb.Del(ctx, "loopers:key:"+keyHash)
 
 	// Set a mock daily budget configuration
-	configKey := "loopers:budget:" + keyHash + ":config"
+	configKey := "loopers:budget:{" + keyHash + "}:config"
 	rdb.HSet(ctx, configKey, "daily", "20.00")
 	defer rdb.Del(ctx, configKey)
 
@@ -205,8 +205,8 @@ func TestSessionIDValidation(t *testing.T) {
 		sessionID string
 		wantCode  int
 	}{
-		{"valid standard", "sess-123", http.StatusOK},
-		{"valid dotted", "user.name_01", http.StatusOK},
+		{"valid standard", "123e4567-e89b-12d3-a456-426614174000", http.StatusOK},
+		{"valid dotted", "550e8400-e29b-41d4-a716-446655440000", http.StatusOK},
 		{"invalid email-like", "user@domain.com", http.StatusBadRequest},
 		{"invalid url-like", "org/team/session", http.StatusBadRequest},
 		{"invalid colon", "org:team:session", http.StatusBadRequest},
@@ -274,7 +274,7 @@ func TestSybilAttackPrevention(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/mock/v1/chat", bytes.NewBuffer([]byte(`{"model":"mock-model"}`)))
 		req.Header.Set("Authorization", "Bearer "+rawKey)
 		req.Header.Set("X-Loopers-Provider-Key", "dummy")
-		req.Header.Set("X-Loopers-Session-ID", fmt.Sprintf("sybil-sess-%d", i))
+		req.Header.Set("X-Loopers-Session-ID", fmt.Sprintf("550e8400-e29b-41d4-a716-44665544000%d", i))
 
 		w := newCloseNotifierRecorder()
 		s.GetRouter().ServeHTTP(w, req)

@@ -129,7 +129,7 @@ func EncryptValue(plaintext string, secret []byte) (string, error) {
 		return "", err
 	}
 	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
+	return "enc:v1:" + base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
 // DecryptValue decrypts a base64 string using AES-256-GCM. If decryption fails, it returns the string as-is for backwards compatibility.
@@ -137,26 +137,33 @@ func DecryptValue(ciphertextB64 string, secret []byte) (string, error) {
 	if ciphertextB64 == "" || len(secret) == 0 {
 		return ciphertextB64, nil
 	}
-	data, err := base64.StdEncoding.DecodeString(ciphertextB64)
+	if !strings.HasPrefix(ciphertextB64, "enc:v1:") {
+		// VULN-035: Prevent silent fallback to plaintext if a secret is configured.
+		// If the server has a secret, we enforce that all stored keys are encrypted.
+		return "", fmt.Errorf("decryption failed: missing enc:v1: prefix (legacy plaintext fallback disabled)")
+	}
+
+	b64Data := strings.TrimPrefix(ciphertextB64, "enc:v1:")
+	data, err := base64.StdEncoding.DecodeString(b64Data)
 	if err != nil {
-		return ciphertextB64, nil
+		return "", fmt.Errorf("decryption failed: invalid base64")
 	}
 	block, err := aes.NewCipher(secret)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("decryption failed: %w", err)
 	}
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("decryption failed: %w", err)
 	}
 	nonceSize := gcm.NonceSize()
 	if len(data) < nonceSize {
-		return ciphertextB64, nil
+		return "", fmt.Errorf("decryption failed: ciphertext too short")
 	}
 	nonce, cipherBytes := data[:nonceSize], data[nonceSize:]
 	plaintext, err := gcm.Open(nil, nonce, cipherBytes, nil)
 	if err != nil {
-		return ciphertextB64, nil
+		return "", fmt.Errorf("decryption failed: %w", err)
 	}
 	return string(plaintext), nil
 }

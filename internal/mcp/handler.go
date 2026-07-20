@@ -6,10 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/event"
 	"go.opentelemetry.io/otel"
@@ -46,6 +47,9 @@ func NewHandler(cfg Config, budgetClient *budget.Client, pricingStore *pricing.S
 
 	servers := make(map[string]string)
 	for _, srv := range cfg.Servers {
+		if isPrivateURL(srv.URL) {
+			logging.Logger.Fatal().Str("mcp_server", srv.Name).Str("url", srv.URL).Msg("MCP server URL points to a private/internal IP address (SSRF protection).")
+		}
 		servers[srv.Name] = srv.URL
 	}
 
@@ -83,7 +87,11 @@ func (h *Handler) modifyResponse(resp *http.Response) error {
 	mcpMethod, _ := ctx.Value(mcpMethodCtx).(string)
 	serverName, _ := ctx.Value(mcpServerCtx).(string)
 	if mcpMethod == "tools/list" && resp.StatusCode == http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
+		limit := viper.GetInt64("server.max_response_bytes")
+		if limit == 0 {
+			limit = 32 * 1024 * 1024
+		}
+		body, err := io.ReadAll(io.LimitReader(resp.Body, limit))
 		resp.Body.Close()
 		if err == nil {
 			sanitized, _ := SanitizeToolList(body, h.cfg.Sanitizer, serverName)
@@ -120,6 +128,10 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("MCP server '%s' not configured", serverName)})
 		return
 	}
+	if isPrivateURL(targetURL) {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "MCP server URL resolves to a private IP (SSRF protection)"})
+		return
+	}
 
 	// Auth check using the same dual-mode system (JWT or static key)
 	var meta *keyring.KeyMetadata
@@ -127,8 +139,8 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 
 	if claims, exists := c.Get("JWTClaims"); exists {
 		meta = claims.(*keyring.KeyMetadata)
-		if rawProxyKey, ok := c.Get("RawProxyKey"); ok {
-			keyHash = keyring.HashKey(rawProxyKey.(string))
+		if keyHashCtx, ok := c.Get("KeyHash"); ok {
+			keyHash = keyHashCtx.(string)
 		} else {
 			keyHash = keyring.HashKey(meta.Name)
 		}
@@ -139,17 +151,9 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 			if pub := viper.GetString("server.public_url"); pub != "" {
 				requestURL = strings.TrimSuffix(pub, "/") + c.Request.URL.Path
 			}
-			jti, err := keyring.ValidateDPoP(dpopHeader, c.Request.Method, requestURL, meta.Jkt)
+			_, err := keyring.ValidateDPoPAndReplay(c.Request.Context(), h.budgetClient.GetUnderlyingClient(), dpopHeader, c.Request.Method, requestURL, meta.Jkt)
 			if err != nil {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid DPoP token"})
-				return
-			}
-			// Replay protection check
-			jtiKey := "loopers:dpop_jti:" + jti
-			rdb := h.budgetClient.GetUnderlyingClient()
-			set, err := rdb.SetNX(c.Request.Context(), jtiKey, "1", 5*time.Minute).Result()
-			if err != nil || !set {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "DPoP token replay detected"})
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 				return
 			}
 		} else if meta.Jkt != "" {
@@ -157,14 +161,8 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 			return
 		}
 
-	} else if rawProxyKey, exists := c.Get("RawProxyKey"); exists {
-		rawKeyStr := rawProxyKey.(string)
-		if !keyring.ValidateLoopersKey(rawKeyStr) {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid loopers key format"})
-			return
-		}
-
-		keyHash = keyring.HashKey(rawKeyStr)
+	} else if keyHashCtx, exists := c.Get("KeyHash"); exists {
+		keyHash = keyHashCtx.(string)
 		var err error
 		meta, err = keyring.GetKeyMetadata(c.Request.Context(), h.budgetClient.GetUnderlyingClient(), keyHash)
 		if err != nil {
@@ -176,7 +174,7 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		return
 	}
 
-	if meta.Active != "true" {
+	if !strings.EqualFold(meta.Active, "true") {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key has been revoked"})
 		return
 	}
@@ -314,6 +312,17 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		span.SetAttributes(attribute.String("gen_ai.system.session.id", sessionID))
 		maxTotalTools := 0
 		if maxToolsHeader := c.GetHeader("X-Loopers-Session-Max-Tools"); maxToolsHeader != "" {
+			allowOverride := viper.GetBool("mcp.allow_client_max_tools_override")
+			if !viper.IsSet("mcp.allow_client_max_tools_override") {
+				allowOverride = false // VULN-028: Default to false
+			}
+			if !allowOverride {
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+					"error": "client-controlled max tools are disabled by policy",
+					"type":  "invalid_request_error",
+				})
+				return
+			}
 			if parsed, err := strconv.Atoi(maxToolsHeader); err == nil && parsed > 0 {
 				maxTotalTools = parsed
 			}
@@ -358,6 +367,17 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 	if sessionID != "" && h.sessionManager != nil {
 		maxServers := 0
 		if maxServersHeader := c.GetHeader("X-Loopers-Session-Max-Servers"); maxServersHeader != "" {
+			allowOverride := viper.GetBool("mcp.allow_client_max_servers_override")
+			if !viper.IsSet("mcp.allow_client_max_servers_override") {
+				allowOverride = false // VULN-029: Default to false
+			}
+			if !allowOverride {
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+					"error": "client-controlled blast radius is disabled by policy",
+					"type":  "invalid_request_error",
+				})
+				return
+			}
 			if parsed, err := strconv.Atoi(maxServersHeader); err == nil && parsed > 0 {
 				maxServers = parsed
 			}
@@ -446,4 +466,27 @@ func (h *Handler) forward(c *gin.Context, targetURL string, keyHash *string, cos
 	}
 
 	h.proxy.ServeHTTP(c.Writer, c.Request)
+}
+
+func isPrivateURL(rawURL string) bool {
+	if viper.GetBool("testing.allow_private_urls") {
+		return false
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return true // invalid URL is considered unsafe
+	}
+	hostname := u.Hostname()
+
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		return true // unresolvable is unsafe
+	}
+
+	for _, ip := range ips {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+			return true
+		}
+	}
+	return false
 }

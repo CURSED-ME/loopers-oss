@@ -71,9 +71,7 @@ function createLoopersFetch(
       if (data && typeof data === 'object') {
         const costVal = res.headers.get('X-Loopers-Request-Cost');
         const estCostVal = res.headers.get('X-Loopers-Request-Cost-Estimated');
-        const spendVal = res.headers.get('X-Loopers-Session-Spend');
         const stepsVal = res.headers.get('X-Loopers-Session-Steps');
-        const remainingVal = res.headers.get('X-Loopers-Session-Remaining');
 
         Object.defineProperties(data, {
           loopers_cost: {
@@ -86,18 +84,8 @@ function createLoopersFetch(
             writable: true,
             enumerable: true,
           },
-          loopers_session_spend: {
-            value: spendVal ? Number(spendVal) : null,
-            writable: true,
-            enumerable: true,
-          },
           loopers_session_steps: {
             value: stepsVal ? Number(stepsVal) : null,
-            writable: true,
-            enumerable: true,
-          },
-          loopers_session_remaining: {
-            value: remainingVal ? Number(remainingVal) : null,
             writable: true,
             enumerable: true,
           },

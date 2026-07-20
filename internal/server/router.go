@@ -19,7 +19,6 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/provider"
 	"github.com/CURSED-ME/loopers-oss/internal/proxy"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
-	"github.com/CURSED-ME/loopers-oss/pkg/api"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/attribute"
@@ -36,8 +35,8 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 
 	if claims, exists := c.Get(JWTClaimsCtx); exists {
 		meta = claims.(*keyring.KeyMetadata)
-		if rawProxyKey, ok := c.Get("RawProxyKey"); ok {
-			keyHash = keyring.HashKey(rawProxyKey.(string))
+		if keyHashCtx, ok := c.Get("KeyHash"); ok {
+			keyHash = keyHashCtx.(string)
 		} else {
 			keyHash = keyring.HashKey(meta.Name)
 		}
@@ -49,19 +48,14 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			if pub := viper.GetString("server.public_url"); pub != "" {
 				requestURL = strings.TrimSuffix(pub, "/") + c.Request.URL.Path
 			}
-			jti, err := keyring.ValidateDPoP(dpopHeader, c.Request.Method, requestURL, meta.Jkt)
+			_, err := keyring.ValidateDPoPAndReplay(c.Request.Context(), s.redis.GetUnderlyingClient(), dpopHeader, c.Request.Method, requestURL, meta.Jkt)
 			if err != nil {
-				zspAuthFailuresTotal.WithLabelValues("dpop_invalid").Inc()
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid DPoP token"})
-				return
-			}
-			// Replay protection check
-			jtiKey := "loopers:dpop_jti:" + jti
-			rdb := s.redis.GetUnderlyingClient()
-			set, err := rdb.SetNX(c.Request.Context(), jtiKey, "1", 5*time.Minute).Result()
-			if err != nil || !set {
-				zspAuthFailuresTotal.WithLabelValues("dpop_replayed").Inc()
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "DPoP token replay detected"})
+				if err.Error() == "DPoP token replay detected" {
+					zspAuthFailuresTotal.WithLabelValues("dpop_replayed").Inc()
+				} else {
+					zspAuthFailuresTotal.WithLabelValues("dpop_invalid").Inc()
+				}
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 				return
 			}
 		} else if meta.Jkt != "" {
@@ -71,19 +65,8 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			return
 		}
 
-	} else if rawProxyKey, exists := c.Get("RawProxyKey"); exists {
-		rawKeyStr := rawProxyKey.(string)
-
-		if !keyring.ValidateLoopersKey(rawKeyStr) {
-			requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
-			if s.alerter != nil {
-				go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Invalid loopers key format")
-			}
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid loopers key format"})
-			return
-		}
-
-		keyHash = keyring.HashKey(rawKeyStr)
+	} else if keyHashCtx, exists := c.Get("KeyHash"); exists {
+		keyHash = keyHashCtx.(string)
 		var err error
 		meta, err = keyring.GetKeyMetadata(c.Request.Context(), s.redis.GetUnderlyingClient(), keyHash)
 		if err != nil {
@@ -111,7 +94,7 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
 		return
 	}
-	if meta.Active != "true" {
+	if !strings.EqualFold(meta.Active, "true") {
 		requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
 		if s.alerter != nil {
 			go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Key revoked")
@@ -123,7 +106,7 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	if meta.Provider != providerName {
 		requestsTotal.WithLabelValues(providerName, "unknown", "400").Inc()
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("Key registered for provider '%s' but request is for '%s'", meta.Provider, providerName),
+			"error": "key not authorized for this endpoint",
 		})
 		return
 	}
@@ -153,7 +136,6 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 		allowed, remaining, rlErr := s.rateLimiter.Check(c.Request.Context(), keyHash)
 		if rlErr != nil {
 			logging.Logger.Error().Err(rlErr).Msg("rate_limiter_error")
-			// Fail-open for internal rate limiter errors to not disrupt traffic unnecessarily
 			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
 				EventType: "rate_limit_degraded",
 				KeyHash:   keyHash,
@@ -161,6 +143,14 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				Reason:    "rate_limiter_error",
 				Detail:    rlErr.Error(),
 			})
+			failClosed := true // Default to true per security strategy
+			if viper.IsSet("security.rate_limit_fail_closed") {
+				failClosed = viper.GetBool("security.rate_limit_fail_closed")
+			}
+			if failClosed {
+				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "Service Unavailable: rate limiter error"})
+				return
+			}
 		} else if !allowed {
 			if s.escalationBroker != nil {
 				sessionID := c.GetHeader("X-Loopers-Session-ID")
@@ -355,6 +345,13 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 
 		if ttlHeader := c.GetHeader("X-Loopers-Session-TTL"); ttlHeader != "" {
 			if ttl, err := strconv.Atoi(ttlHeader); err == nil && ttl > 0 {
+				maxTtl := viper.GetInt("session.max_ttl_seconds")
+				if maxTtl <= 0 {
+					maxTtl = 86400
+				}
+				if ttl > maxTtl {
+					ttl = maxTtl
+				}
 				if s.sessionManager != nil {
 					valid, err := s.sessionManager.EnforceAbsoluteTTL(c.Request.Context(), keyHash, sessionID, ttl)
 					if err != nil {
@@ -372,9 +369,31 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 		}
 
 		if budgetHeader := c.GetHeader("X-Loopers-Session-Budget"); budgetHeader != "" {
+			allowOverride := viper.GetBool("session.allow_client_budget_override")
+			if !viper.IsSet("session.allow_client_budget_override") {
+				allowOverride = false // VULN-018: Default to false
+			}
+			if !allowOverride {
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+					"error": "client-controlled session budgets are disabled by policy",
+					"type":  "invalid_request_error",
+				})
+				return
+			}
 			sessionBudget, _ = strconv.ParseFloat(budgetHeader, 64)
 		}
 		if stepsHeader := c.GetHeader("X-Loopers-Session-Max-Steps"); stepsHeader != "" {
+			allowOverride := viper.GetBool("session.allow_client_budget_override")
+			if !viper.IsSet("session.allow_client_budget_override") {
+				allowOverride = false // VULN-018: Default to false
+			}
+			if !allowOverride {
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+					"error": "client-controlled session limits are disabled by policy",
+					"type":  "invalid_request_error",
+				})
+				return
+			}
 			sessionMaxSteps, _ = strconv.Atoi(stepsHeader)
 		}
 
@@ -455,44 +474,25 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 
 	// Set initial headers for both stream and non-stream
 	resp.Header.Set("X-Loopers-Request-Cost-Estimated", fmt.Sprintf("%.6f", reservedCost))
-	resp.Header.Set("X-Loopers-Support", api.GitHubStarCTA)
 	if agentName, ok := ctx.Value(agentNameCtx).(string); ok && agentName != "" {
 		resp.Header.Set("X-Loopers-Agent-Name", agentName)
 	}
 
 	if sessionID != "" {
-		sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
 		sessionStepsKey := fmt.Sprintf("loopers:session:%s:%s:steps", keyHash, sessionID)
-		sessionBudgetKey := fmt.Sprintf("loopers:session:%s:%s:budget", keyHash, sessionID)
 
 		rdb := s.redis.GetUnderlyingClient()
-		vals, _ := rdb.MGet(ctx, sessionSpendKey, sessionStepsKey, sessionBudgetKey).Result()
-		var spendVal float64
+		vals, _ := rdb.MGet(ctx, sessionStepsKey).Result()
 		var stepsVal int64
-		var budgetVal float64
-		if len(vals) == 3 {
+		if len(vals) == 1 {
 			if vals[0] != nil {
-				if sVal, err := strconv.ParseFloat(fmt.Sprintf("%v", vals[0]), 64); err == nil {
-					spendVal = sVal
-				}
-			}
-			if vals[1] != nil {
-				if stVal, err := strconv.ParseInt(fmt.Sprintf("%v", vals[1]), 10, 64); err == nil {
+				if stVal, err := strconv.ParseInt(fmt.Sprintf("%v", vals[0]), 10, 64); err == nil {
 					stepsVal = stVal
 				}
 			}
-			if vals[2] != nil {
-				if bVal, err := strconv.ParseFloat(fmt.Sprintf("%v", vals[2]), 64); err == nil {
-					budgetVal = bVal
-				}
-			}
 		}
 
-		resp.Header.Set("X-Loopers-Session-Spend", fmt.Sprintf("%.6f", spendVal))
 		resp.Header.Set("X-Loopers-Session-Steps", fmt.Sprintf("%d", stepsVal))
-		if budgetVal > 0 {
-			resp.Header.Set("X-Loopers-Session-Remaining", fmt.Sprintf("%.6f", budgetVal-spendVal))
-		}
 	}
 
 	if isStream {
@@ -545,7 +545,11 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 				}
 			})
 	} else {
-		respBodyBytes, err := io.ReadAll(resp.Body)
+		limit := viper.GetInt64("server.max_response_bytes")
+		if limit == 0 {
+			limit = 32 * 1024 * 1024
+		}
+		respBodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, limit))
 		if err != nil {
 			return err
 		}
@@ -570,40 +574,24 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 		if sessionID != "" {
 			sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
 			sessionStepsKey := fmt.Sprintf("loopers:session:%s:%s:steps", keyHash, sessionID)
-			sessionBudgetKey := fmt.Sprintf("loopers:session:%s:%s:budget", keyHash, sessionID)
+
 
 			if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-reservedCost).Err(); err != nil {
 				logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
 			}
 
 			rdb := s.redis.GetUnderlyingClient()
-			vals, _ := rdb.MGet(ctx, sessionSpendKey, sessionStepsKey, sessionBudgetKey).Result()
-			var spendVal float64
+			vals, _ := rdb.MGet(ctx, sessionStepsKey).Result()
 			var stepsVal int64
-			var budgetVal float64
-			if len(vals) == 3 {
+			if len(vals) == 1 {
 				if vals[0] != nil {
-					if sVal, err := strconv.ParseFloat(fmt.Sprintf("%v", vals[0]), 64); err == nil {
-						spendVal = sVal
-					}
-				}
-				if vals[1] != nil {
-					if stVal, err := strconv.ParseInt(fmt.Sprintf("%v", vals[1]), 10, 64); err == nil {
+					if stVal, err := strconv.ParseInt(fmt.Sprintf("%v", vals[0]), 10, 64); err == nil {
 						stepsVal = stVal
-					}
-				}
-				if vals[2] != nil {
-					if bVal, err := strconv.ParseFloat(fmt.Sprintf("%v", vals[2]), 64); err == nil {
-						budgetVal = bVal
 					}
 				}
 			}
 
-			resp.Header.Set("X-Loopers-Session-Spend", fmt.Sprintf("%.6f", spendVal))
 			resp.Header.Set("X-Loopers-Session-Steps", fmt.Sprintf("%d", stepsVal))
-			if budgetVal > 0 {
-				resp.Header.Set("X-Loopers-Session-Remaining", fmt.Sprintf("%.6f", budgetVal-spendVal))
-			}
 		}
 
 		// Record non-stream metrics

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/session"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -40,16 +41,19 @@ type EscalationResponse struct {
 
 // RequestEscalation suspends the current request and waits for an approval via Redis Pub/Sub.
 func (b *EscalationBroker) RequestEscalation(ctx context.Context, req EscalationRequest, timeout time.Duration) (*EscalationResponse, error) {
+	if b.secret == "" {
+		return nil, fmt.Errorf("escalation secret is not configured")
+	}
 	if !session.IsValidID(req.SessionID) {
 		return nil, fmt.Errorf("invalid session ID format")
 	}
 
-	req.Nonce = fmt.Sprintf("%d", time.Now().UnixNano())
+	req.Nonce = uuid.NewString()
 	reqData, _ := json.Marshal(req)
 
 	// Hash session ID to prevent channel collision/injection
 	hash := sha256.Sum256([]byte(req.SessionID))
-	channel := fmt.Sprintf("loopers:escalation:%x", hash)
+	channel := fmt.Sprintf("loopers:escalation:%x:%s", hash, req.Nonce[:8])
 
 	// Start subscribing to the specific session channel
 	pubsub := b.rdb.Subscribe(ctx, channel)
@@ -85,7 +89,7 @@ func (b *EscalationBroker) RequestEscalation(ctx context.Context, req Escalation
 		mac.Write([]byte(fmt.Sprintf("%t", resp.Approved)))
 		expectedSig := hex.EncodeToString(mac.Sum(nil))
 
-		if b.secret != "" && resp.Signature != expectedSig {
+		if resp.Signature != expectedSig {
 			return nil, fmt.Errorf("invalid escalation signature")
 		}
 

@@ -14,7 +14,7 @@ import (
 // If less than maxChunkUSD is available across any window, it deducts the minimum available amount.
 // Returns the granted amount in USD, the generated lease ID, and an error.
 func (c *Client) AcquireLeaseRedis(ctx context.Context, keyHash string, maxChunkUSD float64) (float64, string, error) {
-	configKey := fmt.Sprintf("loopers:budget:%s:config", keyHash)
+	configKey := fmt.Sprintf("loopers:budget:{%s}:config", keyHash)
 	limits, err := c.getBudgetConfig(ctx, configKey)
 	if err != nil {
 		return 0, "", err
@@ -33,7 +33,7 @@ func (c *Client) AcquireLeaseRedis(ctx context.Context, keyHash string, maxChunk
 	leaseID := uuid.NewString()
 	args := []interface{}{
 		leaseID,
-		fmt.Sprintf("%f", maxChunkUSD),
+		strconv.FormatInt(ToNano(maxChunkUSD), 10),
 		len(windows),
 	}
 
@@ -52,7 +52,7 @@ func (c *Client) AcquireLeaseRedis(ctx context.Context, keyHash string, maxChunk
 		}
 
 		args = append(args, w.Key)
-		args = append(args, fmt.Sprintf("%f", limitUSD))
+		args = append(args, strconv.FormatInt(ToNano(limitUSD), 10))
 		args = append(args, strconv.Itoa(w.TTL))
 		numWindows++
 	}
@@ -88,10 +88,11 @@ func (c *Client) AcquireLeaseRedis(ctx context.Context, keyHash string, maxChunk
 		return 0, "", fmt.Errorf("unexpected lua granted amount format")
 	}
 
-	grantedUSD, err := strconv.ParseFloat(grantedStr, 64)
+	grantedNano, err := strconv.ParseInt(grantedStr, 10, 64)
 	if err != nil {
 		return 0, "", fmt.Errorf("failed to parse granted amount: %w", err)
 	}
+	grantedUSD := FromNano(grantedNano)
 
 	return grantedUSD, leaseID, nil
 }

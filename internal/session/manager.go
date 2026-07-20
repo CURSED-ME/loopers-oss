@@ -9,7 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var validSessionID = regexp.MustCompile(`^[a-zA-Z0-9._-]{1,256}$`)
+var validSessionID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // IsValidID checks if a session ID conforms to the allowed format.
 func IsValidID(sessionID string) bool {

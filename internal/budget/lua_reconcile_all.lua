@@ -15,7 +15,7 @@ if delta ~= 0 then
     for i = 1, num_windows do
         local spend_key = KEYS[i]
         local window_ttl = tonumber(ARGV[i + 2])
-        redis.call('INCRBYFLOAT', spend_key, delta)
+        redis.call('INCRBY', spend_key, delta)
         redis.call('EXPIRE', spend_key, window_ttl)
     end
 end

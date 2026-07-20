@@ -14,7 +14,7 @@ for _, lease_id in ipairs(leases) do
         if remaining > 0 then
             local keys = redis.call('SMEMBERS', 'loopers:lease:' .. lease_id .. ':keys')
             for _, spend_key in ipairs(keys) do
-                redis.call('DECRBYFLOAT', spend_key .. ':reserved', remaining)
+                redis.call('INCRBY', spend_key .. ':reserved', -remaining)
             end
         end
         

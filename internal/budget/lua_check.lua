@@ -35,7 +35,7 @@ if projected > limit then
 end
 
 -- RESERVE: increment and set TTL in one atomic operation
-redis.call('INCRBYFLOAT', spend_key, est_cost)
+redis.call('INCRBY', spend_key, est_cost)
 redis.call('EXPIRE', spend_key, window_ttl)
 
 return {1, tostring(projected), tostring(limit), "ok"}

@@ -35,7 +35,7 @@ end
 -- Pass 2: Reserve the chunk
 for i = 1, num_windows do
     local rkey = spend_keys[i] .. ':reserved'
-    redis.call('INCRBYFLOAT', rkey, min_available)
+    redis.call('INCRBY', rkey, min_available)
     redis.call('EXPIRE', rkey, ttls[i])
     -- ensure spend key has TTL
     redis.call('EXPIRE', spend_keys[i], ttls[i])

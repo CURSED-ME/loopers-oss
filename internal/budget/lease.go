@@ -2,9 +2,11 @@ package budget
 
 import (
 	"context"
+	"errors"
 	"math"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
 )
@@ -155,14 +157,28 @@ func (lm *LeaseManager) ReconcileSpend(ctx context.Context, keyHash string, estC
 	// we must write the overage directly to the Redis spend keys immediately.
 	overageUSD := -deltaUSD
 
-	err := lm.client.reconcileRedis(ctx, keyHash, 0, overageUSD)
+	var err error
+	backoffs := []time.Duration{100 * time.Millisecond, 500 * time.Millisecond, 2 * time.Second}
+	for attempt := 0; attempt <= len(backoffs); attempt++ {
+		err = lm.client.reconcileRedis(ctx, keyHash, 0, overageUSD)
+		if err == nil {
+			break
+		}
+		if attempt < len(backoffs) {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(backoffs[attempt]):
+			}
+		}
+	}
 	if err != nil {
-		logging.Logger.Error().Err(err).Str("key_hash", keyHash).Float64("overage_usd", overageUSD).Msg("budget: failed to sync overage to Redis; guardLoop will correct")
+		logging.Logger.Error().Err(err).Str("key_hash", keyHash).Float64("overage_usd", overageUSD).Msg("budget: failed to sync overage to Redis after retries; guardLoop will correct")
 	}
 }
 
 // ErrBudgetExceeded is returned when the global budget is too low.
-var ErrBudgetExceeded = context.DeadlineExceeded // Just reusing a common error interface for now, will refine
+var ErrBudgetExceeded = errors.New("budget exceeded")
 
 // TryAcquireFast attempts to deduct from the local lease instantly without calling Redis.
 // Returns false if the local lease is exhausted.
