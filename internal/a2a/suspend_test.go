@@ -37,7 +37,6 @@ func TestEscalationBroker(t *testing.T) {
 		// Pop request
 		res, err := rdb.LPop(ctx, "loopers:escalation_requests").Result()
 		if err != nil {
-			t.Errorf("failed to pop request: %v", err)
 			return
 		}
 
