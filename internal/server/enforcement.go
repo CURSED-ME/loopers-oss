@@ -109,8 +109,8 @@ func (s *Server) enforceBudgetWithFallback(c *gin.Context, providerName, model s
 
 				// We don't have the exact window in the new simple ErrBudgetExceeded, so just log generically
 				c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-					"error":      "budget exceeded",
-					"type":       "budget_exceeded",
+					"error": "budget exceeded",
+					"type":  "budget_exceeded",
 				})
 				return newModel, newCost, newInputPrice, newOutputPrice, newInputTokens, newMutatedBody, budget.ErrBudgetExceeded
 			}
@@ -202,7 +202,7 @@ func (s *Server) enforceLoopDetection(c *gin.Context, providerName, model, sessi
 	result, err := s.loopDetector.Check(c.Request.Context(), sessionID, providerName+c.Request.URL.Path, body)
 	if err != nil {
 		logging.Logger.Error().Err(err).Str("session_id", sessionID).Msg("loop_detection_check_failed")
-		
+
 		// Refund key budget reservation
 		s.redis.LeaseManager.ReconcileSpend(c.Request.Context(), keyHash, estimatedCost, 0)
 		sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)

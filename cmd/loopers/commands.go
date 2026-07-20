@@ -42,11 +42,11 @@ func getRedisClient() (*budget.Client, error) {
 		addr = "localhost:6379"
 	}
 	password := viper.GetString("redis.password")
-	
+
 	if password == "" && addr != "localhost:6379" && addr != "127.0.0.1:6379" && !strings.HasPrefix(addr, "localhost:") && !strings.HasPrefix(addr, "127.0.0.1:") {
 		logging.Logger.Warn().Msg("SECURITY WARNING: Redis password is empty but address is not localhost. Ensure your Redis instance is protected by a firewall or VPC.")
 	}
-	
+
 	db := viper.GetInt("redis.db")
 
 	return budget.NewClient(addr, password, db)

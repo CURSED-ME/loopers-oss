@@ -575,7 +575,6 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 			sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
 			sessionStepsKey := fmt.Sprintf("loopers:session:%s:%s:steps", keyHash, sessionID)
 
-
 			if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-reservedCost).Err(); err != nil {
 				logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
 			}

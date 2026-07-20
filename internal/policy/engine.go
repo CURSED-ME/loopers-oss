@@ -118,7 +118,7 @@ func (e *Engine) Reload() error {
 		if info.IsDir() || !strings.HasSuffix(info.Name(), ".rego") {
 			return nil
 		}
-		
+
 		// VULN-033: Prevent directory traversal via symlinks
 		absPath, absErr := filepath.Abs(path)
 		if absErr != nil || !strings.HasPrefix(absPath, e.cfg.PolicyDir) {
