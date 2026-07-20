@@ -186,7 +186,7 @@ func (s *Server) enforceSessionLimits(c *gin.Context, providerName, model, sessi
 			if status == "session_budget_exceeded" {
 				c.AbortWithStatusJSON(http.StatusTooManyRequests, api.NewSessionBudgetExceededResponse(sessionID, val2, val1, estimatedCost))
 			} else {
-				c.AbortWithStatusJSON(http.StatusTooManyRequests, api.NewSessionStepsExceededResponse(sessionID, int(val2), int(val1)))
+				c.AbortWithStatusJSON(http.StatusTooManyRequests, api.NewSessionStepsExceededResponse(sessionID, int64(val2), int64(val1)))
 			}
 			return fmt.Errorf("session limit exceeded")
 		}

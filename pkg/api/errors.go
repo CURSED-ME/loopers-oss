@@ -104,8 +104,8 @@ func NewSessionBudgetExceededResponse(sessionID string, limit, currentSpend, est
 // SessionStepsDetails provides structured info about step limit exhaustion.
 type SessionStepsDetails struct {
 	BudgetType          string `json:"budget_type"`
-	SessionLimitSteps   int    `json:"session_limit_steps"`
-	SessionCurrentSteps int    `json:"session_current_steps"`
+	SessionLimitSteps   int64  `json:"session_limit_steps"`
+	SessionCurrentSteps int64  `json:"session_current_steps"`
 	ResetsAt            string `json:"resets_at"`
 }
 
@@ -114,7 +114,7 @@ type SessionStepsExceededResponse struct {
 	Error ErrorPayload `json:"error"`
 }
 
-func NewSessionStepsExceededResponse(sessionID string, limit int, currentSteps int) SessionStepsExceededResponse {
+func NewSessionStepsExceededResponse(sessionID string, limit int64, currentSteps int64) SessionStepsExceededResponse {
 	msg := fmt.Sprintf("Session step limit exceeded for session %s: limit of %d steps reached. Current steps: %d.",
 		sessionID, limit, currentSteps)
 	return SessionStepsExceededResponse{
