@@ -242,12 +242,15 @@ func TestFingerprintVolatileFields(t *testing.T) {
 	}
 
 	for i, body := range bodies {
-		res, _ := d.Check(context.Background(), "vol_session", "/openai/v1/chat/completions", body)
+		res, err := d.Check(context.Background(), "vol_session", "/openai/v1/chat/completions", body)
+		if err != nil {
+			t.Logf("Error on req %d: %v", i+1, err)
+		}
 		if i < 2 && res != nil {
 			t.Fatalf("unexpected loop on req %d", i+1)
 		}
 		if i == 2 && res == nil {
-			t.Fatalf("expected loop detection on req 3 due to volatile field stripping")
+			t.Fatalf("expected loop detection on req 3 due to volatile field stripping, err: %v", err)
 		}
 	}
 }

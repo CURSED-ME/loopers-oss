@@ -37,7 +37,7 @@ jobs:
           fi
           
           echo "Sending first request (should succeed)..."
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/openai/v1/chat/completions \
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://loopers:8080/openai/v1/chat/completions \
             -H "Authorization: Bearer $RAW_KEY" \
             -H "X-Loopers-Provider-Key: sk-demo" \
             -H "Content-Type: application/json" \
@@ -54,14 +54,14 @@ jobs:
           fi
           
           echo "Sending second request (might succeed or fail depending on token counting)..."
-          curl -s -o /dev/null -X POST http://localhost:8080/openai/v1/chat/completions \
+          curl -s -o /dev/null -X POST http://loopers:8080/openai/v1/chat/completions \
             -H "Authorization: Bearer $RAW_KEY" \
             -H "X-Loopers-Provider-Key: sk-demo" \
             -H "Content-Type: application/json" \
             -d '{"model":"gpt-4o-mini","max_tokens":100,"messages":[{"role":"user","content":"hi"}]}'
             
           echo "Sending third request (should definitely 429)..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8080/openai/v1/chat/completions \
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://loopers:8080/openai/v1/chat/completions \
             -H "Authorization: Bearer $RAW_KEY" \
             -H "X-Loopers-Provider-Key: sk-demo" \
             -H "Content-Type: application/json" \
