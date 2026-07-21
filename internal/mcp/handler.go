@@ -6,9 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -21,6 +19,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/budget"
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/netutil"
 	"github.com/CURSED-ME/loopers-oss/internal/policy"
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	proxyPkg "github.com/CURSED-ME/loopers-oss/internal/proxy"
@@ -47,7 +46,7 @@ func NewHandler(cfg Config, budgetClient *budget.Client, pricingStore *pricing.S
 
 	servers := make(map[string]string)
 	for _, srv := range cfg.Servers {
-		if isPrivateURL(srv.URL) {
+		if netutil.IsPrivateURL(srv.URL) {
 			logging.Logger.Fatal().Str("mcp_server", srv.Name).Str("url", srv.URL).Msg("MCP server URL points to a private/internal IP address (SSRF protection).")
 		}
 		servers[srv.Name] = srv.URL
@@ -128,7 +127,7 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("MCP server '%s' not configured", serverName)})
 		return
 	}
-	if isPrivateURL(targetURL) {
+	if netutil.IsPrivateURL(targetURL) {
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "MCP server URL resolves to a private IP (SSRF protection)"})
 		return
 	}
@@ -466,27 +465,4 @@ func (h *Handler) forward(c *gin.Context, targetURL string, keyHash *string, cos
 	}
 
 	h.proxy.ServeHTTP(c.Writer, c.Request)
-}
-
-func isPrivateURL(rawURL string) bool {
-	if viper.GetBool("testing.allow_private_urls") {
-		return false
-	}
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return true // invalid URL is considered unsafe
-	}
-	hostname := u.Hostname()
-
-	ips, err := net.LookupIP(hostname)
-	if err != nil {
-		return true // unresolvable is unsafe
-	}
-
-	for _, ip := range ips {
-		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
-			return true
-		}
-	}
-	return false
 }

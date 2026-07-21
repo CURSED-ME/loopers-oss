@@ -94,6 +94,9 @@ func (e *Engine) Reload() error {
 	if err != nil {
 		return fmt.Errorf("invalid policy dir: %w", err)
 	}
+	if symDir, err := filepath.EvalSymlinks(absDir); err == nil {
+		absDir = symDir
+	}
 	e.cfg.PolicyDir = absDir
 
 	// Check if directory exists

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/a2a"
+	"github.com/CURSED-ME/loopers-oss/internal/budget"
 	"github.com/CURSED-ME/loopers-oss/internal/event"
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
@@ -460,7 +461,7 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 		s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, reservedCost, 0)
 		if sessionID != "" {
 			sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
-			if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, -reservedCost).Err(); err != nil {
+			if err := s.redis.GetUnderlyingClient().IncrBy(ctx, sessionSpendKey, -budget.ToNano(reservedCost)).Err(); err != nil {
 				logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
 			}
 		}
@@ -473,7 +474,9 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 	}
 
 	// Set initial headers for both stream and non-stream
-	resp.Header.Set("X-Loopers-Request-Cost-Estimated", fmt.Sprintf("%.6f", reservedCost))
+	if !viper.GetBool("server.strip_budget_headers") {
+		resp.Header.Set("X-Loopers-Request-Cost-Estimated", fmt.Sprintf("%.6f", reservedCost))
+	}
 	if agentName, ok := ctx.Value(agentNameCtx).(string); ok && agentName != "" {
 		resp.Header.Set("X-Loopers-Agent-Name", agentName)
 	}
@@ -492,7 +495,9 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 			}
 		}
 
-		resp.Header.Set("X-Loopers-Session-Steps", fmt.Sprintf("%d", stepsVal))
+		if !viper.GetBool("server.strip_budget_headers") {
+			resp.Header.Set("X-Loopers-Session-Steps", fmt.Sprintf("%d", stepsVal))
+		}
 	}
 
 	if isStream {
@@ -515,7 +520,7 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 				s.checkBudgetOverdrawAsync(ctx, keyHash, provName, model)
 				if sessionID != "" {
 					sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
-					if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-totalPaid).Err(); err != nil {
+					if err := s.redis.GetUnderlyingClient().IncrBy(ctx, sessionSpendKey, budget.ToNano(actualCost-totalPaid)).Err(); err != nil {
 						logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
 					}
 				}
@@ -569,13 +574,15 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 		actualCost := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
 		s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, reservedCost, actualCost)
 		s.checkBudgetOverdrawAsync(ctx, keyHash, provName, model)
-		resp.Header.Set("X-Loopers-Request-Cost", fmt.Sprintf("%.6f", actualCost))
+		if !viper.GetBool("server.strip_budget_headers") {
+			resp.Header.Set("X-Loopers-Request-Cost", fmt.Sprintf("%.6f", actualCost))
+		}
 
 		if sessionID != "" {
 			sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
 			sessionStepsKey := fmt.Sprintf("loopers:session:{%s}:%s:steps", keyHash, sessionID)
 
-			if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-reservedCost).Err(); err != nil {
+			if err := s.redis.GetUnderlyingClient().IncrBy(ctx, sessionSpendKey, budget.ToNano(actualCost-reservedCost)).Err(); err != nil {
 				logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
 			}
 
@@ -590,7 +597,9 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 				}
 			}
 
-			resp.Header.Set("X-Loopers-Session-Steps", fmt.Sprintf("%d", stepsVal))
+			if !viper.GetBool("server.strip_budget_headers") {
+				resp.Header.Set("X-Loopers-Session-Steps", fmt.Sprintf("%d", stepsVal))
+			}
 		}
 
 		// Record non-stream metrics

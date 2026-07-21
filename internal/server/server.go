@@ -2,9 +2,8 @@ package server
 
 import (
 	"context"
-	"net"
 	"net/http"
-	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -18,6 +17,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	"github.com/CURSED-ME/loopers-oss/internal/loop"
 	"github.com/CURSED-ME/loopers-oss/internal/mcp"
+	"github.com/CURSED-ME/loopers-oss/internal/netutil"
 	"github.com/CURSED-ME/loopers-oss/internal/otel"
 	"github.com/CURSED-ME/loopers-oss/internal/policy"
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
@@ -87,6 +87,9 @@ type Server struct {
 
 // NewServer initializes and builds the HTTP server with middlewares and ReverseProxy configuration.
 func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server {
+	if viper.GetBool("testing.allow_private_urls") && viper.GetString("env") != "development" && !strings.HasSuffix(os.Args[0], ".test") && !strings.HasSuffix(os.Args[0], ".test.exe") {
+		logging.Logger.Fatal().Msg("CRITICAL: testing.allow_private_urls is enabled but env is not 'development'. This disables SSRF protection and is forbidden in production.")
+	}
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
@@ -132,7 +135,7 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 			}
 
 			// SSRF protection
-			if isPrivateURL(gp.BaseURL) {
+			if netutil.IsPrivateURL(gp.BaseURL) {
 				logging.Logger.Error().Msgf("SSRF protection: rejecting generic provider %q because base URL %q resolves to a private or unresolvable IP", gp.Name, gp.BaseURL)
 				continue
 			}
@@ -455,28 +458,4 @@ func (s *Server) ipRateLimiter(limit int64, window time.Duration) gin.HandlerFun
 		}
 		c.Next()
 	}
-}
-
-// isPrivateURL checks if a given URL resolves to a private or link-local IP address.
-func isPrivateURL(rawURL string) bool {
-	if viper.GetBool("testing.allow_private_urls") {
-		return false
-	}
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return true // invalid URL is considered unsafe
-	}
-	hostname := u.Hostname()
-
-	ips, err := net.LookupIP(hostname)
-	if err != nil {
-		return true // unresolvable is unsafe
-	}
-
-	for _, ip := range ips {
-		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
-			return true
-		}
-	}
-	return false
 }

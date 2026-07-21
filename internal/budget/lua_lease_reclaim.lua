@@ -12,9 +12,10 @@ for _, lease_id in ipairs(leases) do
         local remaining = tonumber(redis.call('GET', amt_key) or "0")
         
         if remaining > 0 then
+            local reclaim_str = string.format("%.0f", -remaining)
             local keys = redis.call('SMEMBERS', 'loopers:lease:' .. lease_id .. ':keys')
             for _, spend_key in ipairs(keys) do
-                redis.call('INCRBY', spend_key .. ':reserved', -remaining)
+                redis.call('INCRBY', spend_key .. ':reserved', reclaim_str)
             end
         end
         

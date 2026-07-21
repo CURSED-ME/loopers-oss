@@ -13,6 +13,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	"github.com/alicebob/miniredis/v2"
+	"github.com/spf13/viper"
 )
 
 func TestFallbackRouting(t *testing.T) {
@@ -21,6 +22,9 @@ func TestFallbackRouting(t *testing.T) {
 		t.Fatalf("failed to start miniredis: %v", err)
 	}
 	defer mr.Close()
+
+	viper.Set("testing.allow_private_urls", true)
+	defer viper.Set("testing.allow_private_urls", false)
 
 	redisClient, err := budget.NewClient(mr.Addr(), "", 0)
 	if err != nil {

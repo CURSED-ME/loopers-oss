@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/netutil"
 	"github.com/CURSED-ME/loopers-oss/internal/provider"
 	"github.com/spf13/viper"
 )
@@ -37,6 +38,7 @@ func NewProxy(modifyResponse func(*http.Response) error) *Proxy {
 		timeout = 30
 	}
 	transport := &http.Transport{
+		DialContext:           netutil.SecureDialContext,
 		MaxIdleConns:          4000,
 		MaxIdleConnsPerHost:   4000,
 		ForceAttemptHTTP2:     true,

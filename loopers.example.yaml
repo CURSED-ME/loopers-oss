@@ -11,6 +11,7 @@ server:
   write_timeout_seconds: 120
   idle_timeout_seconds: 120
   concurrency_timeout_seconds: 5
+  strip_budget_headers: true
 redis:
   addr: "localhost:6379"
   password: ""

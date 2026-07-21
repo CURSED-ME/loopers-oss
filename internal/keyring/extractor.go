@@ -14,6 +14,7 @@ import (
 
 	"github.com/CURSED-ME/loopers-oss/internal/cache"
 	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -113,7 +114,13 @@ func GetKeyMetadata(ctx context.Context, rdb *redis.Client, keyHash string) (*Ke
 
 // EncryptValue encrypts a plaintext string using AES-256-GCM and returns a base64-encoded string.
 func EncryptValue(plaintext string, secret []byte) (string, error) {
-	if plaintext == "" || len(secret) == 0 {
+	if len(secret) == 0 {
+		if viper.GetString("env") != "development" {
+			return "", errors.New("server_secret is required in production environments")
+		}
+		return plaintext, nil
+	}
+	if plaintext == "" {
 		return plaintext, nil
 	}
 	block, err := aes.NewCipher(secret)
@@ -134,7 +141,13 @@ func EncryptValue(plaintext string, secret []byte) (string, error) {
 
 // DecryptValue decrypts a base64 string using AES-256-GCM. If decryption fails, it returns the string as-is for backwards compatibility.
 func DecryptValue(ciphertextB64 string, secret []byte) (string, error) {
-	if ciphertextB64 == "" || len(secret) == 0 {
+	if len(secret) == 0 {
+		if viper.GetString("env") != "development" {
+			return "", errors.New("server_secret is required in production environments")
+		}
+		return ciphertextB64, nil
+	}
+	if ciphertextB64 == "" {
 		return ciphertextB64, nil
 	}
 	if !strings.HasPrefix(ciphertextB64, "enc:v1:") {

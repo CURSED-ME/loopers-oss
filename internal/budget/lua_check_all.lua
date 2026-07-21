@@ -6,7 +6,8 @@
 -- ARGV[N+2..2N+1]: limits
 -- ARGV[2N+2..3N+1]: window TTLs in seconds
 
-local est_cost = tonumber(ARGV[1])
+local est_cost_str = ARGV[1]
+local est_cost_num = tonumber(est_cost_str)
 local num_windows = #KEYS
 
 -- First pass: check limits for all windows
@@ -23,10 +24,10 @@ for i = 1, num_windows do
             current = tonumber(current_str)
         end
         
-        local projected = current + est_cost
+        local projected = current + est_cost_num
         if projected > limit then
-            -- BLOCK: return as strings to preserve float precision
-            return {0, tostring(current), tostring(limit), window_name}
+            -- BLOCK: return as strings to preserve integer precision without scientific notation
+            return {0, string.format("%.0f", current), string.format("%.0f", limit), window_name}
         end
     end
 end
@@ -35,7 +36,7 @@ end
 for i = 1, num_windows do
     local spend_key = KEYS[i]
     local window_ttl = tonumber(ARGV[i + 1 + (num_windows * 2)])
-    redis.call('INCRBY', spend_key, est_cost)
+    redis.call('INCRBY', spend_key, est_cost_str)
     redis.call('EXPIRE', spend_key, window_ttl)
 end
 

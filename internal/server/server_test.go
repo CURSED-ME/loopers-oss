@@ -16,7 +16,13 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
+	"os"
 )
+
+func TestMain(m *testing.M) {
+	viper.Set("testing.allow_private_urls", true)
+	os.Exit(m.Run())
+}
 
 type closeNotifierRecorder struct {
 	*httptest.ResponseRecorder

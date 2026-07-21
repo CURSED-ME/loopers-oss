@@ -170,7 +170,7 @@ func (s *Server) enforceSessionLimits(c *gin.Context, providerName, model, sessi
 			sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
 			sessionStepsKey := fmt.Sprintf("loopers:session:{%s}:%s:steps", keyHash, sessionID)
 			rdb := s.redis.GetUnderlyingClient()
-			rdb.IncrByFloat(c.Request.Context(), sessionSpendKey, estimatedCost)
+			rdb.IncrBy(c.Request.Context(), sessionSpendKey, budget.ToNano(estimatedCost))
 			rdb.IncrBy(c.Request.Context(), sessionStepsKey, 1)
 		} else {
 			// Refund key budget reservation
@@ -206,7 +206,7 @@ func (s *Server) enforceLoopDetection(c *gin.Context, providerName, model, sessi
 		// Refund key budget reservation
 		s.redis.LeaseManager.ReconcileSpend(c.Request.Context(), keyHash, estimatedCost, 0)
 		sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
-		_, _ = s.redis.GetUnderlyingClient().IncrByFloat(c.Request.Context(), sessionSpendKey, -estimatedCost).Result()
+		_, _ = s.redis.GetUnderlyingClient().IncrBy(c.Request.Context(), sessionSpendKey, -budget.ToNano(estimatedCost)).Result()
 
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"error": gin.H{
@@ -222,7 +222,7 @@ func (s *Server) enforceLoopDetection(c *gin.Context, providerName, model, sessi
 			// Refund key budget reservation
 			s.redis.LeaseManager.ReconcileSpend(c.Request.Context(), keyHash, estimatedCost, 0)
 			sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
-			_, _ = s.redis.GetUnderlyingClient().IncrByFloat(c.Request.Context(), sessionSpendKey, -estimatedCost).Result()
+			_, _ = s.redis.GetUnderlyingClient().IncrBy(c.Request.Context(), sessionSpendKey, -budget.ToNano(estimatedCost)).Result()
 
 			logging.Logger.Warn().
 				Str("session_id", sessionID).

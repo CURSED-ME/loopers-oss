@@ -8,13 +8,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
-	"net/url"
 	"sync"
 	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/netutil"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
@@ -90,13 +89,18 @@ type Alerter struct {
 func NewAlerter(cfg AlertingConfig, rdb *redis.Client) *Alerter {
 	bufSize := cfg.BufferSize
 	if bufSize <= 0 {
-		bufSize = 100
+		bufSize = 10000 // Increased default buffer size to prevent drops (VULN-047)
 	}
 	a := &Alerter{
-		cfg:    cfg,
-		client: &http.Client{Timeout: 10 * time.Second},
-		rdb:    rdb,
-		ch:     make(chan AlertEvent, bufSize),
+		cfg: cfg,
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+			Transport: &http.Transport{
+				DialContext: netutil.SecureDialContext,
+			},
+		},
+		rdb: rdb,
+		ch:  make(chan AlertEvent, bufSize),
 	}
 	go a.worker()
 	return a
@@ -318,7 +322,7 @@ func (a *Alerter) worker() {
 		fmt.Println(string(payload))
 
 		if a.cfg.WebhookURL != "" {
-			if isPrivateURL(a.cfg.WebhookURL) && !viper.GetBool("testing.allow_private_urls") {
+			if netutil.IsPrivateURL(a.cfg.WebhookURL) && !viper.GetBool("testing.allow_private_urls") {
 				logging.Logger.Error().Str("url", a.cfg.WebhookURL).Msg("SECURITY WARNING: Webhook URL resolves to a private IP. Dropping alert.")
 				continue
 			}
@@ -363,26 +367,4 @@ func (a *Alerter) Close() {
 			close(a.ch)
 		}
 	})
-}
-
-// isPrivateURL checks if a given URL resolves to a private or link-local IP address.
-func isPrivateURL(rawURL string) bool {
-	parsed, err := url.Parse(rawURL)
-	if err != nil {
-		return true // Fail closed on invalid URLs
-	}
-
-	ips, err := net.LookupIP(parsed.Hostname())
-	if err != nil {
-		return true // Fail closed if DNS resolution fails
-	}
-
-	for _, ip := range ips {
-		if ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
-			if !viper.GetBool("testing.allow_private_urls") {
-				return true
-			}
-		}
-	}
-	return false
 }

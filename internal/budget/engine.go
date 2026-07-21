@@ -238,13 +238,17 @@ func (c *Client) GetBudgetStatus(ctx context.Context, keyHash string) (map[strin
 	for _, w := range windows {
 		var limit float64
 		if limitStr, exists := limits[w.Name]; exists && limitStr != "" {
-			limit, _ = strconv.ParseFloat(limitStr, 64)
+			if limitFloat, err := strconv.ParseFloat(limitStr, 64); err == nil {
+				limit = limitFloat
+			}
 		}
 
 		spendStr, _ := c.rdb.Get(ctx, w.Key).Result()
 		var spend float64
 		if spendStr != "" {
-			spend, _ = strconv.ParseFloat(spendStr, 64)
+			if spendNano, err := strconv.ParseInt(spendStr, 10, 64); err == nil {
+				spend = FromNano(spendNano)
+			}
 		}
 
 		status[w.Name] = WindowStatus{
