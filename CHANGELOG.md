@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.8.0](https://github.com/CURSED-ME/loopers-oss/compare/v1.7.0...v1.8.0) (2026-07-21)
+
+
+### Features
+
+* enhance security protocols and implement governance channel ([cedfbc2](https://github.com/CURSED-ME/loopers-oss/commit/cedfbc2b609ea71c15120d933e40969e75eb007b))
+
+
+### Bug Fixes
+
+* avoid t.Errorf inside goroutine in suspend_test.go ([425a68e](https://github.com/CURSED-ME/loopers-oss/commit/425a68e78969e55fb7e04fec913cb00b1737f870))
+* convert session nano values back to USD in CheckAndReserveSession ([feb18b6](https://github.com/CURSED-ME/loopers-oss/commit/feb18b6b5f9217046d7f568d137389cb8811da69))
+* deep-copy maps in pricing MergeRemote to prevent concurrent map mutation data race ([55bd3e2](https://github.com/CURSED-ME/loopers-oss/commit/55bd3e2a5ce0ac785664d06922f5bdae4dcc4f60))
+* **e2e:** update E2E test to use loopers hostname instead of localhost to bypass SSRF protection ([6fd4f22](https://github.com/CURSED-ME/loopers-oss/commit/6fd4f22aec1942c467cf136511027a498682654e))
+* resolve budget config parsing format mismatch for redis clustering ([66c3dbc](https://github.com/CURSED-ME/loopers-oss/commit/66c3dbcd065788e71aba14fe44fd7a7db9791e8a))
+* resolve data race in budget LeaseID assignment ([efed8eb](https://github.com/CURSED-ME/loopers-oss/commit/efed8eb7f79e63a494f1eccc8a50ecf670dee40a))
+* **security:** resolve VULN-010 Lua scientific notation and VULN-048 leaked budget headers ([572662e](https://github.com/CURSED-ME/loopers-oss/commit/572662e19906eea5c7494e67ba14b698a084f7ed))
+
 ## [1.7.0](https://github.com/CURSED-ME/loopers-oss/compare/v1.6.0...v1.7.0) (2026-07-17)
 
 
