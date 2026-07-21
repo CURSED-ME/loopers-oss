@@ -63,6 +63,8 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 	}
 
 	scanner := bufio.NewScanner(original)
+	const maxSSEFrameSize = 10 * 1024 * 1024 // 10MB
+	scanner.Buffer(make([]byte, 0, 64*1024), maxSSEFrameSize)
 	scanner.Split(splitSSEFrames)
 
 	chunks := make(chan []byte, 32)
@@ -227,6 +229,9 @@ func readEventStreamFrame(r io.Reader) ([]byte, error) {
 	totalLen := binary.BigEndian.Uint32(prelude)
 	if totalLen < 12 {
 		return nil, fmt.Errorf("invalid eventstream message length: %d", totalLen)
+	}
+	if totalLen > 10*1024*1024 { // 10MB max frame size
+		return nil, fmt.Errorf("eventstream frame too large: %d bytes", totalLen)
 	}
 	frameBytes := make([]byte, totalLen)
 	copy(frameBytes[0:4], prelude)

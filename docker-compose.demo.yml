@@ -28,6 +28,8 @@ services:
       - REDIS_PASSWORD=demo-pass
       - SERVER_PORT=8080
       - SERVER_INSECURE_DEV=true
+      - LOOPERS_ENV=development
+      - LOOPERS_TESTING_ALLOW_PRIVATE_URLS=true
       - SERVER_ADMIN_HOST=0.0.0.0
       - LOG_LEVEL=info
       - PRICING_PATH=/app/pricing.yaml

@@ -120,7 +120,10 @@ func JaccardSimilarity(a, b []uint16) float64 {
 	return float64(intersection) / float64(union)
 }
 
-func truncateLongStrings(val any) any {
+func truncateLongStrings(val any, depth int) any {
+	if depth > 20 {
+		return "<too_deep>"
+	}
 	switch v := val.(type) {
 	case string:
 		if len(v) > 256 {
@@ -128,11 +131,11 @@ func truncateLongStrings(val any) any {
 		}
 	case map[string]any:
 		for k, valItem := range v {
-			v[k] = truncateLongStrings(valItem)
+			v[k] = truncateLongStrings(valItem, depth+1)
 		}
 	case []any:
 		for i, valItem := range v {
-			v[i] = truncateLongStrings(valItem)
+			v[i] = truncateLongStrings(valItem, depth+1)
 		}
 	}
 	return val
@@ -147,13 +150,17 @@ func NormalizeAndHash(body []byte, defeatPadding bool) (string, uint64, error) {
 	if defeatPadding {
 		var raw map[string]any
 		if err := json.Unmarshal(body, &raw); err == nil {
-			volatileFields := []string{"stream", "max_tokens", "temperature", "seed", "n", "user"}
-			for _, f := range volatileFields {
-				delete(raw, f)
+			// VULN-031: WhitelistStdFields mode
+			// Only keep structurally significant fields, strip all other JSON noise (padding evasion).
+			whitelist := map[string]bool{"messages": true, "tools": true, "prompt": true, "system": true, "model": true, "input": true}
+			filtered := make(map[string]any)
+			for k, v := range raw {
+				if whitelist[k] {
+					filtered[k] = truncateLongStrings(v, 0)
+				}
 			}
-			raw = truncateLongStrings(raw).(map[string]any)
 			var err error
-			normalized, err = json.Marshal(raw)
+			normalized, err = json.Marshal(filtered)
 			if err != nil {
 				return "", 0, err
 			}

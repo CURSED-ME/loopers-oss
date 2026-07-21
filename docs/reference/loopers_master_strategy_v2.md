@@ -1,8 +1,8 @@
 # The Holy Grail: Loopers Master Strategy v2.0
 
 **Document Classification:** Internal — Founder Eyes Only
-**Last Updated:** June 26, 2026
-**Version:** 2.0
+**Last Updated:** July 18, 2026
+**Version:** 2.1
 
 > [!CAUTION]
 > **Critical Change from v1.0:** The SaaS is **not** the OSS with extra features bolted on. The OSS and SaaS are architecturally separate systems with separate codebases, separate CI/CD pipelines, and a zero-trust boundary between them. A vulnerability in the publicly auditable OSS code must have **zero exploitability** against the SaaS infrastructure.
@@ -34,6 +34,7 @@
 12. [The Business Model — "Protected Spend" Pricing](#12-the-business-model--protected-spend-pricing)
 13. [The Dominance Flywheel](#13-the-dominance-flywheel)
 14. [What Loopers Must Never Do](#14-what-loopers-must-never-do)
+15. [Zero Standing Privileges (ZSP) & Agent-to-Agent (A2A) Governance](#15-zero-standing-privileges-zsp--agent-to-agent-a2a-governance)
 
 ---
 
@@ -203,21 +204,22 @@ The OSS is the **Data Plane** — the enforcement muscle that sits in the hot pa
 
 ### Phase 1 (Now → 6 months): Fortify the Wedge
 
-| Layer | Deliverable | Detail |
-|---|---|---|
-| **L5** | Blast-Radius Circuit Breakers | Add frequency limiting (API calls/min), tool invocation caps (max calls/session), session TTL, and blast-radius bounds (max external systems/session). |
-| **L3** | MCP Security Proxy | Harden MCP interception. Filter server-provided metadata to prevent tool poisoning. Implement ACS-compliant hooks. Become the definitive "MCP Security Proxy." |
-| **L4** | GenAI OTel Exporter | Upgrade OTel exporter to use `gen_ai.*` semantic conventions. Generate span hierarchies, decision provenance attributes, and evidence attachment. |
-| **L5** | Benchmark Series v2 | Head-to-head benchmarks vs. Bifrost and GuardionAI. Publish raw data. |
+| Status | Layer | Deliverable | Detail |
+|:---:|---|---|---|
+| ✅ DONE | **L5** | Blast-Radius Circuit Breakers | Add frequency limiting (API calls/min), tool invocation caps (max calls/session), session TTL, and blast-radius bounds (max external systems/session). |
+| ✅ DONE | **L3** | MCP Security Proxy | Harden MCP interception. Filter server-provided metadata to prevent tool poisoning. Implement ACS-compliant hooks. Become the definitive "MCP Security Proxy." |
+| ✅ DONE | **L4** | GenAI OTel Exporter | Upgrade OTel exporter to use `gen_ai.*` semantic conventions. Generate span hierarchies, decision provenance attributes, and evidence attachment. |
+| 🚫 CANCELLED | **L5** | Benchmark Series v2 | Head-to-head benchmarks vs. Bifrost and GuardionAI. (Cancelled due to technical mismatches). |
 
 ### Phase 2 (6–12 months): Build the Brain (Local)
 
-| Layer | Deliverable | Detail |
-|---|---|---|
-| **L1** | Basic Agent Identity | Local API key issuance with per-key metadata (agent name, owner, allowed tools, budget). Foundational for all policy enforcement. |
-| **L2** | Local OPA/Rego Integration | Load policy files from disk. PEP (proxy) queries PDP (embedded OPA). Default-deny. GitOps-friendly. |
-| **L3** | A2A Protocol Mediation | Intercept Agent-to-Agent communication. Enforce that cascading agent calls respect the original session's policies. |
-| **L3** | Framework Adapters | First-class integrations: LangChain, CrewAI, AutoGen, LlamaIndex, Semantic Kernel. One-line setup. |
+| Status | Layer | Deliverable | Detail |
+|:---:|---|---|---|
+| ✅ DONE | **L1** | Basic Agent Identity | Local API key issuance with per-key metadata (agent name, owner, allowed tools, budget). Foundational for all policy enforcement. |
+| ✅ DONE | **L2** | Local OPA/Rego Integration | Load policy files from disk. PEP (proxy) queries PDP (embedded OPA). Default-deny. GitOps-friendly. |
+| ❌ TODO | **L1** | ZSP Identity (JWKS/JWT) | Statelessly verify short-lived OIDC delegation JWTs for agent identity instead of static keys. |
+| ❌ TODO | **L3** | A2A Protocol Mediation | Intercept Agent-to-Agent communication. Enforce that cascading agent calls respect the original session's policies. |
+| ✅ DONE | **L3** | Framework Adapters | First-class integrations: LangChain, CrewAI, AutoGen, LlamaIndex, Semantic Kernel. One-line setup. |
 
 ---
 
@@ -369,8 +371,8 @@ As of June 2026, AI-driven exploit tools can autonomously scan codebases, trace 
 - **Zero `import` or `go mod require` from `loopers-oss` in `loopers-cloud`.**
 
 #### Rule 2: Zero Shared Auth or Session Code
-- OSS: Simple bearer tokens (`lp-xxx`) validated against Redis hashes.
-- SaaS: OAuth 2.0/OIDC for dashboard. mTLS for service-to-service. Per-tenant encryption keys.
+- OSS: Simple bearer tokens (`lp-xxx`) validated against Redis hashes. In the future: Verification of statelessly issued JWTs.
+- SaaS: OAuth 2.0/OIDC for dashboard. mTLS for service-to-service. Per-tenant encryption keys. Token minting.
 - An exploit against `internal/keyring/` has **zero applicability** to SaaS auth because they share zero code.
 
 #### Rule 3: The SaaS Never Trusts the OSS Proxy
@@ -474,6 +476,41 @@ The SaaS must never `import` or `require` the OSS Go module. Shared algorithmic 
 
 ### 6. Never Open-Source the Intelligence Layer
 Behavioral models, cross-customer threat intelligence, anomaly detection algorithms, drift detection ML — these are the SaaS moat. Open-sourcing them gives away the only thing competitors cannot replicate: intelligence trained on aggregate enforcement data.
+
+---
+
+## 15. Zero Standing Privileges (ZSP) & Agent-to-Agent (A2A) Governance
+
+As the AI agent landscape matures, security must shift from static, long-lived credentials to Zero Standing Privileges (ZSP) and dynamic context mediation. To retain category dominance, Loopers OSS implements the execution-layer controls for this architecture, while leaving the management, scaling, and auditing complexities to Loopers Cloud.
+
+This evolution tightly couples with the 6-Layer Stack (Section 2) and acts as the bridge connecting Identity, Execution, and Compliance:
+- **Layer 1 (Identity)** moves from static API keys to ephemeral, cryptographically bound JWTs.
+- **Layer 2 (Policy)** gains context-aware escalation paths.
+- **Layer 3 (Interception)** mediates Agent-to-Agent (A2A) trust handoffs.
+- **Layer 6 (Compliance)** gains irrefutable proof of delegation via token chains.
+
+### 1. ZSP OIDC Verification (Layer 1 - Identity)
+Rather than managing static API keys (`lp-xxx`), Loopers OSS shifts to verifying ephemeral, short-lived Agent Delegation JWTs minted by an identity authority (SaaS Control Plane or Okta/Entra ID).
+- **Signature Verification:** The OSS proxy statelessly verifies incoming JWT signatures using a cached JWKS endpoint.
+- **Latency Guarantee:** Cryptographic token checks run in under 150 microseconds, preserving the sub-millisecond hot path.
+- **DPoP Token Binding:** The proxy enforces Demonstrating Proof-of-Possession (RFC 9449), validating that the token cannot be replayed even if an agent host is completely compromised.
+- **Fail-Closed Constraint:** If JWKS lookup fails or the JWT signature is invalid, the proxy aborts the request immediately.
+
+### 2. Dynamic Consent Escalation (Layer 2 & Layer 3)
+Under ZSP, agents start with least privileges. When an agent attempts an action that exceeds its active scope (e.g., spending over budget, invoking an unapproved tool):
+- **Proxy Interception (L3):** The OSS proxy suspends the HTTP/MCP request mid-flight and publishes a JIT (Just-in-Time) escalation event to Redis/NATS.
+- **Asynchronous Resumption:** The proxy holds the request open while waiting for the SaaS approval broker (Control Plane) to notify a human and confirm permission upgrade. If approved, the proxy resumes execution. If denied, it terminates the request cleanly.
+
+### 3. Agent-to-Agent (A2A) Protocol Mediation (Layer 3 & Layer 6)
+When an agent autonomously delegates a task to another agent, execution context and budgets are easily lost.
+- **Delegation Propagation:** Loopers OSS intercepts inter-agent communications and ensures downstream calls carry the parent agent's cryptographically linked delegation chain.
+- **Unified Budget Caps:** Downstream tool executions are dynamically charged against the parent session's budget limits. The OSS verifies these boundaries statelessly via its Redis Lua engine.
+- **Compliance Proofs (L6):** The SaaS platform uses these nested token chains to generate cryptographically verifiable Action Receipts, proving to auditors exactly which human or parent agent delegated the authority for any action.
+
+### 4. Codebase Boundary for ZSP
+Consistent with the Zero-Trust Boundary (Section 11):
+- **OSS (Data Plane):** Implements JWT parsing, JWKS caching, DPoP validation, and request suspension. It trusts nothing except the mathematical signature of the tokens.
+- **SaaS (Control Plane):** Implements human-in-the-loop workflows, UI dashboards for JIT approval, OIDC token minting, and identity federation.
 
 ---
 

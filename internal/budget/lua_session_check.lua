@@ -13,7 +13,8 @@ local budget_key = KEYS[2]
 local steps_key = KEYS[3]
 local max_steps_key = KEYS[4]
 
-local est_cost = tonumber(ARGV[1])
+local est_cost_str = ARGV[1]
+local est_cost = tonumber(est_cost_str)
 local input_budget = ARGV[2]
 local input_max_steps = ARGV[3]
 local ttl = tonumber(ARGV[4])
@@ -54,7 +55,7 @@ if saved_spend then
 end
 
 if budget and (current_spend + est_cost) > budget then
-    return {0, tostring(current_spend), tostring(budget), "session_budget_exceeded"}
+    return {0, string.format("%.0f", current_spend), string.format("%.0f", budget), "session_budget_exceeded"}
 end
 
 -- 4. Check step count (Note: steps are incremented ONLY if we don't block)
@@ -65,16 +66,18 @@ if saved_steps then
 end
 
 if max_steps and (current_steps + 1) > max_steps then
-    return {0, tostring(current_steps), tostring(max_steps), "session_steps_exceeded"}
+    return {0, string.format("%.0f", current_steps), string.format("%.0f", max_steps), "session_steps_exceeded"}
 end
 
 -- 5. Commit reservation (increment spend and step count)
 local new_spend = current_spend + est_cost
-redis.call('SET', spend_key, tostring(new_spend))
+local new_spend_str = string.format("%.0f", new_spend)
+redis.call('SET', spend_key, new_spend_str)
 redis.call('EXPIRE', spend_key, ttl)
 
 local new_steps = current_steps + 1
-redis.call('SET', steps_key, tostring(new_steps))
+local new_steps_str = string.format("%.0f", new_steps)
+redis.call('SET', steps_key, new_steps_str)
 redis.call('EXPIRE', steps_key, ttl)
 
-return {1, tostring(new_spend), tostring(new_steps), "ok"}
+return {1, new_spend_str, new_steps_str, "ok"}

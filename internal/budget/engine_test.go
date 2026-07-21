@@ -40,7 +40,7 @@ func TestBudgetRaceCondition(t *testing.T) {
 	defer rdb.Del(ctx, "loopers:key:"+keyHash)
 
 	// Setup budget config: $5.00 limit for daily window
-	configKey := "loopers:budget:" + keyHash + ":config"
+	configKey := "loopers:budget:{" + keyHash + "}:config"
 	rdb.HSet(ctx, configKey, "daily", "5.00")
 	defer rdb.Del(ctx, configKey)
 
@@ -103,7 +103,7 @@ func TestBudgetWindowExpansion(t *testing.T) {
 	defer rdb.Del(ctx, "loopers:key:"+keyHash)
 
 	// Set minute limit of 0.20 and weekly limit of 0.50
-	configKey := "loopers:budget:" + keyHash + ":config"
+	configKey := "loopers:budget:{" + keyHash + "}:config"
 	rdb.HSet(ctx, configKey, map[string]interface{}{
 		"minute": "0.20",
 		"weekly": "0.50",
@@ -162,10 +162,10 @@ func TestSessionEnforcement(t *testing.T) {
 	rdb := client.GetUnderlyingClient()
 	sessionID := "test-sess-" + uuid.New().String()
 
-	spendKey := fmt.Sprintf("loopers:session:%s:spend", sessionID)
-	budgetKey := fmt.Sprintf("loopers:session:%s:budget", sessionID)
-	stepsKey := fmt.Sprintf("loopers:session:%s:steps", sessionID)
-	maxStepsKey := fmt.Sprintf("loopers:session:%s:max_steps", sessionID)
+	spendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", "hash1", sessionID)
+	budgetKey := fmt.Sprintf("loopers:session:{%s}:%s:budget", "hash1", sessionID)
+	stepsKey := fmt.Sprintf("loopers:session:{%s}:%s:steps", "hash1", sessionID)
+	maxStepsKey := fmt.Sprintf("loopers:session:{%s}:%s:max_steps", "hash1", sessionID)
 
 	defer rdb.Del(ctx, spendKey, budgetKey, stepsKey, maxStepsKey)
 

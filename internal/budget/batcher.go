@@ -110,9 +110,19 @@ func (c *Client) flushReconcileBatches() {
 
 	for keyHash, req := range batches {
 		go func(kh string, r reconcileReq) {
-			err := c.reconcileRedis(context.Background(), kh, r.reservedCost, r.actualCost)
+			var err error
+			backoffs := []time.Duration{100 * time.Millisecond, 500 * time.Millisecond, 2 * time.Second}
+			for attempt := 0; attempt <= len(backoffs); attempt++ {
+				err = c.reconcileRedis(context.Background(), kh, r.reservedCost, r.actualCost)
+				if err == nil {
+					break
+				}
+				if attempt < len(backoffs) {
+					time.Sleep(backoffs[attempt])
+				}
+			}
 			if err != nil {
-				logging.Logger.Error().Err(err).Msg("failed to flush batched reconciliation")
+				logging.Logger.Error().Err(err).Msg("failed to flush batched reconciliation after retries")
 			}
 		}(keyHash, req)
 	}

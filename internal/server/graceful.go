@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"os"
 	"os/signal"
@@ -28,6 +29,11 @@ func ListenAndServeWithGracefulShutdown(srv *http.Server, adminSrv *http.Server,
 		}
 
 		if certFile != "" && keyFile != "" {
+			if srv.TLSConfig == nil {
+				srv.TLSConfig = &tls.Config{}
+			}
+			srv.TLSConfig.MinVersion = tls.VersionTLS12
+
 			if err := srv.ListenAndServeTLS(certFile, keyFile); err != nil && err != http.ErrServerClosed {
 				logging.Logger.Fatal().Err(err).Msg("Server failed to start (TLS)")
 			}

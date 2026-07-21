@@ -23,6 +23,8 @@ import (
 
 func setupStressServer(t *testing.T, upstreamHandler http.HandlerFunc) (*miniredis.Miniredis, *budget.Client, *Server, string) {
 	t.Helper()
+	viper.Set("testing.allow_private_urls", true)
+	t.Cleanup(func() { viper.Set("testing.allow_private_urls", false) })
 	mr, err := miniredis.Run()
 	if err != nil {
 		t.Fatalf("failed to start miniredis: %v", err)
@@ -91,7 +93,7 @@ tool_costs:
 	})
 
 	// Set daily budget limit of $10.00
-	configKey := "loopers:budget:" + keyHash + ":config"
+	configKey := "loopers:budget:{" + keyHash + "}:config"
 	rdb.HSet(ctx, configKey, "daily", "10.00")
 
 	t.Cleanup(func() {
@@ -156,7 +158,7 @@ func TestMCP_Stress_HighConcurrency(t *testing.T) {
 				var sessionID string
 
 				if isSpammer {
-					sessionID = "spammer-session"
+					sessionID = "550e8400-e29b-41d4-a716-446655440000"
 					body = []byte(`{
 						"jsonrpc": "2.0",
 						"id": 1,
@@ -169,7 +171,7 @@ func TestMCP_Stress_HighConcurrency(t *testing.T) {
 						}
 					}`)
 				} else {
-					sessionID = fmt.Sprintf("clean-session-%d", workerID)
+					sessionID = fmt.Sprintf("650e8400-e29b-41d4-a716-446655440%03d", workerID)
 					body = []byte(fmt.Sprintf(`{
 						"jsonrpc": "2.0",
 						"id": 1,
@@ -306,7 +308,7 @@ func TestMCP_Stress_MemoryPressure(t *testing.T) {
 
 			req, _ := http.NewRequest("POST", "/mcp/stress_server/tools/call", bytes.NewReader(body))
 			req.Header.Set("Authorization", "Bearer "+rawKey)
-			req.Header.Set("X-Loopers-Session-ID", fmt.Sprintf("sess-mem-%d", idx))
+			req.Header.Set("X-Loopers-Session-ID", fmt.Sprintf("123e4567-e89b-12d3-a456-426614174%03d", idx))
 
 			w := newCloseNotifierRecorder()
 			router.ServeHTTP(w, req)
@@ -408,7 +410,7 @@ func TestMCP_Stress_UpstreamLatencyCascade(t *testing.T) {
 
 			req, _ := http.NewRequest("POST", "/mcp/stress_server/tools/call", bytes.NewReader(body))
 			req.Header.Set("Authorization", "Bearer "+rawKey)
-			req.Header.Set("X-Loopers-Session-ID", fmt.Sprintf("sess-latency-%d", idx))
+			req.Header.Set("X-Loopers-Session-ID", fmt.Sprintf("223e4567-e89b-12d3-a456-426614174%03d", idx))
 
 			w := newCloseNotifierRecorder()
 			router.ServeHTTP(w, req)
@@ -477,7 +479,7 @@ func TestMCP_Stress_RedisOutageRecovery(t *testing.T) {
 		"created_at": time.Now().UTC().Format(time.RFC3339),
 		"active":     "true",
 	})
-	configKey2 := "loopers:budget:" + keyHash2 + ":config"
+	configKey2 := "loopers:budget:{" + keyHash2 + "}:config"
 	rdb.HSet(ctx, configKey2, "daily", "10.00")
 
 	// 1. Initial Request for rawKey1 (Should succeed, caching key1 and creating local lease)
@@ -495,7 +497,7 @@ func TestMCP_Stress_RedisOutageRecovery(t *testing.T) {
 
 	req1, _ := http.NewRequest("POST", "/mcp/stress_server/tools/call", bytes.NewReader(body))
 	req1.Header.Set("Authorization", "Bearer "+rawKey1)
-	req1.Header.Set("X-Loopers-Session-ID", "session-recovery-1")
+	req1.Header.Set("X-Loopers-Session-ID", "323e4567-e89b-12d3-a456-426614174000")
 
 	w1 := newCloseNotifierRecorder()
 	router.ServeHTTP(w1, req1)
@@ -509,7 +511,7 @@ func TestMCP_Stress_RedisOutageRecovery(t *testing.T) {
 	// 2a. Request using rawKey2 (Uncached). This should fail because it has to fetch metadata from Redis.
 	req2, _ := http.NewRequest("POST", "/mcp/stress_server/tools/call", bytes.NewReader(body))
 	req2.Header.Set("Authorization", "Bearer "+rawKey2)
-	req2.Header.Set("X-Loopers-Session-ID", "session-recovery-2")
+	req2.Header.Set("X-Loopers-Session-ID", "423e4567-e89b-12d3-a456-426614174000")
 
 	w2 := newCloseNotifierRecorder()
 	router.ServeHTTP(w2, req2)
@@ -523,7 +525,7 @@ func TestMCP_Stress_RedisOutageRecovery(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		reqCached, _ := http.NewRequest("POST", "/mcp/stress_server/tools/call", bytes.NewReader(body))
 		reqCached.Header.Set("Authorization", "Bearer "+rawKey1)
-		reqCached.Header.Set("X-Loopers-Session-ID", fmt.Sprintf("session-recovery-cached-%d", i))
+		reqCached.Header.Set("X-Loopers-Session-ID", fmt.Sprintf("523e4567-e89b-12d3-a456-426614174%03d", i))
 
 		wCached = newCloseNotifierRecorder()
 		router.ServeHTTP(wCached, reqCached)
@@ -544,7 +546,7 @@ func TestMCP_Stress_RedisOutageRecovery(t *testing.T) {
 	for attempt := 0; attempt < 5; attempt++ {
 		req3, _ := http.NewRequest("POST", "/mcp/stress_server/tools/call", bytes.NewReader(body))
 		req3.Header.Set("Authorization", "Bearer "+rawKey1)
-		req3.Header.Set("X-Loopers-Session-ID", fmt.Sprintf("session-recovery-3-%d", attempt))
+		req3.Header.Set("X-Loopers-Session-ID", fmt.Sprintf("723e4567-e89b-12d3-a456-426614174%03d", attempt))
 
 		w3 = newCloseNotifierRecorder()
 		router.ServeHTTP(w3, req3)

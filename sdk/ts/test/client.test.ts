@@ -87,7 +87,7 @@ describe('LoopersOpenAI', () => {
     const mockFetch = vi.fn().mockResolvedValue({
       json: async () => ({ id: 'chatcmpl-123', choices: [], object: 'chat.completion' }),
       text: async () => JSON.stringify({ id: 'chatcmpl-123', choices: [], object: 'chat.completion' }),
-      headers: new Headers({ 'X-Loopers-Request-Cost': '0.01', 'X-Loopers-Session-Spend': '0.05' }),
+      headers: new Headers({ 'X-Loopers-Request-Cost': '0.01' }),
       ok: true,
       status: 200,
     });

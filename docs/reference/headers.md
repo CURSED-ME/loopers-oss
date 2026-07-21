@@ -14,6 +14,9 @@ Loopers utilizes specific custom HTTP headers to pass routing authentication, se
 
 ## Response Headers
 
+> [!NOTE]
+> All `X-Loopers-*` budget and telemetry response headers can be completely suppressed by setting `server.strip_budget_headers: true` in your configuration (`loopers.yaml`).
+
 | Header | Description | Type | Example |
 |---|---|---|---|
 | `X-Loopers-Request-Cost-Estimated` | Calculated upper-bound estimated cost of the request | Float | `0.024500` |

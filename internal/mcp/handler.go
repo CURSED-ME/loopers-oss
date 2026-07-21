@@ -19,11 +19,13 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/budget"
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/netutil"
 	"github.com/CURSED-ME/loopers-oss/internal/policy"
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	proxyPkg "github.com/CURSED-ME/loopers-oss/internal/proxy"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 type Handler struct {
@@ -44,6 +46,9 @@ func NewHandler(cfg Config, budgetClient *budget.Client, pricingStore *pricing.S
 
 	servers := make(map[string]string)
 	for _, srv := range cfg.Servers {
+		if netutil.IsPrivateURL(srv.URL) {
+			logging.Logger.Fatal().Str("mcp_server", srv.Name).Str("url", srv.URL).Msg("MCP server URL points to a private/internal IP address (SSRF protection).")
+		}
 		servers[srv.Name] = srv.URL
 	}
 
@@ -81,7 +86,11 @@ func (h *Handler) modifyResponse(resp *http.Response) error {
 	mcpMethod, _ := ctx.Value(mcpMethodCtx).(string)
 	serverName, _ := ctx.Value(mcpServerCtx).(string)
 	if mcpMethod == "tools/list" && resp.StatusCode == http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
+		limit := viper.GetInt64("server.max_response_bytes")
+		if limit == 0 {
+			limit = 32 * 1024 * 1024
+		}
+		body, err := io.ReadAll(io.LimitReader(resp.Body, limit))
 		resp.Body.Close()
 		if err == nil {
 			sanitized, _ := SanitizeToolList(body, h.cfg.Sanitizer, serverName)
@@ -118,26 +127,53 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("MCP server '%s' not configured", serverName)})
 		return
 	}
+	if netutil.IsPrivateURL(targetURL) {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "MCP server URL resolves to a private IP (SSRF protection)"})
+		return
+	}
 
-	// Auth check using the same lp-xxx key system
-	rawProxyKey, exists := c.Get("RawProxyKey")
-	if !exists {
+	// Auth check using the same dual-mode system (JWT or static key)
+	var meta *keyring.KeyMetadata
+	var keyHash string
+
+	if claims, exists := c.Get("JWTClaims"); exists {
+		meta = claims.(*keyring.KeyMetadata)
+		if keyHashCtx, ok := c.Get("KeyHash"); ok {
+			keyHash = keyHashCtx.(string)
+		} else {
+			keyHash = keyring.HashKey(meta.Name)
+		}
+
+		dpopHeader := c.GetHeader("DPoP")
+		if dpopHeader != "" {
+			requestURL := "https://" + c.Request.Host + c.Request.URL.Path
+			if pub := viper.GetString("server.public_url"); pub != "" {
+				requestURL = strings.TrimSuffix(pub, "/") + c.Request.URL.Path
+			}
+			_, err := keyring.ValidateDPoPAndReplay(c.Request.Context(), h.budgetClient.GetUnderlyingClient(), dpopHeader, c.Request.Method, requestURL, meta.Jkt)
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+				return
+			}
+		} else if meta.Jkt != "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing DPoP header"})
+			return
+		}
+
+	} else if keyHashCtx, exists := c.Get("KeyHash"); exists {
+		keyHash = keyHashCtx.(string)
+		var err error
+		meta, err = keyring.GetKeyMetadata(c.Request.Context(), h.budgetClient.GetUnderlyingClient(), keyHash)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
+			return
+		}
+	} else {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
 		return
 	}
-	rawKeyStr := rawProxyKey.(string)
-	if !keyring.ValidateLoopersKey(rawKeyStr) {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid loopers key format"})
-		return
-	}
 
-	keyHash := keyring.HashKey(rawKeyStr)
-	meta, err := keyring.GetKeyMetadata(c.Request.Context(), h.budgetClient.GetUnderlyingClient(), keyHash)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
-		return
-	}
-	if meta.Active != "true" {
+	if !strings.EqualFold(meta.Active, "true") {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key has been revoked"})
 		return
 	}
@@ -275,6 +311,17 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		span.SetAttributes(attribute.String("gen_ai.system.session.id", sessionID))
 		maxTotalTools := 0
 		if maxToolsHeader := c.GetHeader("X-Loopers-Session-Max-Tools"); maxToolsHeader != "" {
+			allowOverride := viper.GetBool("mcp.allow_client_max_tools_override")
+			if !viper.IsSet("mcp.allow_client_max_tools_override") {
+				allowOverride = false // VULN-028: Default to false
+			}
+			if !allowOverride {
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+					"error": "client-controlled max tools are disabled by policy",
+					"type":  "invalid_request_error",
+				})
+				return
+			}
 			if parsed, err := strconv.Atoi(maxToolsHeader); err == nil && parsed > 0 {
 				maxTotalTools = parsed
 			}
@@ -319,6 +366,17 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 	if sessionID != "" && h.sessionManager != nil {
 		maxServers := 0
 		if maxServersHeader := c.GetHeader("X-Loopers-Session-Max-Servers"); maxServersHeader != "" {
+			allowOverride := viper.GetBool("mcp.allow_client_max_servers_override")
+			if !viper.IsSet("mcp.allow_client_max_servers_override") {
+				allowOverride = false // VULN-029: Default to false
+			}
+			if !allowOverride {
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+					"error": "client-controlled blast radius is disabled by policy",
+					"type":  "invalid_request_error",
+				})
+				return
+			}
 			if parsed, err := strconv.Atoi(maxServersHeader); err == nil && parsed > 0 {
 				maxServers = parsed
 			}

@@ -9,7 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var validSessionID = regexp.MustCompile(`^[a-zA-Z0-9._-]{1,256}$`)
+var validSessionID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // IsValidID checks if a session ID conforms to the allowed format.
 func IsValidID(sessionID string) bool {
@@ -31,7 +31,7 @@ func (m *Manager) EnforceAbsoluteTTL(ctx context.Context, keyHash string, sessio
 		return true, nil
 	}
 
-	createdKey := fmt.Sprintf("loopers:session:%s:%s:created", keyHash, sessionID)
+	createdKey := fmt.Sprintf("loopers:session:{%s}:%s:created", keyHash, sessionID)
 	now := time.Now().Unix()
 
 	// We set the TTL to max(7 days, maxTTLSeconds + 1 day) to ensure
@@ -89,7 +89,7 @@ redis.call('EXPIRE', key, 604800) -- 7 days
 return 1
 `
 
-	serversKey := fmt.Sprintf("loopers:session:%s:%s:servers", keyHash, sessionID)
+	serversKey := fmt.Sprintf("loopers:session:{%s}:%s:servers", keyHash, sessionID)
 
 	res, err := m.rdb.Eval(ctx, luaBlastRadius, []string{serversKey}, serverName, maxServers).Result()
 	if err != nil {

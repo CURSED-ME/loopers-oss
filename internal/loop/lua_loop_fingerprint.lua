@@ -15,6 +15,12 @@ local cutoff        = now - window
 -- 1. Trim expired entries (outside the window)
 redis.call('ZREMRANGEBYSCORE', ring_key, '-inf', cutoff)
 
+-- 1b. Limit max elements to 1000 to prevent OOM
+local count = redis.call('ZCARD', ring_key)
+if count >= 1000 then
+    redis.call('ZREMRANGEBYRANK', ring_key, 0, count - 1000)
+end
+
 -- 2. Fetch all existing active window members
 local members = redis.call('ZRANGE', ring_key, 0, -1)
 

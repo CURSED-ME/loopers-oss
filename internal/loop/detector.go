@@ -32,6 +32,10 @@ local member_id     = ARGV[4]
 local cutoff        = now - window
 
 redis.call('ZREMRANGEBYSCORE', ring_key, '-inf', cutoff)
+local count = redis.call('ZCARD', ring_key)
+if count >= 1000 then
+	redis.call('ZREMRANGEBYRANK', ring_key, 0, count - 1000)
+end
 local members = redis.call('ZRANGE', ring_key, 0, -1)
 
 redis.call('ZADD', ring_key, now, new_item .. ':' .. member_id)

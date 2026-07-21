@@ -12,10 +12,11 @@ local actual_cost   = tonumber(ARGV[2])
 local delta = actual_cost - reserved_cost
 
 if delta ~= 0 then
+    local delta_str = string.format("%.0f", delta)
     for i = 1, num_windows do
         local spend_key = KEYS[i]
         local window_ttl = tonumber(ARGV[i + 2])
-        redis.call('INCRBYFLOAT', spend_key, delta)
+        redis.call('INCRBY', spend_key, delta_str)
         redis.call('EXPIRE', spend_key, window_ttl)
     end
 end

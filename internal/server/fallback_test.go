@@ -13,6 +13,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	"github.com/alicebob/miniredis/v2"
+	"github.com/spf13/viper"
 )
 
 func TestFallbackRouting(t *testing.T) {
@@ -21,6 +22,9 @@ func TestFallbackRouting(t *testing.T) {
 		t.Fatalf("failed to start miniredis: %v", err)
 	}
 	defer mr.Close()
+
+	viper.Set("testing.allow_private_urls", true)
+	defer viper.Set("testing.allow_private_urls", false)
 
 	redisClient, err := budget.NewClient(mr.Addr(), "", 0)
 	if err != nil {
@@ -78,7 +82,7 @@ providers:
 	// Set a budget that blocks expensive-model but allows cheap-model
 	// expensive-model est cost = 50 * 10/1M + 100 * 30/1M = 0.0005 + 0.003 = 0.0035
 	// cheap-model est cost = 50 * 0.1/1M + 100 * 0.3/1M = 0.000005 + 0.00003 = 0.000035
-	configKey := "loopers:budget:" + keyHash + ":config"
+	configKey := "loopers:budget:{" + keyHash + "}:config"
 	rdb.HSet(ctx, configKey, "minute", "0.001") // Limits expensive, allows cheap
 	defer rdb.Del(ctx, configKey)
 	defer rdb.Del(ctx, "loopers:spend:"+keyHash+":minute:"+time.Now().UTC().Format("2006-01-02T15:04"))

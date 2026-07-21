@@ -19,11 +19,19 @@ type Tool struct {
 	InputSchema map[string]interface{} `json:"inputSchema,omitempty"`
 }
 
+// VULN-027: Static pattern matching for MCP sanitization is inherently limited.
+// Advanced algorithmic drift detection and LLM-based sanitization are handled
+// by the Loopers SaaS Control Plane. This static blocklist provides baseline protection
+// for the OSS Data Plane.
 var injectionPatterns = []string{
 	"ignore previous instructions",
 	"system prompt",
 	"you must now",
 	"forget your instructions",
+	"override",
+	"bypass",
+	"print instructions",
+	"new instructions",
 }
 
 var zeroWidthChars = []string{

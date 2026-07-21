@@ -13,8 +13,20 @@ import (
 	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/netutil"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
 )
+
+var alertsDroppedTotal = prometheus.NewCounter(prometheus.CounterOpts{
+	Name: "loopers_alerts_dropped_total",
+	Help: "Total number of security alerts dropped due to buffer overflow",
+})
+
+func init() {
+	prometheus.MustRegister(alertsDroppedTotal)
+}
 
 type ThresholdConfig struct {
 	Percent float64 `mapstructure:"percent"`
@@ -77,13 +89,18 @@ type Alerter struct {
 func NewAlerter(cfg AlertingConfig, rdb *redis.Client) *Alerter {
 	bufSize := cfg.BufferSize
 	if bufSize <= 0 {
-		bufSize = 100
+		bufSize = 10000 // Increased default buffer size to prevent drops (VULN-047)
 	}
 	a := &Alerter{
-		cfg:    cfg,
-		client: &http.Client{Timeout: 10 * time.Second},
-		rdb:    rdb,
-		ch:     make(chan AlertEvent, bufSize),
+		cfg: cfg,
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+			Transport: &http.Transport{
+				DialContext: netutil.SecureDialContext,
+			},
+		},
+		rdb: rdb,
+		ch:  make(chan AlertEvent, bufSize),
 	}
 	go a.worker()
 	return a
@@ -112,6 +129,7 @@ func (a *Alerter) TriggerBlockAlert(ctx context.Context, requestID, keyHash, key
 	select {
 	case a.ch <- event:
 	default:
+		alertsDroppedTotal.Inc()
 		logging.Logger.Warn().Msg("Alert channel full, dropping budget exceeded alert")
 	}
 	a.mu.Unlock()
@@ -147,6 +165,7 @@ func (a *Alerter) TriggerLoopAlert(ctx context.Context, requestID, keyHash, keyN
 	select {
 	case a.ch <- event:
 	default:
+		alertsDroppedTotal.Inc()
 		logging.Logger.Warn().Msg("Alert channel full, dropping loop detected alert")
 	}
 	a.mu.Unlock()
@@ -165,6 +184,7 @@ func (a *Alerter) TriggerAuthFail(ctx context.Context, requestID, reason string)
 	select {
 	case a.ch <- event:
 	default:
+		alertsDroppedTotal.Inc()
 		logging.Logger.Warn().Msg("Alert channel full, dropping auth failure alert")
 	}
 	a.mu.Unlock()
@@ -183,6 +203,7 @@ func (a *Alerter) TriggerFailClosed(ctx context.Context, requestID, reason strin
 	select {
 	case a.ch <- event:
 	default:
+		alertsDroppedTotal.Inc()
 		logging.Logger.Warn().Msg("Alert channel full, dropping fail-closed alert")
 	}
 	a.mu.Unlock()
@@ -234,6 +255,7 @@ func (a *Alerter) TriggerThresholdAlerts(ctx context.Context, requestID, keyHash
 					select {
 					case a.ch <- event:
 					default:
+						alertsDroppedTotal.Inc()
 						logging.Logger.Warn().Msg("Alert channel full, dropping threshold alert")
 					}
 					a.mu.Unlock()
@@ -300,6 +322,11 @@ func (a *Alerter) worker() {
 		fmt.Println(string(payload))
 
 		if a.cfg.WebhookURL != "" {
+			if netutil.IsPrivateURL(a.cfg.WebhookURL) && !viper.GetBool("testing.allow_private_urls") {
+				logging.Logger.Error().Str("url", a.cfg.WebhookURL).Msg("SECURITY WARNING: Webhook URL resolves to a private IP. Dropping alert.")
+				continue
+			}
+
 			req, err := http.NewRequest("POST", a.cfg.WebhookURL, bytes.NewReader(payload))
 			if err != nil {
 				logging.Logger.Error().Err(err).Str("url", a.cfg.WebhookURL).Msg("failed to create webhook request")

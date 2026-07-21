@@ -3,15 +3,21 @@ package server
 import (
 	"context"
 	"net/http"
+	"os"
 	"regexp"
+	"strings"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
+	"github.com/CURSED-ME/loopers-oss/internal/a2a"
 	"github.com/CURSED-ME/loopers-oss/internal/alerting"
 	"github.com/CURSED-ME/loopers-oss/internal/budget"
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	"github.com/CURSED-ME/loopers-oss/internal/loop"
 	"github.com/CURSED-ME/loopers-oss/internal/mcp"
+	"github.com/CURSED-ME/loopers-oss/internal/netutil"
 	"github.com/CURSED-ME/loopers-oss/internal/otel"
 	"github.com/CURSED-ME/loopers-oss/internal/policy"
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
@@ -58,27 +64,32 @@ const (
 
 // Server coordinates the proxy operations and HTTP routing.
 type Server struct {
-	router         *gin.Engine
-	redis          *budget.Client
-	pricing        *pricing.Store
-	proxy          *proxy.Proxy
-	registry       *provider.Registry
-	alerter        *alerting.Alerter
-	loopDetector   *loop.Detector
-	shadowMode     bool
-	proxyGroup     *gin.RouterGroup // exposed so tests can register routes with BodyBuffer applied
-	otelEnabled    bool
-	otelShutdown   func(context.Context) error
-	mcpHandler     *mcp.Handler
-	rateLimiter    *ratelimit.Limiter
-	sessionManager *session.Manager
-	policyEngine   *policy.Engine
-	ctx            context.Context
-	cancel         context.CancelFunc
+	router           *gin.Engine
+	redis            *budget.Client
+	pricing          *pricing.Store
+	proxy            *proxy.Proxy
+	registry         *provider.Registry
+	alerter          *alerting.Alerter
+	loopDetector     *loop.Detector
+	shadowMode       bool
+	proxyGroup       *gin.RouterGroup // exposed so tests can register routes with BodyBuffer applied
+	otelEnabled      bool
+	otelShutdown     func(context.Context) error
+	mcpHandler       *mcp.Handler
+	rateLimiter      *ratelimit.Limiter
+	sessionManager   *session.Manager
+	policyEngine     *policy.Engine
+	escalationBroker *a2a.EscalationBroker
+	jwksValidator    *keyring.JWKSValidator
+	ctx              context.Context
+	cancel           context.CancelFunc
 }
 
 // NewServer initializes and builds the HTTP server with middlewares and ReverseProxy configuration.
 func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server {
+	if viper.GetBool("testing.allow_private_urls") && viper.GetString("env") != "development" && !strings.HasSuffix(os.Args[0], ".test") && !strings.HasSuffix(os.Args[0], ".test.exe") {
+		logging.Logger.Fatal().Msg("CRITICAL: testing.allow_private_urls is enabled but env is not 'development'. This disables SSRF protection and is forbidden in production.")
+	}
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
@@ -122,6 +133,13 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 				logging.Logger.Error().Msgf("Invalid generic provider name %q: only alphanumeric, dash, and underscore are allowed", gp.Name)
 				continue
 			}
+
+			// SSRF protection
+			if netutil.IsPrivateURL(gp.BaseURL) {
+				logging.Logger.Error().Msgf("SSRF protection: rejecting generic provider %q because base URL %q resolves to a private or unresolvable IP", gp.Name, gp.BaseURL)
+				continue
+			}
+
 			// S1 & S3: Detect collision with built-in or previously registered provider
 			if _, err := reg.Get(gp.Name); err == nil {
 				logging.Logger.Error().Msgf("Generic provider %q conflicts with an already-registered provider; skipping to prevent shadowing", gp.Name)
@@ -203,22 +221,37 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		}
 	}
 
+	var jwksValidator *keyring.JWKSValidator
+	var escalationBroker *a2a.EscalationBroker
+	if viper.GetBool("zsp.enabled") {
+		var err error
+		jwksValidator, err = keyring.NewJWKSValidator(ctx, viper.GetString("zsp.jwks_url"))
+		if err != nil {
+			logging.Logger.Fatal().Err(err).Msg("Failed to initialize JWKS validator")
+		}
+		if redisClient != nil {
+			escalationBroker = a2a.NewEscalationBroker(redisClient.GetUnderlyingClient(), viper.GetString("zsp.escalation_secret"))
+		}
+	}
+
 	s := &Server{
-		router:         r,
-		redis:          redisClient,
-		pricing:        pricingStore,
-		registry:       reg,
-		alerter:        alerter,
-		loopDetector:   loopDetector,
-		shadowMode:     shadowMode,
-		otelEnabled:    otelEnabled,
-		otelShutdown:   otelShutdown,
-		mcpHandler:     mcpHandler,
-		rateLimiter:    rateLimiter,
-		sessionManager: sessionManager,
-		policyEngine:   policyEngine,
-		ctx:            ctx,
-		cancel:         cancel,
+		router:           r,
+		redis:            redisClient,
+		pricing:          pricingStore,
+		registry:         reg,
+		alerter:          alerter,
+		loopDetector:     loopDetector,
+		shadowMode:       shadowMode,
+		otelEnabled:      otelEnabled,
+		otelShutdown:     otelShutdown,
+		mcpHandler:       mcpHandler,
+		rateLimiter:      rateLimiter,
+		sessionManager:   sessionManager,
+		policyEngine:     policyEngine,
+		escalationBroker: escalationBroker,
+		jwksValidator:    jwksValidator,
+		ctx:              ctx,
+		cancel:           cancel,
 	}
 
 	// Setup custom ReverseProxy with modifyResponse callback
@@ -253,10 +286,10 @@ func (s *Server) setupRoutes() {
 		maxPayloadBytes = 2 << 20 // 2MB default
 	}
 	s.router.Use(MaxBytesReader(maxPayloadBytes)) // Wrap request body with configurable limit
-	s.router.Use(KeyExtractor())
+	s.router.Use(KeyExtractor(s.jwksValidator))
 
 	s.router.GET("/health", s.handleHealth)
-	s.router.GET("/budget/status", s.handleBudgetStatus)
+	s.router.GET("/budget/status", s.ipRateLimiter(60, time.Minute), s.handleBudgetStatus)
 
 	s.proxyGroup = s.router.Group("/")
 
@@ -315,24 +348,47 @@ func (s *Server) handleHealth(c *gin.Context) {
 }
 
 func (s *Server) handleBudgetStatus(c *gin.Context) {
-	rawProxyKey, exists := c.Get("RawProxyKey")
-	if !exists {
+	var meta *keyring.KeyMetadata
+	var keyHash string
+
+	if claims, exists := c.Get(JWTClaimsCtx); exists {
+		meta = claims.(*keyring.KeyMetadata)
+		if keyHashCtx, ok := c.Get("KeyHash"); ok {
+			keyHash = keyHashCtx.(string)
+		} else {
+			keyHash = keyring.HashKey(meta.Name)
+		}
+
+		dpopHeader := c.GetHeader("DPoP")
+		if dpopHeader != "" {
+			requestURL := "https://" + c.Request.Host + c.Request.URL.Path
+			if pub := viper.GetString("server.public_url"); pub != "" {
+				requestURL = strings.TrimSuffix(pub, "/") + c.Request.URL.Path
+			}
+			_, err := keyring.ValidateDPoPAndReplay(c.Request.Context(), s.redis.GetUnderlyingClient(), dpopHeader, c.Request.Method, requestURL, meta.Jkt)
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+				return
+			}
+		} else if meta.Jkt != "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing DPoP header"})
+			return
+		}
+
+	} else if keyHashCtx, exists := c.Get("KeyHash"); exists {
+		keyHash = keyHashCtx.(string)
+		var err error
+		meta, err = keyring.GetKeyMetadata(c.Request.Context(), s.redis.GetUnderlyingClient(), keyHash)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
+			return
+		}
+	} else {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
 		return
 	}
-	rawKeyStr := rawProxyKey.(string)
-	if !keyring.ValidateLoopersKey(rawKeyStr) {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid loopers key format"})
-		return
-	}
 
-	keyHash := keyring.HashKey(rawKeyStr)
-	meta, err := keyring.GetKeyMetadata(c.Request.Context(), s.redis.GetUnderlyingClient(), keyHash)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
-		return
-	}
-	if meta.Active != "true" {
+	if !strings.EqualFold(meta.Active, "true") {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key has been revoked"})
 		return
 	}
@@ -369,4 +425,37 @@ func (s *Server) GetRegistry() *provider.Registry {
 // This is used for firing alerts in goroutines without risking cancellation of the original context.
 func detachedTraceContext(ctx context.Context) context.Context {
 	return trace.ContextWithSpanContext(context.Background(), trace.SpanContextFromContext(ctx))
+}
+
+// ipRateLimiter provides a simple fixed-window IP-based rate limit to prevent abuse of endpoints.
+func (s *Server) ipRateLimiter(limit int64, window time.Duration) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ip := c.ClientIP()
+		if ip == "" {
+			c.Next()
+			return
+		}
+
+		key := "loopers:rl:ip:" + ip
+		ctx := c.Request.Context()
+		rdb := s.redis.GetUnderlyingClient()
+
+		count, err := redis.NewScript(`
+			local c = redis.call('INCR', KEYS[1])
+			if c == 1 then
+				redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1]))
+			end
+			return c
+		`).Run(ctx, rdb, []string{key}, int(window.Seconds())).Int64()
+
+		if err == nil && count > limit {
+			c.Header("X-RateLimit-Remaining", "0")
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+				"error": "rate limit exceeded for this endpoint",
+				"type":  "rate_limit_exceeded",
+			})
+			return
+		}
+		c.Next()
+	}
 }

@@ -70,23 +70,32 @@ func (s *Store) MergeRemote(remoteConfig map[string]ProviderConfig) {
 	for provName, remoteProv := range remoteConfig {
 		localProv, hasProv := s.config.Providers[provName]
 		if !hasProv {
-			// Add whole provider
+			// Add whole provider with deep-copied Models map
+			newProv := remoteProv
+			if remoteProv.Models != nil {
+				newProv.Models = make(map[string]ModelPrice, len(remoteProv.Models))
+				for k, v := range remoteProv.Models {
+					newProv.Models[k] = v
+				}
+			}
 			if s.config.Providers == nil {
 				s.config.Providers = make(map[string]ProviderConfig)
 			}
-			s.config.Providers[provName] = remoteProv
+			s.config.Providers[provName] = newProv
 			continue
 		}
 
-		// Merge models
-		if localProv.Models == nil {
-			localProv.Models = make(map[string]ModelPrice)
+		// Merge models into a cloned map to avoid modifying caller's map reference
+		newModels := make(map[string]ModelPrice, len(localProv.Models)+len(remoteProv.Models))
+		for k, v := range localProv.Models {
+			newModels[k] = v
 		}
 		for modelName, remoteModel := range remoteProv.Models {
-			if _, hasModel := localProv.Models[modelName]; !hasModel {
-				localProv.Models[modelName] = remoteModel
+			if _, hasModel := newModels[modelName]; !hasModel {
+				newModels[modelName] = remoteModel
 			}
 		}
+		localProv.Models = newModels
 		// Fix M1: inherit DefaultMaxOutputTokens from remote if not set locally
 		if localProv.DefaultMaxOutputTokens == 0 && remoteProv.DefaultMaxOutputTokens > 0 {
 			localProv.DefaultMaxOutputTokens = remoteProv.DefaultMaxOutputTokens

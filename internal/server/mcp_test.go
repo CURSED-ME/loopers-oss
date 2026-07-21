@@ -18,6 +18,9 @@ import (
 )
 
 func TestMCP_Integration(t *testing.T) {
+	viper.Set("testing.allow_private_urls", true)
+	t.Cleanup(func() { viper.Set("testing.allow_private_urls", false) })
+
 	// 1. Setup Mock Upstream MCP Server
 	mcpServerCallCount := 0
 	mcpUpstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +117,7 @@ tool_costs:
 	defer rdb.Del(ctx, "loopers:key:"+keyHash)
 
 	// Set a mock budget config (daily limit of $0.08)
-	configKey := "loopers:budget:" + keyHash + ":config"
+	configKey := "loopers:budget:{" + keyHash + "}:config"
 	rdb.HSet(ctx, configKey, "daily", "0.08")
 	defer rdb.Del(ctx, configKey)
 
@@ -133,7 +136,7 @@ tool_costs:
 
 	req, _ := http.NewRequest("POST", "/mcp/filesystem/tools/call", bytes.NewReader(reqBody))
 	req.Header.Set("Authorization", "Bearer "+rawKey)
-	req.Header.Set("X-Loopers-Session-ID", "sess-mcp-1")
+	req.Header.Set("X-Loopers-Session-ID", "123e4567-e89b-12d3-a456-426614174000")
 	req.Header.Set("X-Loopers-Provider-Key", "dummy")
 
 	w := newCloseNotifierRecorder()
@@ -158,7 +161,7 @@ tool_costs:
 	// Call same tool with same args again (since threshold is 2, this 2nd call should trip the circuit breaker)
 	req2, _ := http.NewRequest("POST", "/mcp/filesystem/tools/call", bytes.NewReader(reqBody))
 	req2.Header.Set("Authorization", "Bearer "+rawKey)
-	req2.Header.Set("X-Loopers-Session-ID", "sess-mcp-1")
+	req2.Header.Set("X-Loopers-Session-ID", "123e4567-e89b-12d3-a456-426614174001")
 	req2.Header.Set("X-Loopers-Provider-Key", "dummy")
 
 	w2 := newCloseNotifierRecorder()
@@ -184,7 +187,7 @@ tool_costs:
 	}`)
 	req3, _ := http.NewRequest("POST", "/mcp/filesystem/tools/call", bytes.NewReader(req3Body))
 	req3.Header.Set("Authorization", "Bearer "+rawKey)
-	req3.Header.Set("X-Loopers-Session-ID", "sess-mcp-2")
+	req3.Header.Set("X-Loopers-Session-ID", "123e4567-e89b-12d3-a456-426614174002")
 	req3.Header.Set("X-Loopers-Provider-Key", "dummy")
 
 	w3 := newCloseNotifierRecorder()
@@ -267,7 +270,7 @@ tool_costs:
 	}`)
 		req6, _ := http.NewRequest("POST", "/mcp/error_server/tools/call", bytes.NewReader(req6Body))
 		req6.Header.Set("Authorization", "Bearer "+rawKey)
-		req6.Header.Set("X-Loopers-Session-ID", "sess-mcp-3")
+		req6.Header.Set("X-Loopers-Session-ID", "123e4567-e89b-12d3-a456-426614174003")
 
 		w6 := newCloseNotifierRecorder()
 		r2.ServeHTTP(w6, req6)
@@ -283,7 +286,7 @@ tool_costs:
 		// Verify budget is still $0.03 by making another call that costs $0.01 to a working server
 		req7, _ := http.NewRequest("POST", "/mcp/filesystem/tools/call", bytes.NewReader(req6Body))
 		req7.Header.Set("Authorization", "Bearer "+rawKey)
-		req7.Header.Set("X-Loopers-Session-ID", "sess-mcp-4") // new session to avoid circuit breaker
+		req7.Header.Set("X-Loopers-Session-ID", "123e4567-e89b-12d3-a456-426614174004") // new session to avoid circuit breaker
 
 		w7 := newCloseNotifierRecorder()
 		r2.ServeHTTP(w7, req7)

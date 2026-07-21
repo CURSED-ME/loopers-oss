@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/netutil"
+	"github.com/spf13/viper"
 )
 
 // Proxy handles forwarding requests to upstream MCP servers.
@@ -21,12 +23,17 @@ const MCPTargetCtx mcpTargetCtxKey = "MCPTarget"
 
 // NewProxy creates a new ReverseProxy wrapper for MCP proxying.
 func NewProxy(modifyResponse func(*http.Response) error) *Proxy {
+	timeout := viper.GetInt("server.upstream_timeout_seconds")
+	if timeout <= 0 {
+		timeout = 30
+	}
 	transport := &http.Transport{
+		DialContext:           netutil.SecureDialContext,
 		MaxIdleConns:          1000,
 		MaxIdleConnsPerHost:   1000,
 		ForceAttemptHTTP2:     true,
 		IdleConnTimeout:       90 * time.Second,
-		ResponseHeaderTimeout: 30 * time.Second,
+		ResponseHeaderTimeout: time.Duration(timeout) * time.Second,
 	}
 
 	director := func(req *http.Request) {

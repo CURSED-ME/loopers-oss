@@ -13,7 +13,7 @@ local window_ttl    = tonumber(ARGV[3])
 local delta = actual_cost - reserved_cost
 
 if delta ~= 0 then
-    redis.call('INCRBYFLOAT', spend_key, delta)
+    redis.call('INCRBY', spend_key, string.format("%.0f", delta))
     redis.call('EXPIRE', spend_key, window_ttl)
 end
 
@@ -24,4 +24,4 @@ if current_str then
     current = tonumber(current_str)
 end
 
-return {1, tostring(current)}
+return {1, string.format("%.0f", current)}

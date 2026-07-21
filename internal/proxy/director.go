@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/netutil"
 	"github.com/CURSED-ME/loopers-oss/internal/provider"
+	"github.com/spf13/viper"
 )
 
 // ContextKey is a custom type for context keys to avoid collisions.
@@ -31,12 +33,17 @@ type Proxy struct {
 
 // NewProxy creates a new ReverseProxy wrapper with highly-optimized production settings.
 func NewProxy(modifyResponse func(*http.Response) error) *Proxy {
+	timeout := viper.GetInt("server.upstream_timeout_seconds")
+	if timeout <= 0 {
+		timeout = 30
+	}
 	transport := &http.Transport{
+		DialContext:           netutil.SecureDialContext,
 		MaxIdleConns:          4000,
 		MaxIdleConnsPerHost:   4000,
 		ForceAttemptHTTP2:     true,
 		IdleConnTimeout:       90 * time.Second,
-		ResponseHeaderTimeout: 30 * time.Second,
+		ResponseHeaderTimeout: time.Duration(timeout) * time.Second,
 	}
 
 	director := func(req *http.Request) {

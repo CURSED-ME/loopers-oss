@@ -7,8 +7,11 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/CURSED-ME/loopers-oss/internal/a2a"
+	"github.com/CURSED-ME/loopers-oss/internal/budget"
 	"github.com/CURSED-ME/loopers-oss/internal/event"
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
@@ -17,7 +20,6 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/provider"
 	"github.com/CURSED-ME/loopers-oss/internal/proxy"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
-	"github.com/CURSED-ME/loopers-oss/pkg/api"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/attribute"
@@ -28,53 +30,72 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	startTime := time.Now()
 
 	// 1. Auth check
-	rawProxyKey, exists := c.Get("RawProxyKey")
-	if !exists {
-		reqID := c.GetString("RequestID")
-		requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
-		if s.otelEnabled {
-			// In OTEL, promote the span if it needs to be sampled for errors
-			// otel.PromoteToSampled is not a standard OTEL function, this is pseudo-code in the original
-			// Assuming we just keep it as it was in server.go
+	var meta *keyring.KeyMetadata
+	var keyHash string
+	reqID := c.GetString("RequestID")
+
+	if claims, exists := c.Get(JWTClaimsCtx); exists {
+		meta = claims.(*keyring.KeyMetadata)
+		if keyHashCtx, ok := c.Get("KeyHash"); ok {
+			keyHash = keyHashCtx.(string)
+		} else {
+			keyHash = keyring.HashKey(meta.Name)
 		}
+
+		// DPoP Validation
+		dpopHeader := c.GetHeader("DPoP")
+		if dpopHeader != "" {
+			requestURL := "https://" + c.Request.Host + c.Request.URL.Path
+			if pub := viper.GetString("server.public_url"); pub != "" {
+				requestURL = strings.TrimSuffix(pub, "/") + c.Request.URL.Path
+			}
+			_, err := keyring.ValidateDPoPAndReplay(c.Request.Context(), s.redis.GetUnderlyingClient(), dpopHeader, c.Request.Method, requestURL, meta.Jkt)
+			if err != nil {
+				if err.Error() == "DPoP token replay detected" {
+					zspAuthFailuresTotal.WithLabelValues("dpop_replayed").Inc()
+				} else {
+					zspAuthFailuresTotal.WithLabelValues("dpop_invalid").Inc()
+				}
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+				return
+			}
+		} else if meta.Jkt != "" {
+			// Required DPoP but missing
+			zspAuthFailuresTotal.WithLabelValues("dpop_missing").Inc()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing DPoP header"})
+			return
+		}
+
+	} else if keyHashCtx, exists := c.Get("KeyHash"); exists {
+		keyHash = keyHashCtx.(string)
+		var err error
+		meta, err = keyring.GetKeyMetadata(c.Request.Context(), s.redis.GetUnderlyingClient(), keyHash)
+		if err != nil {
+			if err.Error() == "key does not exist" {
+				requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
+				if s.alerter != nil {
+					go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Key not registered")
+				}
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
+			} else {
+				logging.Logger.Error().Err(err).Msg("failed to get key metadata")
+				requestsTotal.WithLabelValues(providerName, "unknown", "503").Inc()
+				if s.alerter != nil {
+					go s.alerter.TriggerFailClosed(detachedTraceContext(c.Request.Context()), reqID, "Failed to get key metadata")
+				}
+				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "Service Unavailable: internal error"})
+			}
+			return
+		}
+	} else {
+		requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
 		if s.alerter != nil {
 			go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Missing Authorization header")
 		}
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
 		return
 	}
-	rawKeyStr := rawProxyKey.(string)
-	reqID := c.GetString("RequestID")
-
-	if !keyring.ValidateLoopersKey(rawKeyStr) {
-		requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
-		if s.alerter != nil {
-			go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Invalid loopers key format")
-		}
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid loopers key format"})
-		return
-	}
-
-	keyHash := keyring.HashKey(rawKeyStr)
-	meta, err := keyring.GetKeyMetadata(c.Request.Context(), s.redis.GetUnderlyingClient(), keyHash)
-	if err != nil {
-		if err.Error() == "key does not exist" {
-			requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
-			if s.alerter != nil {
-				go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Key not registered")
-			}
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key not registered"})
-		} else {
-			logging.Logger.Error().Err(err).Msg("failed to get key metadata")
-			requestsTotal.WithLabelValues(providerName, "unknown", "503").Inc()
-			if s.alerter != nil {
-				go s.alerter.TriggerFailClosed(detachedTraceContext(c.Request.Context()), reqID, "Failed to get key metadata")
-			}
-			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "Service Unavailable: internal error"})
-		}
-		return
-	}
-	if meta.Active != "true" {
+	if !strings.EqualFold(meta.Active, "true") {
 		requestsTotal.WithLabelValues(providerName, "unknown", "401").Inc()
 		if s.alerter != nil {
 			go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Key revoked")
@@ -86,7 +107,7 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	if meta.Provider != providerName {
 		requestsTotal.WithLabelValues(providerName, "unknown", "400").Inc()
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("Key registered for provider '%s' but request is for '%s'", meta.Provider, providerName),
+			"error": "key not authorized for this endpoint",
 		})
 		return
 	}
@@ -116,7 +137,6 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 		allowed, remaining, rlErr := s.rateLimiter.Check(c.Request.Context(), keyHash)
 		if rlErr != nil {
 			logging.Logger.Error().Err(rlErr).Msg("rate_limiter_error")
-			// Fail-open for internal rate limiter errors to not disrupt traffic unnecessarily
 			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
 				EventType: "rate_limit_degraded",
 				KeyHash:   keyHash,
@@ -124,22 +144,55 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				Reason:    "rate_limiter_error",
 				Detail:    rlErr.Error(),
 			})
+			failClosed := true // Default to true per security strategy
+			if viper.IsSet("security.rate_limit_fail_closed") {
+				failClosed = viper.GetBool("security.rate_limit_fail_closed")
+			}
+			if failClosed {
+				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "Service Unavailable: rate limiter error"})
+				return
+			}
 		} else if !allowed {
-			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
-				EventType: "rate_limit_block",
-				KeyHash:   keyHash,
-				Provider:  providerName,
-				Reason:    "rate_limited",
-				Detail:    "Rate limit exceeded",
-			})
-			rateLimitBlocksTotal.WithLabelValues(providerName).Inc()
-			requestsTotal.WithLabelValues(providerName, "unknown", "429").Inc()
-			c.Header("X-RateLimit-Remaining", "0")
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "rate limit exceeded",
-				"type":  "rate_limit_exceeded",
-			})
-			return
+			if s.escalationBroker != nil {
+				sessionID := c.GetHeader("X-Loopers-Session-ID")
+				if sessionID == "" {
+					sessionID = reqID
+				}
+				req := a2a.EscalationRequest{
+					SessionID: sessionID,
+					Reason:    "rate_limited",
+					AgentName: meta.AgentName,
+				}
+				resp, escErr := s.escalationBroker.RequestEscalation(c.Request.Context(), req, 5*time.Second)
+				if escErr == nil && resp.Approved {
+					escalationsApprovedTotal.WithLabelValues("rate_limited").Inc()
+					logging.Logger.Info().Str("session_id", sessionID).Msg("rate limit block escalated and approved")
+					allowed = true
+				} else if escErr != nil {
+					escalationsTimeoutTotal.WithLabelValues("rate_limited").Inc()
+					logging.Logger.Warn().Err(escErr).Str("session_id", sessionID).Msg("escalation request timed out or failed")
+				}
+			}
+
+			if !allowed {
+				event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
+					EventType: "rate_limit_block",
+					KeyHash:   keyHash,
+					Provider:  providerName,
+					Reason:    "rate_limited",
+					Detail:    "Rate limit exceeded",
+				})
+				rateLimitBlocksTotal.WithLabelValues(providerName).Inc()
+				requestsTotal.WithLabelValues(providerName, "unknown", "429").Inc()
+				c.Header("X-RateLimit-Remaining", "0")
+				c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+					"error": "rate limit exceeded",
+					"type":  "rate_limit_exceeded",
+				})
+				return
+			} else {
+				c.Header("X-RateLimit-Remaining", "0")
+			}
 		} else {
 			c.Header("X-RateLimit-Remaining", strconv.Itoa(remaining))
 		}
@@ -293,6 +346,13 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 
 		if ttlHeader := c.GetHeader("X-Loopers-Session-TTL"); ttlHeader != "" {
 			if ttl, err := strconv.Atoi(ttlHeader); err == nil && ttl > 0 {
+				maxTtl := viper.GetInt("session.max_ttl_seconds")
+				if maxTtl <= 0 {
+					maxTtl = 86400
+				}
+				if ttl > maxTtl {
+					ttl = maxTtl
+				}
 				if s.sessionManager != nil {
 					valid, err := s.sessionManager.EnforceAbsoluteTTL(c.Request.Context(), keyHash, sessionID, ttl)
 					if err != nil {
@@ -310,9 +370,31 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 		}
 
 		if budgetHeader := c.GetHeader("X-Loopers-Session-Budget"); budgetHeader != "" {
+			allowOverride := viper.GetBool("session.allow_client_budget_override")
+			if !viper.IsSet("session.allow_client_budget_override") {
+				allowOverride = false // VULN-018: Default to false
+			}
+			if !allowOverride {
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+					"error": "client-controlled session budgets are disabled by policy",
+					"type":  "invalid_request_error",
+				})
+				return
+			}
 			sessionBudget, _ = strconv.ParseFloat(budgetHeader, 64)
 		}
 		if stepsHeader := c.GetHeader("X-Loopers-Session-Max-Steps"); stepsHeader != "" {
+			allowOverride := viper.GetBool("session.allow_client_budget_override")
+			if !viper.IsSet("session.allow_client_budget_override") {
+				allowOverride = false // VULN-018: Default to false
+			}
+			if !allowOverride {
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+					"error": "client-controlled session limits are disabled by policy",
+					"type":  "invalid_request_error",
+				})
+				return
+			}
 			sessionMaxSteps, _ = strconv.Atoi(stepsHeader)
 		}
 
@@ -378,8 +460,8 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 	if resp.StatusCode != http.StatusOK {
 		s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, reservedCost, 0)
 		if sessionID != "" {
-			sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
-			if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, -reservedCost).Err(); err != nil {
+			sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
+			if err := s.redis.GetUnderlyingClient().IncrBy(ctx, sessionSpendKey, -budget.ToNano(reservedCost)).Err(); err != nil {
 				logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
 			}
 		}
@@ -392,44 +474,29 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 	}
 
 	// Set initial headers for both stream and non-stream
-	resp.Header.Set("X-Loopers-Request-Cost-Estimated", fmt.Sprintf("%.6f", reservedCost))
-	resp.Header.Set("X-Loopers-Support", api.GitHubStarCTA)
+	if !viper.GetBool("server.strip_budget_headers") {
+		resp.Header.Set("X-Loopers-Request-Cost-Estimated", fmt.Sprintf("%.6f", reservedCost))
+	}
 	if agentName, ok := ctx.Value(agentNameCtx).(string); ok && agentName != "" {
 		resp.Header.Set("X-Loopers-Agent-Name", agentName)
 	}
 
 	if sessionID != "" {
-		sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
-		sessionStepsKey := fmt.Sprintf("loopers:session:%s:%s:steps", keyHash, sessionID)
-		sessionBudgetKey := fmt.Sprintf("loopers:session:%s:%s:budget", keyHash, sessionID)
+		sessionStepsKey := fmt.Sprintf("loopers:session:{%s}:%s:steps", keyHash, sessionID)
 
 		rdb := s.redis.GetUnderlyingClient()
-		vals, _ := rdb.MGet(ctx, sessionSpendKey, sessionStepsKey, sessionBudgetKey).Result()
-		var spendVal float64
+		vals, _ := rdb.MGet(ctx, sessionStepsKey).Result()
 		var stepsVal int64
-		var budgetVal float64
-		if len(vals) == 3 {
+		if len(vals) == 1 {
 			if vals[0] != nil {
-				if sVal, err := strconv.ParseFloat(fmt.Sprintf("%v", vals[0]), 64); err == nil {
-					spendVal = sVal
-				}
-			}
-			if vals[1] != nil {
-				if stVal, err := strconv.ParseInt(fmt.Sprintf("%v", vals[1]), 10, 64); err == nil {
+				if stVal, err := strconv.ParseInt(fmt.Sprintf("%v", vals[0]), 10, 64); err == nil {
 					stepsVal = stVal
-				}
-			}
-			if vals[2] != nil {
-				if bVal, err := strconv.ParseFloat(fmt.Sprintf("%v", vals[2]), 64); err == nil {
-					budgetVal = bVal
 				}
 			}
 		}
 
-		resp.Header.Set("X-Loopers-Session-Spend", fmt.Sprintf("%.6f", spendVal))
-		resp.Header.Set("X-Loopers-Session-Steps", fmt.Sprintf("%d", stepsVal))
-		if budgetVal > 0 {
-			resp.Header.Set("X-Loopers-Session-Remaining", fmt.Sprintf("%.6f", budgetVal-spendVal))
+		if !viper.GetBool("server.strip_budget_headers") {
+			resp.Header.Set("X-Loopers-Session-Steps", fmt.Sprintf("%d", stepsVal))
 		}
 	}
 
@@ -452,8 +519,8 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 				s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, totalPaid, actualCost)
 				s.checkBudgetOverdrawAsync(ctx, keyHash, provName, model)
 				if sessionID != "" {
-					sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
-					if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-totalPaid).Err(); err != nil {
+					sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
+					if err := s.redis.GetUnderlyingClient().IncrBy(ctx, sessionSpendKey, budget.ToNano(actualCost-totalPaid)).Err(); err != nil {
 						logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
 					}
 				}
@@ -483,7 +550,11 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 				}
 			})
 	} else {
-		respBodyBytes, err := io.ReadAll(resp.Body)
+		limit := viper.GetInt64("server.max_response_bytes")
+		if limit == 0 {
+			limit = 32 * 1024 * 1024
+		}
+		respBodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, limit))
 		if err != nil {
 			return err
 		}
@@ -503,44 +574,31 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 		actualCost := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
 		s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, reservedCost, actualCost)
 		s.checkBudgetOverdrawAsync(ctx, keyHash, provName, model)
-		resp.Header.Set("X-Loopers-Request-Cost", fmt.Sprintf("%.6f", actualCost))
+		if !viper.GetBool("server.strip_budget_headers") {
+			resp.Header.Set("X-Loopers-Request-Cost", fmt.Sprintf("%.6f", actualCost))
+		}
 
 		if sessionID != "" {
-			sessionSpendKey := fmt.Sprintf("loopers:session:%s:%s:spend", keyHash, sessionID)
-			sessionStepsKey := fmt.Sprintf("loopers:session:%s:%s:steps", keyHash, sessionID)
-			sessionBudgetKey := fmt.Sprintf("loopers:session:%s:%s:budget", keyHash, sessionID)
+			sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
+			sessionStepsKey := fmt.Sprintf("loopers:session:{%s}:%s:steps", keyHash, sessionID)
 
-			if err := s.redis.GetUnderlyingClient().IncrByFloat(ctx, sessionSpendKey, actualCost-reservedCost).Err(); err != nil {
+			if err := s.redis.GetUnderlyingClient().IncrBy(ctx, sessionSpendKey, budget.ToNano(actualCost-reservedCost)).Err(); err != nil {
 				logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
 			}
 
 			rdb := s.redis.GetUnderlyingClient()
-			vals, _ := rdb.MGet(ctx, sessionSpendKey, sessionStepsKey, sessionBudgetKey).Result()
-			var spendVal float64
+			vals, _ := rdb.MGet(ctx, sessionStepsKey).Result()
 			var stepsVal int64
-			var budgetVal float64
-			if len(vals) == 3 {
+			if len(vals) == 1 {
 				if vals[0] != nil {
-					if sVal, err := strconv.ParseFloat(fmt.Sprintf("%v", vals[0]), 64); err == nil {
-						spendVal = sVal
-					}
-				}
-				if vals[1] != nil {
-					if stVal, err := strconv.ParseInt(fmt.Sprintf("%v", vals[1]), 10, 64); err == nil {
+					if stVal, err := strconv.ParseInt(fmt.Sprintf("%v", vals[0]), 10, 64); err == nil {
 						stepsVal = stVal
-					}
-				}
-				if vals[2] != nil {
-					if bVal, err := strconv.ParseFloat(fmt.Sprintf("%v", vals[2]), 64); err == nil {
-						budgetVal = bVal
 					}
 				}
 			}
 
-			resp.Header.Set("X-Loopers-Session-Spend", fmt.Sprintf("%.6f", spendVal))
-			resp.Header.Set("X-Loopers-Session-Steps", fmt.Sprintf("%d", stepsVal))
-			if budgetVal > 0 {
-				resp.Header.Set("X-Loopers-Session-Remaining", fmt.Sprintf("%.6f", budgetVal-spendVal))
+			if !viper.GetBool("server.strip_budget_headers") {
+				resp.Header.Set("X-Loopers-Session-Steps", fmt.Sprintf("%d", stepsVal))
 			}
 		}
 

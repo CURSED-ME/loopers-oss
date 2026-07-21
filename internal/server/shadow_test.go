@@ -110,7 +110,7 @@ providers:
 	defer rdb.Del(ctx, "loopers:key:"+keyHash)
 
 	// Set a tiny budget that will definitely fail
-	configKey := "loopers:budget:" + keyHash + ":config"
+	configKey := "loopers:budget:{" + keyHash + "}:config"
 	rdb.HSet(ctx, configKey, "minute", "0.000001")
 	defer rdb.Del(ctx, configKey)
 	defer rdb.Del(ctx, "loopers:spend:"+keyHash+":minute:"+time.Now().UTC().Format("2006-01-02T15:04"))
