@@ -22,6 +22,10 @@ Loopers uses headers to get settings from your application and return informatio
 
 ## Response Headers
 
+:::note
+All `X-Loopers-*` budget and telemetry response headers can be completely suppressed by setting `server.strip_budget_headers: true` in your configuration (`loopers.yaml`).
+:::
+
 | Header | Description |
 |---|---|
 | X-Loopers-Request-Cost | The real cost of this request in USD |
