@@ -3,6 +3,7 @@ package mcp
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -24,9 +25,39 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	proxyPkg "github.com/CURSED-ME/loopers-oss/internal/proxy"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
+	"github.com/CURSED-ME/loopers-oss/pkg/api"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
+
+// sensitiveTaintTools is the set of tool-name substrings that auto-set the
+// "secret_accessed" taint flag on a session when called.
+// Operators can extend this list via the viper config key "policy.taint_tool_patterns".
+var defaultSensitiveTaintPatterns = []string{
+	"read_secret",
+	"get_credentials",
+	"fetch_api_key",
+	"database_query",
+	"get_secret",
+	"retrieve_secret",
+	"kv_get",
+	"vault_read",
+}
+
+// isSensitiveTaintTool returns true if the tool name matches any known sensitive pattern.
+func isSensitiveTaintTool(toolName string) bool {
+	lower := strings.ToLower(toolName)
+	patterns := viper.GetStringSlice("policy.taint_tool_patterns")
+	if len(patterns) == 0 {
+		patterns = defaultSensitiveTaintPatterns
+	}
+	for _, p := range patterns {
+		if strings.Contains(lower, p) {
+			return true
+		}
+	}
+	return false
+}
 
 type Handler struct {
 	cfg            Config
@@ -118,6 +149,21 @@ func (h *Handler) modifyResponse(resp *http.Response) error {
 	}
 
 	return nil
+}
+
+// abortWithMCPPolicyDenied writes a JSON-RPC 2.0 error response body at HTTP 200.
+// This allows MCP client libraries (LangChain, AutoGen, etc.) to surface the denial
+// as a tool failure message in the LLM's context rather than crashing on a 403.
+func abortWithMCPPolicyDenied(c *gin.Context, req *JSONRPCRequest, toolName, reason string) {
+	var reqID any
+	if req != nil {
+		reqID = req.ID
+	}
+	resp := api.NewMCPPolicyDeniedResponse(reqID, toolName, reason)
+	c.Header("X-Loopers-Policy-Block", "true")
+	c.Header("X-Loopers-Block-Reason", reason)
+	c.JSON(http.StatusOK, resp)
+	c.Abort()
 }
 
 func (h *Handler) HandleMCP(c *gin.Context) {
@@ -246,6 +292,28 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		}
 	}
 
+	// --- Stateful Session Context ---
+	// Resolve sessionID here (before policy evaluation) so we can populate the taint context.
+	sessionID := c.GetHeader("X-Loopers-Session-ID")
+
+	// Build the OPA session context — populate taint flags and tool history when available.
+	sessionCtx := policy.SessionContext{
+		ID: sessionID,
+	}
+	if sessionID != "" && h.sessionManager != nil {
+		if taintFlags, tErr := h.sessionManager.GetTaintFlags(c.Request.Context(), keyHash, sessionID); tErr == nil {
+			sessionCtx.TaintFlags = taintFlags
+		} else {
+			logging.Logger.Warn().Err(tErr).Str("session_id", sessionID).Msg("mcp_failed_to_fetch_taint_flags")
+		}
+
+		if toolHistory, hErr := h.sessionManager.GetToolCallHistory(c.Request.Context(), keyHash, sessionID); hErr == nil {
+			sessionCtx.ToolsCalled = toolHistory
+		} else {
+			logging.Logger.Warn().Err(hErr).Str("session_id", sessionID).Msg("mcp_failed_to_fetch_tool_history")
+		}
+	}
+
 	if h.policyEngine != nil {
 		decision, err := h.policyEngine.Evaluate(c.Request.Context(), policy.EvalInput{
 			Agent: policy.AgentContext{
@@ -263,6 +331,8 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 				MCPServer: serverName,
 				Path:      c.Request.URL.Path,
 			},
+			// Populated with taint state for cross-call tracking
+			Session: sessionCtx,
 		})
 		if err != nil {
 			logging.Logger.Error().Err(err).Msg("mcp_policy_evaluation_error")
@@ -289,11 +359,18 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 				Reason:    "policy_denied",
 				Detail:    decision.Reason,
 			})
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error":  "request denied by policy",
-				"type":   "policy_denied",
-				"reason": decision.Reason,
-			})
+
+			logging.Logger.Warn().
+				Str("tool_name", toolParams.Name).
+				Str("server", serverName).
+				Str("session_id", sessionID).
+				Str("reason", decision.Reason).
+				Msg("mcp_policy_block_agent_friendly")
+
+			// Return a JSON-RPC 2.0 error (HTTP 200) instead of a raw 403.
+			// This allows LLM orchestrators to read the denial as a tool failure
+			// message and adapt their plan, rather than crash or retry-loop.
+			abortWithMCPPolicyDenied(c, req, toolParams.Name, decision.Reason)
 			return
 		}
 	}
@@ -302,7 +379,6 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 	span.SetAttributes(attribute.String("gen_ai.system.mcp.tool", toolParams.Name))
 
 	// 1. Circuit Breaker Check
-	sessionID := c.GetHeader("X-Loopers-Session-ID")
 	if sessionID != "" && h.cfg.CircuitBreaker.Enabled {
 		if !session.IsValidID(sessionID) {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid session ID format"})
@@ -427,6 +503,30 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		}
 	}
 
+	// 4. Post-allow: Record tool call history and auto-taint flagging
+	if sessionID != "" && h.sessionManager != nil && session.IsValidID(sessionID) {
+		// Record the tool call in history (async — non-blocking, best-effort)
+		go func() {
+			if appendErr := h.sessionManager.AppendToolCall(context.Background(), keyHash, sessionID, toolParams.Name); appendErr != nil {
+				logging.Logger.Warn().Err(appendErr).Str("tool_name", toolParams.Name).Msg("mcp_failed_to_append_tool_history")
+			}
+		}()
+
+		// Auto-taint: if this tool accesses sensitive resources, flag the session.
+		if isSensitiveTaintTool(toolParams.Name) {
+			go func() {
+				if taintErr := h.sessionManager.AppendTaintFlag(context.Background(), keyHash, sessionID, "secret_accessed"); taintErr != nil {
+					logging.Logger.Warn().Err(taintErr).Str("tool_name", toolParams.Name).Msg("mcp_failed_to_append_taint_flag")
+				}
+				logging.Logger.Info().
+					Str("session_id", sessionID).
+					Str("tool_name", toolParams.Name).
+					Str("taint_flag", "secret_accessed").
+					Msg("mcp_taint_flag_set")
+			}()
+		}
+	}
+
 	// Forward the request and restore body
 	c.Request.Body = io.NopCloser(bytes.NewReader(body))
 
@@ -465,4 +565,25 @@ func (h *Handler) forward(c *gin.Context, targetURL string, keyHash *string, cos
 	}
 
 	h.proxy.ServeHTTP(c.Writer, c.Request)
+}
+
+// jsonRPCIDFromBody extracts the "id" field from a raw JSON-RPC body for error responses.
+// Returns nil if parsing fails.
+func jsonRPCIDFromBody(body []byte) any {
+	var envelope struct {
+		ID json.RawMessage `json:"id"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil || envelope.ID == nil {
+		return nil
+	}
+	// Try int, then string
+	var idInt int64
+	if err := json.Unmarshal(envelope.ID, &idInt); err == nil {
+		return idInt
+	}
+	var idStr string
+	if err := json.Unmarshal(envelope.ID, &idStr); err == nil {
+		return idStr
+	}
+	return nil
 }

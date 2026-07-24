@@ -20,11 +20,13 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/provider"
 	"github.com/CURSED-ME/loopers-oss/internal/proxy"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
+	"github.com/CURSED-ME/loopers-oss/pkg/api"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
+
 
 func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	startTime := time.Now()
@@ -233,6 +235,26 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	}
 
 	if s.policyEngine != nil {
+		// Build a stateful session context for OPA — fetch taint history if a session is active.
+		// We do a best-effort early read of the session ID here; the full session enforcement
+		// happens later in enforceSessionLimits, but we need the taint context for policy now.
+		earlySessionID := c.GetHeader("X-Loopers-Session-ID")
+		policySessionCtx := policy.SessionContext{
+			ID: earlySessionID,
+		}
+		if earlySessionID != "" && session.IsValidID(earlySessionID) && s.sessionManager != nil {
+			if taintFlags, tErr := s.sessionManager.GetTaintFlags(c.Request.Context(), keyHash, earlySessionID); tErr == nil {
+				policySessionCtx.TaintFlags = taintFlags
+			} else {
+				logging.Logger.Warn().Err(tErr).Str("session_id", earlySessionID).Msg("proxy_failed_to_fetch_taint_flags")
+			}
+			if toolHistory, hErr := s.sessionManager.GetToolCallHistory(c.Request.Context(), keyHash, earlySessionID); hErr == nil {
+				policySessionCtx.ToolsCalled = toolHistory
+			} else {
+				logging.Logger.Warn().Err(hErr).Str("session_id", earlySessionID).Msg("proxy_failed_to_fetch_tool_history")
+			}
+		}
+
 		decision, err := s.policyEngine.Evaluate(c.Request.Context(), policy.EvalInput{
 			Agent: policy.AgentContext{
 				KeyHash:   keyHash,
@@ -248,6 +270,7 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				Method:   "llm_call",
 				Path:     c.Request.URL.Path,
 			},
+			Session: policySessionCtx,
 		})
 		if err != nil {
 			logging.Logger.Error().Err(err).Msg("policy_engine_evaluation_error")
@@ -274,11 +297,7 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				Reason:    "policy_denied",
 				Detail:    decision.Reason,
 			})
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error":  "request denied by policy",
-				"type":   "policy_denied",
-				"reason": decision.Reason,
-			})
+			c.AbortWithStatusJSON(http.StatusForbidden, api.NewPolicyDeniedResponse("", providerName, decision.Reason))
 			return
 		}
 	}

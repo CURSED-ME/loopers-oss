@@ -151,3 +151,75 @@ return 1
 	allowed := res.(int64) == 1
 	return allowed, nil
 }
+
+// ---- Taint Tracking & Tool History (Feature: Stateful Policy Context) ----
+
+// taintKey returns the Redis key for session taint flags.
+func taintKey(keyHash, sessionID string) string {
+	return fmt.Sprintf("loopers:session:{%s}:%s:taint", keyHash, sessionID)
+}
+
+// toolsKey returns the Redis key for session tool call history.
+func toolsKey(keyHash, sessionID string) string {
+	return fmt.Sprintf("loopers:session:{%s}:%s:tools", keyHash, sessionID)
+}
+
+const sessionDataTTL = 7 * 24 * time.Hour // 7 days — matches blast-radius TTL
+
+// AppendTaintFlag adds a named taint flag to the session's taint set.
+// Taint flags are persistent within a session (e.g., "secret_accessed").
+// This is idempotent — adding the same flag twice has no effect.
+func (m *Manager) AppendTaintFlag(ctx context.Context, keyHash, sessionID, flag string) error {
+	key := taintKey(keyHash, sessionID)
+	pipe := m.rdb.Pipeline()
+	pipe.SAdd(ctx, key, flag)
+	pipe.Expire(ctx, key, sessionDataTTL)
+	_, err := pipe.Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("redis error appending taint flag: %w", err)
+	}
+	return nil
+}
+
+// GetTaintFlags returns all taint flags for the session as a map[string]bool,
+// suitable for direct serialization into OPA's input.session.taint_flags.
+// Returns an empty map (not nil) if no flags have been set.
+func (m *Manager) GetTaintFlags(ctx context.Context, keyHash, sessionID string) (map[string]bool, error) {
+	key := taintKey(keyHash, sessionID)
+	members, err := m.rdb.SMembers(ctx, key).Result()
+	if err != nil {
+		return nil, fmt.Errorf("redis error getting taint flags: %w", err)
+	}
+
+	flags := make(map[string]bool, len(members))
+	for _, m := range members {
+		flags[m] = true
+	}
+	return flags, nil
+}
+
+// AppendToolCall prepends a tool name to the session's tool call history list.
+// The list is capped at 100 entries (newest first) via LTRIM after each push.
+func (m *Manager) AppendToolCall(ctx context.Context, keyHash, sessionID, toolName string) error {
+	key := toolsKey(keyHash, sessionID)
+	pipe := m.rdb.Pipeline()
+	pipe.LPush(ctx, key, toolName)
+	pipe.LTrim(ctx, key, 0, 99) // Keep only the 100 most recent
+	pipe.Expire(ctx, key, sessionDataTTL)
+	_, err := pipe.Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("redis error appending tool call: %w", err)
+	}
+	return nil
+}
+
+// GetToolCallHistory returns the last N tool calls for the session (newest first).
+// N is capped at 50 to keep OPA input manageable. Returns an empty slice if none.
+func (m *Manager) GetToolCallHistory(ctx context.Context, keyHash, sessionID string) ([]string, error) {
+	key := toolsKey(keyHash, sessionID)
+	history, err := m.rdb.LRange(ctx, key, 0, 49).Result()
+	if err != nil {
+		return nil, fmt.Errorf("redis error getting tool history: %w", err)
+	}
+	return history, nil
+}

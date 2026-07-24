@@ -12,6 +12,11 @@ from .client import (
     LoopersTogether,
     LoopersAsyncTogether,
 )
+from .policy_error import (
+    LoopersPolicyDenied,
+    parse_policy_denial,
+    format_as_tool_output,
+)
 
 __all__ = [
     "LoopersOpenAI",
@@ -26,6 +31,10 @@ __all__ = [
     "LoopersAsyncDeepSeek",
     "LoopersTogether",
     "LoopersAsyncTogether",
+    # Policy denial handling — agent self-correction
+    "LoopersPolicyDenied",
+    "parse_policy_denial",
+    "format_as_tool_output",
 ]
 
 try:
