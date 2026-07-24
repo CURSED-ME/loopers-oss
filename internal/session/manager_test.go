@@ -245,4 +245,3 @@ func TestSessionManager_AppendAndGetToolHistory(t *testing.T) {
 		t.Errorf("expected at most 50 entries returned, got %d", len(history))
 	}
 }
-

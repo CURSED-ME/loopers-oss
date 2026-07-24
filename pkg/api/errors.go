@@ -216,4 +216,3 @@ func NewMCPPolicyDeniedResponse(id any, toolName, reason string) MCPJSONRPCError
 		},
 	}
 }
-

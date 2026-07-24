@@ -27,7 +27,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-
 func (s *Server) handleProxy(c *gin.Context, providerName string) {
 	startTime := time.Now()
 
