@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.2](https://github.com/CURSED-ME/loopers-oss/compare/v2.0.1...v2.0.2) (2026-07-24)
+
+
+### Bug Fixes
+
+* **python-sdk:** lightweight dev dependencies in pyproject.toml to fi… ([b675079](https://github.com/CURSED-ME/loopers-oss/commit/b675079b1d34867b7ee4244653edfd7dd7cdf12c))
+* **python-sdk:** lightweight dev dependencies in pyproject.toml to fix PyPI CI build timeout ([26dcbfb](https://github.com/CURSED-ME/loopers-oss/commit/26dcbfb870483705677afad7f20845f42771e715))
+
 ## [2.0.1](https://github.com/CURSED-ME/loopers-oss/compare/v2.0.0...v2.0.1) (2026-07-24)
 
 
