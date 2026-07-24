@@ -34,6 +34,8 @@ All `X-Loopers-*` budget and telemetry response headers can be completely suppre
 | X-Loopers-Session-Remaining | The remaining budget left in your most limited window |
 | X-Loopers-Budget-Window | The budget window that is closest to its limit (e.g., daily) |
 | X-Loopers-Request-ID | A unique ID for this request to help with debugging |
+| X-Loopers-Policy-Block | Set to `"true"` when a request or MCP tool call is blocked by OPA policy |
+| X-Loopers-Block-Reason | Contains the denial reason rule text from the matching Rego policy |
 
 
 ## Error Codes
@@ -41,6 +43,8 @@ All `X-Loopers-*` budget and telemetry response headers can be completely suppre
 | HTTP Status | JSON Type | Reason |
 |---|---|---|
 | 401 Unauthorized | invalid_key | The Loopers key is invalid or has been revoked |
+| 403 Forbidden | policy_denied | The request was blocked by an OPA policy (LLM proxy calls) |
+| 200 OK (MCP JSON-RPC `-32001`) | policy_denied | An MCP tool call was denied by OPA policy (enables LLM self-correction) |
 | 429 Too Many Requests | budget_exceeded | You have reached your budget window limit |
 | 429 Too Many Requests | loop_detected | An agent loop was detected in this session |
 | 429 Too Many Requests | max_steps_exceeded | You have reached the maximum allowed calls for this session |

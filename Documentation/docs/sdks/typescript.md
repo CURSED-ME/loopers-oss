@@ -76,6 +76,29 @@ const model = new ChatOpenAI({
 });
 ```
 
+## Policy Denial Handling (onPolicyBlock Callback)
+
+You can pass an `onPolicyBlock` handler to intercept OPA policy denials and transform them into injectable tool errors without throwing exceptions:
+
+```typescript
+import { LoopersOpenAI, formatAsToolOutput } from '@loopers/client';
+
+const client = new LoopersOpenAI({
+  loopersUrl: 'http://localhost:8080',
+  loopersKey: 'lp-xxx',
+  providerKey: 'sk-proj-...',
+  sessionId: 'run-1',
+  onPolicyBlock: (denial, _res) => {
+    // Format denial into tool failure string for LLM self-correction
+    const toolError = formatAsToolOutput(denial);
+    // "Error: tool [outbound_http] blocked. Reason: secret_accessed taint set"
+
+    // Return custom mock response or handle gracefully
+    return new Response(JSON.stringify({ error: toolError }), { status: 200 });
+  },
+});
+```
+
 ## Parameters Reference
 
 | Option | Type | Required | Description |
@@ -86,3 +109,4 @@ const model = new ChatOpenAI({
 | sessionId | string | No | Unique session ID for loop detection |
 | sessionBudget | number | No | Spend limit in USD for this session |
 | maxSteps | number | No | Maximum AI calls allowed in this session |
+| onPolicyBlock | function | No | Callback invoked on policy blocks for self-correction |

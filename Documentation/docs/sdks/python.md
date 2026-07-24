@@ -113,6 +113,25 @@ llm = LoopersLLM(
 response = llm.complete("Hello, Loopers!")
 ```
 
+## Policy Denial Handling (Agent Self-Correction)
+
+When a request or tool call is blocked by an OPA policy, use `LoopersPolicyDenied`, `parse_policy_denial()`, and `format_as_tool_output()` to surface the policy reason back to your LLM planner so it can self-correct instead of looping or crashing.
+
+```python
+from loopers_client import LoopersPolicyDenied, parse_policy_denial, format_as_tool_output
+
+try:
+    response = client.chat.completions.create(...)
+except Exception as err:
+    # Parse policy denial from HTTP 403 or JSON-RPC 2.0 error payloads
+    denial = parse_policy_denial(getattr(err, "response", None))
+    if denial:
+        # Format as tool error message for LLM prompt context injection
+        tool_output = format_as_tool_output(denial)
+        # Output: "Error: tool [outbound_http] blocked. Reason: secret_accessed taint set"
+        messages.append({"role": "tool", "content": tool_output})
+```
+
 ## Parameters Reference
 
 | Option | Type | Required | Description |
