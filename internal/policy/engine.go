@@ -40,9 +40,11 @@ type RequestContext struct {
 }
 
 type SessionContext struct {
-	ID    string  `json:"id,omitempty"`
-	Spend float64 `json:"spend,omitempty"`
-	Steps int     `json:"steps,omitempty"`
+	ID          string          `json:"id,omitempty"`
+	Spend       float64         `json:"spend,omitempty"`
+	Steps       int             `json:"steps,omitempty"`
+	TaintFlags  map[string]bool `json:"taint_flags,omitempty"`  // Persistent taint flags for the session (e.g. "secret_accessed")
+	ToolsCalled []string        `json:"tools_called,omitempty"` // Recent tool call history (newest first, capped at 50)
 }
 
 type EvalInput struct {

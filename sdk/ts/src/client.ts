@@ -1,5 +1,10 @@
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+import { LoopersPolicyDenied, parsePolicyDenial, formatAsToolOutput } from './policyError';
+
+// Re-export policy error types for consumers who import from this module
+export { LoopersPolicyDenied, parsePolicyDenial, formatAsToolOutput };
+export type { PolicyDeniedDetails } from './policyError';
 
 export interface LoopersClientOptions {
   loopersUrl: string;
@@ -11,6 +16,25 @@ export interface LoopersClientOptions {
   sessionTtl?: number;
   maxTools?: number;
   maxServers?: number;
+  /**
+   * Optional callback invoked when a request is blocked by a Loopers policy.
+   *
+   * When provided, the SDK will call this instead of throwing a LoopersPolicyDenied error.
+   * The callback receives the denial object and the original fetch Response.
+   * Return a replacement Response to substitute for the blocked call (e.g., a mock
+   * tool-output error string), or undefined to let the SDK throw.
+   *
+   * @example
+   * ```ts
+   * onPolicyBlock: (denial, _res) => {
+   *   console.warn(`Policy block: ${denial.message}`);
+   *   // Return a fake "tool error" response so the LLM can self-correct
+   *   const body = JSON.stringify({ error: denial.message });
+   *   return new Response(body, { status: 200 });
+   * }
+   * ```
+   */
+  onPolicyBlock?: (denial: LoopersPolicyDenied, originalResponse: Response) => Response | undefined | void;
 }
 
 function createLoopersFetch(
@@ -22,7 +46,8 @@ function createLoopersFetch(
   sessionTtl?: number,
   maxTools?: number,
   maxServers?: number,
-  customFetch?: typeof fetch
+  customFetch?: typeof fetch,
+  onPolicyBlock?: LoopersClientOptions['onPolicyBlock']
 ) {
   const originalFetch = customFetch || (typeof fetch !== 'undefined' ? fetch : undefined);
   if (!originalFetch) {
@@ -63,6 +88,33 @@ function createLoopersFetch(
     };
 
     const res = await originalFetch(input, modifiedInit);
+
+    // --- Policy Denial Interception ---
+    // Detect policy blocks (HTTP 403 OR HTTP 200 with X-Loopers-Policy-Block header).
+    // Convert them to LoopersPolicyDenied rather than letting agent frameworks
+    // crash on a raw HTTP exception.
+    const isPolicyBlock =
+      res.status === 403 ||
+      res.headers.get('X-Loopers-Policy-Block') === 'true';
+
+    if (isPolicyBlock) {
+      // Clone to safely read body without consuming the original
+      const cloned = res.clone();
+      try {
+        const data = await cloned.json();
+        const denial = parsePolicyDenial(data, undefined, sessionId);
+        if (denial) {
+          if (onPolicyBlock) {
+            const replacement = onPolicyBlock(denial, res);
+            if (replacement) return replacement;
+          }
+          throw denial;
+        }
+      } catch (e) {
+        // Re-throw LoopersPolicyDenied directly; ignore JSON parse errors on non-policy 403s
+        if (e instanceof LoopersPolicyDenied) throw e;
+      }
+    }
 
     // Intercept response.json() to attach loopers properties to the returned parsed object
     const originalJson = res.json;
@@ -114,6 +166,7 @@ export class LoopersOpenAI extends OpenAI {
       sessionTtl,
       maxTools,
       maxServers,
+      onPolicyBlock,
       _providerPath,
       ...openaiOptions
     } = options;
@@ -128,7 +181,8 @@ export class LoopersOpenAI extends OpenAI {
       sessionTtl,
       maxTools,
       maxServers,
-      baseFetch
+      baseFetch,
+      onPolicyBlock
     );
 
     super({
@@ -180,6 +234,7 @@ export class LoopersAnthropic extends Anthropic {
       sessionTtl,
       maxTools,
       maxServers,
+      onPolicyBlock,
       ...anthropicOptions
     } = options;
 
@@ -193,7 +248,8 @@ export class LoopersAnthropic extends Anthropic {
       sessionTtl,
       maxTools,
       maxServers,
-      baseFetch
+      baseFetch,
+      onPolicyBlock
     );
 
     super({

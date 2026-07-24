@@ -77,7 +77,7 @@ The input object passed to the policy engine contains the following structure:
 }
 ```
 
-### For MCP Tool Calls
+### For MCP Tool Calls (with Stateful Session Context)
 
 ```json
 {
@@ -97,11 +97,24 @@ The input object passed to the policy engine contains the following structure:
     "tool_name": "read_file",
     "mcp_server": "filesystem",
     "path": "/mcp/filesystem/tools/call"
+  },
+  "session": {
+    "id": "sess-550e8400-e29b-41d4-a716-446655440000",
+    "spend": 0.42,
+    "steps": 5,
+    "taint_flags": {
+      "secret_accessed": true
+    },
+    "tools_called": [
+      "read_file",
+      "read_secret",
+      "initialize"
+    ]
   }
 }
 ```
 
-The `agent` block is populated from the key metadata set during `loopers keys create` (see the `--agent-name`, `--owner`, `--tags` flags).
+The `agent` block is populated from key metadata. The `session` block carries historical state including `taint_flags` and `tools_called` (newest first) for cross-call evaluation.
 
 ---
 
@@ -133,23 +146,28 @@ allow {
 }
 ```
 
-### Example 2: Deny Destructive MCP Tools
+### Example 2: Stateful Taint Tracking (Exfiltration Prevention)
 
 ```rego
 package loopers.policy
 
-default deny = false
-
-# Block destructive file operations globally
-deny["destructive tools are globally blocked"] {
+# Block outbound HTTP calls if the session has accessed secrets
+deny["outbound HTTP calls are blocked for sessions that have accessed secrets"] {
     input.request.method == "mcp_tool_call"
-    input.request.tool_name == "delete_file"
+    input.request.tool_name == "outbound_http"
+    input.session.taint_flags["secret_accessed"]
 }
 
-# Block expensive models in dev environment
-deny["expensive models not allowed in dev"] {
-    input.agent.tags["env"] == "dev"
-    input.request.model == "gpt-4o"
+# Block file writes after secret access in this session
+deny["file writes are blocked after secret access"] {
+    input.request.method == "mcp_tool_call"
+    input.request.tool_name == "write_file"
+    input.session.taint_flags["secret_accessed"]
+}
+
+# Block requests if an agent has invoked too many tool calls (runaway heuristic)
+deny["session has invoked too many tool calls"] {
+    count(input.session.tools_called) > 30
 }
 ```
 
@@ -167,6 +185,32 @@ deny["only ML team can use Claude"] {
 
 ---
 
+## Agent-Friendly Error Formats (Self-Correction)
+
+When an OPA policy blocks a tool call, standard HTTP 403 responses often crash agent frameworks or trigger token-burning retry loops. Loopers resolves this by returning an **agent-friendly MCP error**:
+
+- **MCP Tool Calls**: Returned at **HTTP 200** as a valid **JSON-RPC 2.0 error object** (code `-32001`) with the `X-Loopers-Policy-Block: true` header. Frameworks (LangChain, AutoGen, CrewAI) surface this to the LLM as a tool execution failure message, enabling the agent to **self-correct** its plan.
+- **LLM Calls**: Returned at HTTP 403 with structured `policy_denied` JSON error payload.
+
+### Example MCP JSON-RPC 2.0 Policy Denial
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "error": {
+    "code": -32001,
+    "message": "Error: tool [outbound_http] blocked. Reason: outbound HTTP calls are blocked for sessions that have accessed secrets",
+    "data": {
+      "tool_name": "outbound_http",
+      "rule": "outbound HTTP calls are blocked for sessions that have accessed secrets"
+    }
+  }
+}
+```
+
+---
+
 ## Setting Up Agent Identity
 
 For policies to be effective, attach identity metadata when creating proxy keys:
@@ -179,6 +223,8 @@ loopers keys create \
   --owner alice \
   --tags "env=prod,team=alpha"
 ```
+
+This metadata is automatically passed into the policy engine's `input.agent` block on every request made with that key.
 
 This metadata is automatically passed into the policy engine's `input.agent` block on every request made with that key.
 

@@ -132,3 +132,87 @@ func NewSessionStepsExceededResponse(sessionID string, limit int64, currentSteps
 		},
 	}
 }
+
+// ---- Policy Denial Responses ----
+
+// PolicyDeniedDetails provides structured info about which tool was blocked and why.
+type PolicyDeniedDetails struct {
+	ToolName  string `json:"tool_name,omitempty"`
+	MCPServer string `json:"mcp_server,omitempty"`
+	Rule      string `json:"rule,omitempty"`
+}
+
+// PolicyDeniedResponse is the structured HTTP denial response for LLM proxy calls.
+// SDK wrappers use this to build agent-friendly tool output strings.
+type PolicyDeniedResponse struct {
+	Error ErrorPayload `json:"error"`
+}
+
+// NewPolicyDeniedResponse builds a structured policy denial response suitable for
+// both HTTP proxy calls (returned as-is) and SDK parsing.
+func NewPolicyDeniedResponse(toolName, mcpServer, reason string) PolicyDeniedResponse {
+	var msg string
+	if toolName != "" {
+		msg = fmt.Sprintf("Tool call [%s] was denied by policy. Reason: %s", toolName, reason)
+	} else {
+		msg = fmt.Sprintf("Request denied by policy. Reason: %s", reason)
+	}
+	return PolicyDeniedResponse{
+		Error: ErrorPayload{
+			Message: msg,
+			Type:    "policy_denied",
+			Code:    "policy_denied",
+			Details: PolicyDeniedDetails{
+				ToolName:  toolName,
+				MCPServer: mcpServer,
+				Rule:      reason,
+			},
+			Support: GitHubStarCTA,
+		},
+	}
+}
+
+// MCPJSONRPCError is a JSON-RPC 2.0 error object returned inside an MCP response body.
+// Using HTTP 200 + this structure allows agent frameworks to read the denial as a
+// tool output message rather than crash on a network-level error.
+type MCPJSONRPCError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data,omitempty"`
+}
+
+// MCPJSONRPCErrorResponse is a complete JSON-RPC 2.0 error response envelope.
+type MCPJSONRPCErrorResponse struct {
+	JSONRPC string          `json:"jsonrpc"`
+	ID      any             `json:"id"`
+	Error   MCPJSONRPCError `json:"error"`
+}
+
+// MCP JSON-RPC 2.0 standard error codes
+const (
+	MCPErrorCodePolicyDenied = -32001 // Application-level: policy denied
+)
+
+// NewMCPPolicyDeniedResponse builds a JSON-RPC 2.0 error envelope for a policy denial.
+// This is returned with HTTP 200 so MCP client libraries parse it as a tool error
+// rather than a transport error, enabling LLM self-correction.
+func NewMCPPolicyDeniedResponse(id any, toolName, reason string) MCPJSONRPCErrorResponse {
+	var msg string
+	if toolName != "" {
+		msg = fmt.Sprintf("Error: tool [%s] blocked. Reason: %s", toolName, reason)
+	} else {
+		msg = fmt.Sprintf("Error: request blocked by policy. Reason: %s", reason)
+	}
+	return MCPJSONRPCErrorResponse{
+		JSONRPC: "2.0",
+		ID:      id,
+		Error: MCPJSONRPCError{
+			Code:    MCPErrorCodePolicyDenied,
+			Message: msg,
+			Data: PolicyDeniedDetails{
+				ToolName: toolName,
+				Rule:     reason,
+			},
+		},
+	}
+}

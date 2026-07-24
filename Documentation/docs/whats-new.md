@@ -11,6 +11,16 @@ Stay up to date with the newest capabilities we've added to the Loopers cost fir
 
 ---
 
+## Stateful Session Context (Taint Tracking)
+OPA policies can now evaluate the historical execution trace of a session. Loopers passes `input.session.taint_flags` and `input.session.tools_called` to OPA before every request. Whenever sensitive tools (such as `read_secret`, `get_credentials`, `vault_read`) are invoked, Loopers automatically sets session taint flags (e.g. `secret_accessed`). This enables cross-call data exfiltration prevention rules such as: *"if secret_accessed taint is set in step 2, block all outbound_http calls in step 5"*.
+* **Learn More**: See the [Policy Engine Guide](/docs/guides/policy-engine).
+
+## Agent-Friendly Policy Denial Formats (Self-Correction)
+When an OPA policy blocks an MCP tool call, Loopers now returns a valid **MCP JSON-RPC 2.0 error object** at **HTTP 200** (code `-32001`) with the `X-Loopers-Policy-Block: true` header. Most agent frameworks (LangChain, AutoGen, CrewAI) surface this to the LLM as a tool failure message rather than crashing on an HTTP 403 exception, allowing the LLM planner to **self-correct** its strategy in real-time. SDK wrappers for Python and TypeScript also include `LoopersPolicyDenied`, `parse_policy_denial()`, and `onPolicyBlock` callbacks.
+* **Learn More**: See the [Python SDK](/docs/sdks/python) or [TypeScript SDK](/docs/sdks/typescript) guides.
+
+---
+
 ## Fuzzy Bi-Gram Jaccard Agent Loop Detection
 We've completely overhauled our agent loop detection engine. Exact-hash detection (like FNV-1a) is often easily bypassed by modern LLMs and agents that slightly mutate their prompts when stuck in a loop (e.g., adding attempt counters or subtle rephrasing). 
 Loopers self-hosted v1.1+ now uses **Bi-Gram Jaccard Similarity** to compare request token sets. It calculates the exact structural similarity between prompts, allowing it to catch polymorphic, mutating agent loops that exact matching cannot. You can tune the sensitivity using the new `similarity_threshold` configuration (default 0.95).

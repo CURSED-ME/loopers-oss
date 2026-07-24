@@ -170,3 +170,199 @@ describe('LoopersGroq', () => {
     expect(headers.get('X-Loopers-Session-Max-Servers')).toBe('3');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Policy Error — LoopersPolicyDenied, parsePolicyDenial, formatAsToolOutput
+// ---------------------------------------------------------------------------
+
+import { LoopersPolicyDenied, parsePolicyDenial, formatAsToolOutput } from '../src/client';
+
+describe('LoopersPolicyDenied', () => {
+  it('creates correct message with tool name', () => {
+    const denial = new LoopersPolicyDenied({ toolName: 'outbound_http', reason: 'secret accessed' });
+    expect(denial.message).toBe('Error: tool [outbound_http] blocked. Reason: secret accessed');
+    expect(denial.toolName).toBe('outbound_http');
+    expect(denial.reason).toBe('secret accessed');
+  });
+
+  it('creates correct message without tool name', () => {
+    const denial = new LoopersPolicyDenied({ toolName: '', reason: 'dev env restriction' });
+    expect(denial.message).toContain('blocked by policy');
+    expect(denial.message).toContain('dev env restriction');
+  });
+
+  it('is an Error instance', () => {
+    const denial = new LoopersPolicyDenied({ toolName: 'foo', reason: 'bar' });
+    expect(denial).toBeInstanceOf(Error);
+    expect(denial.name).toBe('LoopersPolicyDenied');
+  });
+
+  it('preserves optional fields', () => {
+    const denial = new LoopersPolicyDenied({
+      toolName: 'spawn_sub_agent',
+      reason: 'dev restriction',
+      sessionId: 'sess-123',
+      mcpServer: 'main-server',
+    });
+    expect(denial.sessionId).toBe('sess-123');
+    expect(denial.mcpServer).toBe('main-server');
+  });
+});
+
+describe('formatAsToolOutput', () => {
+  it('formats with tool name', () => {
+    const denial = new LoopersPolicyDenied({ toolName: 'outbound_http', reason: 'secret accessed' });
+    expect(formatAsToolOutput(denial)).toBe(
+      'Error: tool [outbound_http] blocked. Reason: secret accessed'
+    );
+  });
+
+  it('formats without tool name', () => {
+    const denial = new LoopersPolicyDenied({ toolName: '', reason: 'dev env restriction' });
+    expect(formatAsToolOutput(denial)).toBe(
+      'Error: request blocked by policy. Reason: dev env restriction'
+    );
+  });
+});
+
+describe('parsePolicyDenial', () => {
+  it('returns null for non-object inputs', () => {
+    expect(parsePolicyDenial(null)).toBeNull();
+    expect(parsePolicyDenial('string')).toBeNull();
+    expect(parsePolicyDenial(42)).toBeNull();
+    expect(parsePolicyDenial([])).toBeNull();
+  });
+
+  it('returns null for unrelated dicts', () => {
+    expect(parsePolicyDenial({ message: 'something else' })).toBeNull();
+    expect(parsePolicyDenial({ error: { type: 'rate_limit' } })).toBeNull();
+  });
+
+  it('parses HTTP 403 format (LLM proxy)', () => {
+    const responseData = {
+      error: {
+        message: 'Tool call [outbound_http] was denied by policy. Reason: secret accessed',
+        type: 'policy_denied',
+        code: 'policy_denied',
+        details: {
+          tool_name: 'outbound_http',
+          mcp_server: 'main-server',
+          rule: 'outbound HTTP blocked after secret access',
+        },
+      },
+    };
+    const denial = parsePolicyDenial(responseData, undefined, 'sess-abc');
+    expect(denial).not.toBeNull();
+    expect(denial!.toolName).toBe('outbound_http');
+    expect(denial!.reason).toBe('outbound HTTP blocked after secret access');
+    expect(denial!.sessionId).toBe('sess-abc');
+    expect(denial!.mcpServer).toBe('main-server');
+  });
+
+  it('parses JSON-RPC 2.0 MCP format (code -32001)', () => {
+    const responseData = {
+      jsonrpc: '2.0',
+      id: 1,
+      error: {
+        code: -32001,
+        message: 'Error: tool [outbound_http] blocked. Reason: secret accessed',
+        data: {
+          tool_name: 'outbound_http',
+          rule: 'outbound HTTP blocked after secret access',
+        },
+      },
+    };
+    const denial = parsePolicyDenial(responseData, undefined, 'sess-xyz');
+    expect(denial).not.toBeNull();
+    expect(denial!.toolName).toBe('outbound_http');
+    expect(denial!.reason).toBe('outbound HTTP blocked after secret access');
+    expect(denial!.sessionId).toBe('sess-xyz');
+  });
+
+  it('extracts tool name from message when data.tool_name missing', () => {
+    const responseData = {
+      jsonrpc: '2.0',
+      id: 2,
+      error: {
+        code: -32001,
+        message: 'Error: tool [spawn_sub_agent] blocked. Reason: dev restriction',
+        data: {},
+      },
+    };
+    const denial = parsePolicyDenial(responseData);
+    expect(denial).not.toBeNull();
+    expect(denial!.toolName).toBe('spawn_sub_agent');
+  });
+
+  it('toolName param overrides payload', () => {
+    const responseData = {
+      error: {
+        type: 'policy_denied',
+        code: 'policy_denied',
+        message: 'Denied',
+        details: { tool_name: 'from_payload' },
+      },
+    };
+    const denial = parsePolicyDenial(responseData, 'from_param');
+    expect(denial!.toolName).toBe('from_param');
+  });
+});
+
+describe('LoopersOpenAI - onPolicyBlock callback', () => {
+  it('calls onPolicyBlock when a 403 policy_denied is received', async () => {
+    const policyBlockPayload = {
+      error: {
+        type: 'policy_denied',
+        code: 'policy_denied',
+        message: 'Tool call [outbound_http] was denied. Reason: secret accessed',
+        details: { tool_name: 'outbound_http', rule: 'secret accessed' },
+      },
+    };
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      status: 403,
+      ok: false,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => policyBlockPayload,
+      clone: () => ({
+        json: async () => policyBlockPayload,
+      }),
+    });
+
+    const onPolicyBlock = vi.fn().mockReturnValue(undefined);
+
+    // The OpenAI SDK wraps thrown errors in APIConnectionError.
+    // Check that the callback was called with a LoopersPolicyDenied denial,
+    // and that the eventual rejection's cause is our denial.
+    let caughtError: any = null;
+    try {
+      const client = new LoopersOpenAI({
+        loopersUrl: 'http://localhost:8080',
+        loopersKey: 'lp-test',
+        sessionId: 'sess-test',
+        fetch: mockFetch as any,
+        onPolicyBlock,
+      });
+      await client.chat.completions.create({ model: 'gpt-4', messages: [{ role: 'user', content: 'hi' }] });
+    } catch (e) {
+      caughtError = e;
+    }
+
+    // The OpenAI SDK wraps our error, so caughtError might be APIConnectionError.
+    // Verify the cause is LoopersPolicyDenied.
+    expect(caughtError).not.toBeNull();
+    const denial = caughtError instanceof LoopersPolicyDenied
+      ? caughtError
+      : (caughtError?.cause instanceof LoopersPolicyDenied ? caughtError.cause : null);
+    expect(denial).toBeInstanceOf(LoopersPolicyDenied);
+    expect(denial.toolName).toBe('outbound_http');
+    expect(denial.sessionId).toBe('sess-test');
+
+    // Callback must have been invoked (OpenAI SDK may retry, so called at least once)
+    expect(onPolicyBlock).toHaveBeenCalled();
+    const [callbackDenial] = onPolicyBlock.mock.calls[0];
+    expect(callbackDenial).toBeInstanceOf(LoopersPolicyDenied);
+    expect(callbackDenial.toolName).toBe('outbound_http');
+  });
+});
+
