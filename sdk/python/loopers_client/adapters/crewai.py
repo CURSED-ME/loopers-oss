@@ -1,6 +1,5 @@
 import os
-from typing import Optional
-from langchain_openai import ChatOpenAI
+from typing import Optional, Any
 
 def get_loopers_crewai_llm(
     loopers_key: str,
@@ -9,7 +8,7 @@ def get_loopers_crewai_llm(
     temperature: float = 0.7,
     max_tokens: Optional[int] = None,
     session_id: Optional[str] = None
-) -> ChatOpenAI:
+) -> Any:
     """
     Returns a configured LLM suitable for use as a CrewAI agent's internal LLM.
     Under the hood, CrewAI uses LangChain, so we return a LangChain ChatOpenAI
@@ -26,6 +25,14 @@ def get_loopers_crewai_llm(
     Returns:
         ChatOpenAI: A LangChain chat model.
     """
+    try:
+        from langchain_openai import ChatOpenAI
+    except ImportError as err:
+        raise ImportError(
+            "The 'langchain-openai' package is required to use get_loopers_crewai_llm. "
+            "Install it via 'pip install langchain-openai'."
+        ) from err
+
     default_headers = {}
     if session_id:
         default_headers["X-Loopers-Session-ID"] = session_id

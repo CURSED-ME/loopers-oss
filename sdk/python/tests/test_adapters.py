@@ -1,5 +1,10 @@
 import pytest
-from loopers_client.adapters.crewai import get_loopers_crewai_llm
+try:
+    import langchain_openai
+    HAS_CREWAI_DEPS = True
+except ImportError:
+    HAS_CREWAI_DEPS = False
+
 from loopers_client.adapters.autogen import get_loopers_autogen_config
 from loopers_client.policy_error import (
     LoopersPolicyDenied,
@@ -8,6 +13,7 @@ from loopers_client.policy_error import (
 )
 
 
+@pytest.mark.skipif(not HAS_CREWAI_DEPS, reason="langchain_openai not installed")
 def test_crewai_adapter():
     llm = get_loopers_crewai_llm(
         loopers_key="test_key",
