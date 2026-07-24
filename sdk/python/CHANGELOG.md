@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.0](https://github.com/CURSED-ME/loopers-oss/compare/sdk-python-v1.4.2...sdk-python-v2.0.0) (2026-07-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** none — all changes are purely additive.
+
+### Features
+
+* **policy:** stateful taint tracking + agent-friendly error formats ([4d4a00b](https://github.com/CURSED-ME/loopers-oss/commit/4d4a00b5bd11b6af8b7121ed82a3e04cc9ba78ce))
+* **policy:** stateful taint tracking + agent-friendly error formats ([61f07e8](https://github.com/CURSED-ME/loopers-oss/commit/61f07e85d43fc4b3b75ba856be8c984104786897))
+
 ## [1.4.2](https://github.com/CURSED-ME/loopers-oss/compare/sdk-python-v1.4.1...sdk-python-v1.4.2) (2026-07-08)
 
 
