@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.1](https://github.com/CURSED-ME/loopers-oss/compare/sdk-python-v2.0.0...sdk-python-v2.0.1) (2026-07-24)
+
+
+### Bug Fixes
+
+* **python-sdk:** fix fallback classes, header metric attributes, and … ([dc4bf61](https://github.com/CURSED-ME/loopers-oss/commit/dc4bf6194b675a0cdbbb340f274ab7b95140ad0b))
+* **python-sdk:** fix fallback classes, header metric attributes, and lazy imports for PyPI CI build ([b77741e](https://github.com/CURSED-ME/loopers-oss/commit/b77741ea0a57668814628e0ada7bd634b8de2a8e))
+
 ## [2.0.0](https://github.com/CURSED-ME/loopers-oss/compare/sdk-python-v1.4.2...sdk-python-v2.0.0) (2026-07-24)
 
 
