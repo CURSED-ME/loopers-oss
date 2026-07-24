@@ -17,6 +17,8 @@ def _response_hook(response: httpx.Response):
     loopers_headers = {
         "request_cost": headers.get("X-Loopers-Request-Cost"),
         "estimated_cost": headers.get("X-Loopers-Request-Cost-Estimated"),
+        "session_spend": headers.get("X-Loopers-Session-Spend"),
+        "session_remaining": headers.get("X-Loopers-Session-Remaining"),
         "session_steps": headers.get("X-Loopers-Session-Steps"),
     }
     _set_last_headers(loopers_headers)
@@ -31,8 +33,8 @@ def _attach_loopers_attributes(res: Any):
     
     # Safely attach Loopers metrics to the returned resource/completion/stream object
     for name, header_key in [
-        ("loopers_cost", "cost"),
-        ("loopers_cost_estimated", "cost_estimated"),
+        ("loopers_cost", "request_cost"),
+        ("loopers_cost_estimated", "estimated_cost"),
         ("loopers_session_spend", "session_spend"),
         ("loopers_session_remaining", "session_remaining"),
     ]:
@@ -230,6 +232,30 @@ else:
                 "The 'openai' package is required to use LoopersAsyncOpenAI. "
                 "Install it via 'pip install openai'."
             )
+
+    class LoopersGroq(LoopersOpenAI):
+        pass
+
+    class LoopersAsyncGroq(LoopersAsyncOpenAI):
+        pass
+
+    class LoopersMistral(LoopersOpenAI):
+        pass
+
+    class LoopersAsyncMistral(LoopersAsyncOpenAI):
+        pass
+
+    class LoopersDeepSeek(LoopersOpenAI):
+        pass
+
+    class LoopersAsyncDeepSeek(LoopersAsyncOpenAI):
+        pass
+
+    class LoopersTogether(LoopersOpenAI):
+        pass
+
+    class LoopersAsyncTogether(LoopersAsyncOpenAI):
+        pass
 
 
 # Try importing anthropic
