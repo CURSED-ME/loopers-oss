@@ -33,17 +33,18 @@ We constantly ship updates to make Loopers the fastest, most secure AI firewall.
 
 1. **Zero Standing Privileges (ZSP) Auth**: Shifts identity from static API keys to ephemeral, cryptographically bound JWTs with DPoP (Demonstrating Proof-of-Possession) token binding. Statelessly verifies Agent Delegation JWT signatures in under 150 microseconds.
 2. **Agent-to-Agent (A2A) Governance**: Built-in Escalation Broker mediates Agent-to-Agent trust handoffs and enforces dynamic consent escalation, ensuring agents operate under least privilege.
-3. **Local Policy Engine (OPA/Rego)**: Write fine-grained, attribute-based access control (ABAC) policies using the Rego language. The embedded Open Policy Agent evaluates every request — both LLM calls and MCP tool calls — against your `.rego` files with hot-reload support. Block destructive tools, restrict models by team, enforce environment-level governance, all without restarting the proxy. See the **[Policy Engine Guide](./Documentation/docs/guides/policy-engine.md)**.
-4. **Agent Identity & Key Metadata**: Attach rich identity to every proxy key with `--agent-name`, `--owner`, `--allowed-tools`, `--allowed-providers`, and `--tags`. This metadata flows into policy evaluation, OpenTelemetry spans, and security events for full audit trails.
-5. **CrewAI & AutoGen Framework Adapters**: Native Python SDK adapters for CrewAI and Microsoft AutoGen. Drop in `get_loopers_crewai_llm()` or `get_loopers_autogen_config()` to route all agent LLM traffic through the Loopers proxy with zero config. See the **[Framework Adapters Guide](./Documentation/docs/guides/framework-adapters.md)**.
-6. **Per-Key Rate Limiting**: Sliding window rate limiter powered by an atomic Redis Lua script. Set `rate_limit.requests_per_minute` in your config to cap request velocity per key, independent of budget limits.
-7. **Model Context Protocol (MCP) Governance**: Loopers governs MCP traffic natively. Features include a transparent JSON-RPC 2.0 proxy, per-tool budget enforcement (e.g., $0.05 per Snowflake query), deterministic tool-call circuit breakers to stop infinite loops, and strict Blast Radius (lateral movement) prevention. Check out the **[MCP Setup Guide](./Documentation/docs/guides/mcp-setup.md)** to get started in 2 minutes.
-8. **Security Events & OpenTelemetry**: Emits OWASP Top 10 for LLMs security payloads for budget/loop blocks, and supports W3C OTLP tracing with a smart sampling processor designed for EU AI Act compliance.
-9. **Loop Detection Engine v1.1**: Deterministic and fuzzy circuit breakers for autonomous agents, featuring Bi-Gram Jaccard Similarity matching to catch polymorphic/mutating prompts, a Velocity Limiter, and a Stall Detector for TOCTOU-safe enforcement.
-10. **Generic OpenAI-Compatible Endpoints**: Bring your own provider! Route traffic to vLLM, local Llama.cpp, or custom proxies while retaining full budget enforcement.
-11. **Dynamic Pricing Fetcher**: Hands-free token accounting. Loopers automatically synchronizes real-time token prices from a remote JSON endpoint.
-12. **Enterprise-Grade Security**: Dedicated, isolated admin ports (`/metrics`), strict TLS enforcement, and secure Redis configurations for bare-metal deployments.
-13. **LangChain, LlamaIndex, CrewAI & AutoGen Adapters**: Drop-in Python SDK wrappers (`ChatLoopers`, `LoopersLLM`, `get_loopers_crewai_llm`, `get_loopers_autogen_config`) to effortlessly inject session IDs and track step counts in native agent frameworks.
+3. **Local Policy Engine (OPA/Rego) & Stateful Taint Tracking**: Write fine-grained, attribute-based access control (ABAC) policies using the Rego language with hot-reload support. Features **stateful session context** (`input.session.taint_flags` and `input.session.tools_called`), enabling cross-call data exfiltration rules (e.g. "block `outbound_http` if `secret_accessed` taint is set"). See the **[Policy Engine Guide](./Documentation/docs/guides/policy-engine.md)**.
+4. **Agent Self-Correction Error Formats**: When an OPA policy blocks an MCP tool call, Loopers returns a valid **MCP JSON-RPC 2.0 error object** at HTTP 200 (code `-32001`) with `X-Loopers-Policy-Block: true` header. Frameworks surface this to the LLM as a tool failure message, allowing agents to self-correct without crashing. Native Python and TypeScript SDK wrappers (`LoopersPolicyDenied`, `onPolicyBlock`) are included.
+5. **Agent Identity & Key Metadata**: Attach rich identity to every proxy key with `--agent-name`, `--owner`, `--allowed-tools`, `--allowed-providers`, and `--tags`. This metadata flows into policy evaluation, OpenTelemetry spans, and security events for full audit trails.
+6. **CrewAI & AutoGen Framework Adapters**: Native Python SDK adapters for CrewAI and Microsoft AutoGen. Drop in `get_loopers_crewai_llm()` or `get_loopers_autogen_config()` to route all agent LLM traffic through the Loopers proxy with zero config. See the **[Framework Adapters Guide](./Documentation/docs/guides/framework-adapters.md)**.
+7. **Per-Key Rate Limiting**: Sliding window rate limiter powered by an atomic Redis Lua script. Set `rate_limit.requests_per_minute` in your config to cap request velocity per key, independent of budget limits.
+8. **Model Context Protocol (MCP) Governance**: Loopers governs MCP traffic natively. Features include a transparent JSON-RPC 2.0 proxy, per-tool budget enforcement (e.g., $0.05 per Snowflake query), deterministic tool-call circuit breakers to stop infinite loops, and strict Blast Radius (lateral movement) prevention. Check out the **[MCP Setup Guide](./Documentation/docs/guides/mcp-setup.md)** to get started in 2 minutes.
+9. **Security Events & OpenTelemetry**: Emits OWASP Top 10 for LLMs security payloads for budget/loop blocks, and supports W3C OTLP tracing with a smart sampling processor designed for EU AI Act compliance.
+10. **Loop Detection Engine v1.1**: Deterministic and fuzzy circuit breakers for autonomous agents, featuring Bi-Gram Jaccard Similarity matching to catch polymorphic/mutating prompts, a Velocity Limiter, and a Stall Detector for TOCTOU-safe enforcement.
+11. **Generic OpenAI-Compatible Endpoints**: Bring your own provider! Route traffic to vLLM, local Llama.cpp, or custom proxies while retaining full budget enforcement.
+12. **Dynamic Pricing Fetcher**: Hands-free token accounting. Loopers automatically synchronizes real-time token prices from a remote JSON endpoint.
+13. **Enterprise-Grade Security**: Dedicated, isolated admin ports (`/metrics`), strict TLS enforcement, and secure Redis configurations for bare-metal deployments.
+14. **LangChain, LlamaIndex, CrewAI & AutoGen Adapters**: Drop-in Python SDK wrappers (`ChatLoopers`, `LoopersLLM`, `get_loopers_crewai_llm`, `get_loopers_autogen_config`) to effortlessly inject session IDs and track step counts in native agent frameworks.
 
 ---
 
@@ -293,6 +294,7 @@ The OSS version is the full circuit-breaker engine — everything you need to se
 | Per-Tool MCP Budgeting | Yes | Yes |
 | MCP Blast Radius Prevention | Yes | Yes |
 | Local Policy Engine (OPA/Rego) | Yes | Yes |
+| Stateful Taint Tracking & Self-Correction | Yes | Yes |
 | Tamper-proof audit log | No | Yes |
 | Slack / PagerDuty / webhook alerting | No | Yes |
 | Multi-project & org-level budget hierarchy | No | Yes |
