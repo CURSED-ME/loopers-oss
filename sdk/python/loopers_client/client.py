@@ -58,8 +58,133 @@ try:
 except ImportError:
     HAS_OPENAI = False
 
+
+import time
+import threading
+
+class ZSPSyncMixin:
+    def _init_zsp(self, loopers_url: str, loopers_key: str):
+        self._loopers_url = loopers_url
+        self._static_key = loopers_key
+        self._ephemeral_key = None
+        self._zsp_token = None
+        self._token_expires_at = 0
+        self._zsp_lock = threading.Lock()
+        self._is_cloud = loopers_key.startswith("lc_")
+
+    def _bootstrap_zsp(self):
+        with self._zsp_lock:
+            if time.time() < self._token_expires_at:
+                return
+
+            from cryptography.hazmat.primitives.asymmetric import ec
+            import base64
+            
+            priv = ec.generate_private_key(ec.SECP256R1())
+            pub_nums = priv.public_key().public_numbers()
+            self._dpop_jwk_public = {
+                "kty": "EC", "crv": "P-256",
+                "x": base64.urlsafe_b64encode(pub_nums.x.to_bytes(32, "big")).rstrip(b"=").decode(),
+                "y": base64.urlsafe_b64encode(pub_nums.y.to_bytes(32, "big")).rstrip(b"=").decode(),
+            }
+
+            resp = httpx.post(
+                f"{self._loopers_url.rstrip('/')}/v1/auth/token",
+                headers={"Authorization": f"Bearer {self._static_key}"},
+                json={"dpop_jwk": self._dpop_jwk_public},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            self._token_expires_at = time.time() + data["expires_in"] - 300
+            self._ephemeral_key = priv
+            self._zsp_token = data["access_token"]
+
+    def _inject_dpop_proof(self, request: httpx.Request):
+        if not self._is_cloud:
+            return
+
+        if time.time() >= self._token_expires_at:
+            self._bootstrap_zsp()
+            
+        request.headers["Authorization"] = f"Bearer {self._zsp_token}"
+        
+        import jwt as pyjwt
+        import uuid
+        proof = pyjwt.encode({
+            "jti": str(uuid.uuid4()),
+            "htm": request.method,
+            "htu": f"{request.url.scheme}://{request.url.host}{request.url.path}",
+            "iat": int(time.time()),
+        }, self._ephemeral_key, algorithm="ES256", headers={"typ": "dpop+jwt", "jwk": self._dpop_jwk_public})
+        
+        request.headers["DPoP"] = proof
+
+class ZSPAsyncMixin:
+    def _init_zsp(self, loopers_url: str, loopers_key: str):
+        self._loopers_url = loopers_url
+        self._static_key = loopers_key
+        self._ephemeral_key = None
+        self._zsp_token = None
+        self._token_expires_at = 0
+        self._zsp_lock = None
+        self._is_cloud = loopers_key.startswith("lc_")
+
+    async def _bootstrap_zsp(self):
+        import asyncio
+        if self._zsp_lock is None:
+            self._zsp_lock = asyncio.Lock()
+            
+        async with self._zsp_lock:
+            if time.time() < self._token_expires_at:
+                return
+
+            from cryptography.hazmat.primitives.asymmetric import ec
+            import base64
+            
+            priv = ec.generate_private_key(ec.SECP256R1())
+            pub_nums = priv.public_key().public_numbers()
+            self._dpop_jwk_public = {
+                "kty": "EC", "crv": "P-256",
+                "x": base64.urlsafe_b64encode(pub_nums.x.to_bytes(32, "big")).rstrip(b"=").decode(),
+                "y": base64.urlsafe_b64encode(pub_nums.y.to_bytes(32, "big")).rstrip(b"=").decode(),
+            }
+
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    f"{self._loopers_url.rstrip('/')}/v1/auth/token",
+                    headers={"Authorization": f"Bearer {self._static_key}"},
+                    json={"dpop_jwk": self._dpop_jwk_public},
+                    timeout=10,
+                )
+            resp.raise_for_status()
+            data = resp.json()
+            self._token_expires_at = time.time() + data["expires_in"] - 300
+            self._ephemeral_key = priv
+            self._zsp_token = data["access_token"]
+
+    async def _inject_dpop_proof(self, request: httpx.Request):
+        if not self._is_cloud:
+            return
+
+        if time.time() >= self._token_expires_at:
+            await self._bootstrap_zsp()
+            
+        request.headers["Authorization"] = f"Bearer {self._zsp_token}"
+        
+        import jwt as pyjwt
+        import uuid
+        proof = pyjwt.encode({
+            "jti": str(uuid.uuid4()),
+            "htm": request.method,
+            "htu": f"{request.url.scheme}://{request.url.host}{request.url.path}",
+            "iat": int(time.time()),
+        }, self._ephemeral_key, algorithm="ES256", headers={"typ": "dpop+jwt", "jwk": self._dpop_jwk_public})
+        
+        request.headers["DPoP"] = proof
+
 if HAS_OPENAI:
-    class LoopersOpenAI(openai.OpenAI):
+    class LoopersOpenAI(openai.OpenAI, ZSPSyncMixin):
         """
         A subclass of openai.OpenAI that automatically routes calls through
         the Loopers budget/rate-limit proxy and parses response metrics.
@@ -78,7 +203,11 @@ if HAS_OPENAI:
             **kwargs
         ):
             # Intercept event hooks to capture Loopers response headers
+            self._init_zsp(loopers_url, loopers_key)
             event_hooks = kwargs.pop("event_hooks", {})
+            if "request" not in event_hooks:
+                event_hooks["request"] = []
+            event_hooks["request"].append(self._inject_dpop_proof)
             if "response" not in event_hooks:
                 event_hooks["response"] = []
             event_hooks["response"].append(_response_hook)
@@ -119,7 +248,7 @@ if HAS_OPENAI:
             _attach_loopers_attributes(res)
             return res
 
-    class LoopersAsyncOpenAI(openai.AsyncOpenAI):
+    class LoopersAsyncOpenAI(openai.AsyncOpenAI, ZSPAsyncMixin):
         """
         A subclass of openai.AsyncOpenAI that automatically routes calls through
         the Loopers budget/rate-limit proxy and parses response metrics.
@@ -137,7 +266,11 @@ if HAS_OPENAI:
             max_servers: Optional[int] = None,
             **kwargs
         ):
+            self._init_zsp(loopers_url, loopers_key)
             event_hooks = kwargs.pop("event_hooks", {})
+            if "request" not in event_hooks:
+                event_hooks["request"] = []
+            event_hooks["request"].append(self._inject_dpop_proof)
             if "response" not in event_hooks:
                 event_hooks["response"] = []
             event_hooks["response"].append(_async_response_hook)
@@ -266,7 +399,7 @@ except ImportError:
     HAS_ANTHROPIC = False
 
 if HAS_ANTHROPIC:
-    class LoopersAnthropic(anthropic.Anthropic):
+    class LoopersAnthropic(anthropic.Anthropic, ZSPSyncMixin):
         """
         A subclass of anthropic.Anthropic that automatically routes calls through
         the Loopers budget/rate-limit proxy and parses response metrics.
@@ -284,7 +417,11 @@ if HAS_ANTHROPIC:
             max_servers: Optional[int] = None,
             **kwargs
         ):
+            self._init_zsp(loopers_url, loopers_key)
             event_hooks = kwargs.pop("event_hooks", {})
+            if "request" not in event_hooks:
+                event_hooks["request"] = []
+            event_hooks["request"].append(self._inject_dpop_proof)
             if "response" not in event_hooks:
                 event_hooks["response"] = []
             event_hooks["response"].append(_response_hook)
@@ -324,7 +461,7 @@ if HAS_ANTHROPIC:
             _attach_loopers_attributes(res)
             return res
 
-    class LoopersAsyncAnthropic(anthropic.AsyncAnthropic):
+    class LoopersAsyncAnthropic(anthropic.AsyncAnthropic, ZSPAsyncMixin):
         """
         A subclass of anthropic.AsyncAnthropic that automatically routes calls through
         the Loopers budget/rate-limit proxy and parses response metrics.
@@ -342,7 +479,11 @@ if HAS_ANTHROPIC:
             max_servers: Optional[int] = None,
             **kwargs
         ):
+            self._init_zsp(loopers_url, loopers_key)
             event_hooks = kwargs.pop("event_hooks", {})
+            if "request" not in event_hooks:
+                event_hooks["request"] = []
+            event_hooks["request"].append(self._inject_dpop_proof)
             if "response" not in event_hooks:
                 event_hooks["response"] = []
             event_hooks["response"].append(_async_response_hook)

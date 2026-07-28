@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import * as jose from 'jose';
 import Anthropic from '@anthropic-ai/sdk';
 import { LoopersPolicyDenied, parsePolicyDenial, formatAsToolOutput } from './policyError';
 
@@ -38,6 +39,7 @@ export interface LoopersClientOptions {
 }
 
 function createLoopersFetch(
+  loopersUrl: string,
   loopersKey: string,
   providerKey?: string,
   sessionId?: string,
@@ -49,6 +51,14 @@ function createLoopersFetch(
   customFetch?: typeof fetch,
   onPolicyBlock?: LoopersClientOptions['onPolicyBlock']
 ) {
+
+  let ephemeralKey: any;
+  let dpopJwkPublic: any;
+  let zspToken: string | null = null;
+  let tokenExpiresAt = 0;
+  let bootstrapPromise: Promise<void> | null = null;
+  const isCloud = loopersKey.startsWith('lc_');
+
   const originalFetch = customFetch || (typeof fetch !== 'undefined' ? fetch : undefined);
   if (!originalFetch) {
     throw new Error('A global fetch function is not available. Please pass a custom fetch implementation (e.g. node-fetch) or use Node.js 18+.');
@@ -59,7 +69,72 @@ function createLoopersFetch(
     const headers = new Headers(init?.headers || {});
 
     // Set Loopers headers
-    headers.set('Authorization', `Bearer ${loopersKey}`);
+    // ZSP Logic
+    if (isCloud) {
+      if (Date.now() >= tokenExpiresAt) {
+        if (!bootstrapPromise) {
+          bootstrapPromise = (async () => {
+            try {
+              const { publicKey, privateKey } = await jose.generateKeyPair('ES256', { extractable: true });
+              ephemeralKey = privateKey;
+              dpopJwkPublic = await jose.exportJWK(publicKey);
+              
+              const res = await originalFetch(`${loopersUrl.replace(/\/$/, '')}/v1/auth/token`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${loopersKey}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ dpop_jwk: dpopJwkPublic })
+              });
+              if (!res.ok) throw new Error('ZSP bootstrap failed: ' + res.statusText);
+              const data = await res.json();
+              zspToken = data.access_token;
+              tokenExpiresAt = Date.now() + (data.expires_in * 1000) - (300 * 1000);
+            } finally {
+              bootstrapPromise = null;
+            }
+          })();
+        }
+        await bootstrapPromise;
+      }
+      headers.set('Authorization', `Bearer ${zspToken}`);
+
+      const method = (init?.method || 'GET').toUpperCase();
+      let urlStr = '';
+      if (typeof input === 'string') {
+        urlStr = input;
+      } else if (input instanceof URL) {
+        urlStr = input.toString();
+      } else if (input && (input as any).url) {
+        urlStr = (input as any).url;
+      }
+      
+      const parsedUrl = new URL(urlStr);
+      const htu = `${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}`;
+      
+      // Fallback for crypto.randomUUID
+      let jti = '';
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        jti = crypto.randomUUID();
+      } else {
+        jti = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      }
+
+      const dpopProof = await new jose.SignJWT({
+        jti,
+        htm: method,
+        htu,
+      })
+        .setProtectedHeader({ typ: 'dpop+jwt', alg: 'ES256', jwk: dpopJwkPublic })
+        .setIssuedAt()
+        .sign(ephemeralKey);
+        
+      headers.set('DPoP', dpopProof);
+    } else {
+      headers.set('Authorization', `Bearer ${loopersKey}`);
+    }
+
     if (providerKey) {
       headers.set('X-Loopers-Provider-Key', providerKey);
     }
@@ -173,6 +248,7 @@ export class LoopersOpenAI extends OpenAI {
 
     const baseFetch = openaiOptions.fetch;
     const loopersFetch = createLoopersFetch(
+      loopersUrl,
       loopersKey,
       providerKey,
       sessionId,
@@ -240,6 +316,7 @@ export class LoopersAnthropic extends Anthropic {
 
     const baseFetch = anthropicOptions.fetch;
     const loopersFetch = createLoopersFetch(
+      loopersUrl,
       loopersKey,
       providerKey,
       sessionId,
