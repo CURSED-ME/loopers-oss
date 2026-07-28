@@ -10,11 +10,31 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/provider"
 )
 
-type GeminiProvider struct{}
+type GeminiProvider struct {
+	baseURL    string
+	httpClient *http.Client
+}
 
 // NewGeminiProvider creates a new instance of GeminiProvider.
 func NewGeminiProvider() *GeminiProvider {
-	return &GeminiProvider{}
+	return &GeminiProvider{
+		baseURL:    "https://generativelanguage.googleapis.com",
+		httpClient: http.DefaultClient,
+	}
+}
+
+// NewGeminiProviderWithOptions creates a new instance of GeminiProvider with custom base URL and HTTP client.
+func NewGeminiProviderWithOptions(baseURL string, httpClient *http.Client) *GeminiProvider {
+	if baseURL == "" {
+		baseURL = "https://generativelanguage.googleapis.com"
+	}
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+	return &GeminiProvider{
+		baseURL:    baseURL,
+		httpClient: httpClient,
+	}
 }
 
 // Ensure GeminiProvider implements provider.Provider.
@@ -25,6 +45,9 @@ func (g *GeminiProvider) Name() string {
 }
 
 func (g *GeminiProvider) BaseURL() string {
+	if g.baseURL != "" {
+		return g.baseURL
+	}
 	return "https://generativelanguage.googleapis.com"
 }
 
@@ -88,7 +111,7 @@ func (g *GeminiProvider) RewriteModel(req *http.Request, body []byte, fallbackMo
 
 func (g *GeminiProvider) CountInputTokens(ctx context.Context, model string, body []byte, providerKey string) (int, error) {
 	// 1. Try Gemini's countTokens API
-	tokens, err := callGeminiCountTokensAPI(ctx, model, body, providerKey)
+	tokens, err := g.callGeminiCountTokensAPI(ctx, model, body, providerKey)
 	if err == nil {
 		return tokens, nil
 	}
