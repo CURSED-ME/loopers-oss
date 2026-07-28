@@ -399,7 +399,7 @@ except ImportError:
     HAS_ANTHROPIC = False
 
 if HAS_ANTHROPIC:
-    class LoopersAnthropic(anthropic.Anthropic):
+    class LoopersAnthropic(anthropic.Anthropic, ZSPSyncMixin):
         """
         A subclass of anthropic.Anthropic that automatically routes calls through
         the Loopers budget/rate-limit proxy and parses response metrics.
@@ -461,7 +461,7 @@ if HAS_ANTHROPIC:
             _attach_loopers_attributes(res)
             return res
 
-    class LoopersAsyncAnthropic(anthropic.AsyncAnthropic):
+    class LoopersAsyncAnthropic(anthropic.AsyncAnthropic, ZSPAsyncMixin):
         """
         A subclass of anthropic.AsyncAnthropic that automatically routes calls through
         the Loopers budget/rate-limit proxy and parses response metrics.
