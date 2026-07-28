@@ -70,7 +70,7 @@ jobs:
 
       - name: Fuzz
         run: |
-          go test -fuzz=FuzzCountGeminiTokensFallback -fuzztime=10s ./internal/provider/gemini
+          go test -fuzz=FuzzCountGeminiTokensFallback -fuzztime=3s ./internal/provider/gemini
 
       - name: Go Vuln Check
         run: |

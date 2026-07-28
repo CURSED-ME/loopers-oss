@@ -6,21 +6,42 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkoukk/tiktoken-go"
 )
 
+var (
+	cl100kEncoding     *tiktoken.Tiktoken
+	cl100kEncodingOnce sync.Once
+	cl100kEncodingErr  error
+)
+
+func getCL100kEncoding() (*tiktoken.Tiktoken, error) {
+	cl100kEncodingOnce.Do(func() {
+		cl100kEncoding, cl100kEncodingErr = tiktoken.GetEncoding("cl100k_base")
+	})
+	return cl100kEncoding, cl100kEncodingErr
+}
+
 // callGeminiCountTokensAPI calls Gemini's countTokens API to get the exact prompt token count.
-func callGeminiCountTokensAPI(ctx context.Context, model string, body []byte, providerKey string) (int, error) {
+func (g *GeminiProvider) callGeminiCountTokensAPI(ctx context.Context, model string, body []byte, providerKey string) (int, error) {
 	if providerKey == "" {
 		return 0, fmt.Errorf("no provider key for countTokens API")
 	}
 	apiCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
+	baseURL := g.BaseURL()
+	client := g.httpClient
+	if client == nil {
+		client = http.DefaultClient
+	}
+
 	// countTokens endpoint matches the generateContent endpoint path format
-	reqURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:countTokens?key=%s", model, providerKey)
+	reqURL := fmt.Sprintf("%s/v1beta/models/%s:countTokens?key=%s", strings.TrimRight(baseURL, "/"), model, providerKey)
 
 	// Create payload containing the contents structure
 	var contentPayload struct {
@@ -48,7 +69,7 @@ func callGeminiCountTokensAPI(ctx context.Context, model string, body []byte, pr
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, err
 	}
@@ -81,7 +102,7 @@ func countGeminiTokensFallback(body []byte) (int, error) {
 		return 0, err
 	}
 
-	tke, err := tiktoken.GetEncoding("cl100k_base")
+	tke, err := getCL100kEncoding()
 	if err != nil {
 		return 0, err
 	}
