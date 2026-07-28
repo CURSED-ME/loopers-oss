@@ -6,6 +6,7 @@ except ImportError:
     HAS_CREWAI_DEPS = False
 
 from loopers_client.adapters.autogen import get_loopers_autogen_config
+from loopers_client.adapters.crewai import get_loopers_crewai_llm
 from loopers_client.policy_error import (
     LoopersPolicyDenied,
     parse_policy_denial,
