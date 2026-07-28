@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.4](https://github.com/CURSED-ME/loopers-oss/compare/sdk-python-v2.0.3...sdk-python-v2.0.4) (2026-07-28)
+
+
+### Bug Fixes
+
+* **sdk:** add missing mixin inheritance and export for client adapters ([be1c101](https://github.com/CURSED-ME/loopers-oss/commit/be1c1016011a732029a36cc124ab65b264050423))
+* **sdk:** add missing mixin inheritance and export for client adapters ([17afa19](https://github.com/CURSED-ME/loopers-oss/commit/17afa196f7f59e1d9dbd74bc6693ed88f21eb66d))
+
 ## [2.0.3](https://github.com/CURSED-ME/loopers-oss/compare/sdk-python-v2.0.2...sdk-python-v2.0.3) (2026-07-28)
 
 
