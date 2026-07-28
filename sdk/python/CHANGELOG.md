@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.3](https://github.com/CURSED-ME/loopers-oss/compare/sdk-python-v2.0.2...sdk-python-v2.0.3) (2026-07-28)
+
+
+### Dependencies
+
+* upgrade grpc to v1.82.1 and update client SDKs ([ec3d855](https://github.com/CURSED-ME/loopers-oss/commit/ec3d8554ef32768f90745adc6b985a8657fe861c))
+
 ## [2.0.2](https://github.com/CURSED-ME/loopers-oss/compare/sdk-python-v2.0.1...sdk-python-v2.0.2) (2026-07-24)
 
 
