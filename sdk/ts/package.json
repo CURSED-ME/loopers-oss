@@ -22,6 +22,9 @@
     "@anthropic-ai/sdk": "^0.30.0",
     "openai": "^4.0.0"
   },
+  "dependencies": {
+    "jose": "^5.2.0"
+  },
   "peerDependenciesMeta": {
     "openai": {
       "optional": true
