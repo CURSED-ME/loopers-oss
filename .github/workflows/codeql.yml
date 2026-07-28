@@ -29,15 +29,21 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+    - name: Setup Go
+      uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      with:
+        go-version: '1.26.x'
+        cache: true
+
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@7188fc363630916deb702c7fdcf4e481b751f97a # v4.37.1
+      uses: github/codeql-action/init@28deaeda66b76a05916b6923827895f2b14ab96a # v3.29.0
       with:
         languages: ${{ matrix.language }}
 
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@7188fc363630916deb702c7fdcf4e481b751f97a # v4.37.1
+    - name: Build
+      run: go build ./...
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@7188fc363630916deb702c7fdcf4e481b751f97a # v4.37.1
+      uses: github/codeql-action/analyze@28deaeda66b76a05916b6923827895f2b14ab96a # v3.29.0
       with:
         category: "/language:${{matrix.language}}"
