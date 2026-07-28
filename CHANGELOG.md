@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.4](https://github.com/CURSED-ME/loopers-oss/compare/v2.0.3...v2.0.4) (2026-07-28)
+
+
+### Bug Fixes
+
+* optimize token counting stability and improve test reliability ([df61cb3](https://github.com/CURSED-ME/loopers-oss/commit/df61cb342fcb232d7355b250dcba0d9ca77377ad))
+* optimize token counting stability and improve test reliability ([7d3de1c](https://github.com/CURSED-ME/loopers-oss/commit/7d3de1ce6a86b22341b2c733c6e40bfe48eeac95))
+
 ## [2.0.3](https://github.com/CURSED-ME/loopers-oss/compare/v2.0.2...v2.0.3) (2026-07-28)
 
 
