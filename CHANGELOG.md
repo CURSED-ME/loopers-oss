@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.0.4...v2.1.0) (2026-07-31)
+
+
+### Features
+
+* Add path-based authentication integration ([7da8b59](https://github.com/CURSED-ME/loopers-oss/commit/7da8b59c8a08c66c8a95163578d973856bf3b06e))
+
+
+### Bug Fixes
+
+* Escape &lt;KEY&gt; in MDX for Vercel build ([09d9007](https://github.com/CURSED-ME/loopers-oss/commit/09d900776d858215fcb32cf0ca0aec31904c9b65))
+
 ## [2.0.4](https://github.com/CURSED-ME/loopers-oss/compare/v2.0.3...v2.0.4) (2026-07-28)
 
 
