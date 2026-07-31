@@ -24,12 +24,12 @@ func TestPathAuthWrapper(t *testing.T) {
 	handler := PathAuthWrapper(mockNext)
 
 	tests := []struct {
-		name                 string
-		reqPath              string
-		reqAuth              string
-		expectedPath         string
-		expectedAuth         string
-		expectedProviderKey  string
+		name                string
+		reqPath             string
+		reqAuth             string
+		expectedPath        string
+		expectedAuth        string
+		expectedProviderKey string
 	}{
 		{
 			name:                "Valid lp- key in path",
