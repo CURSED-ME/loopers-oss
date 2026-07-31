@@ -407,6 +407,37 @@ func (s *Server) GetRouter() *gin.Engine {
 	return s.router
 }
 
+// PathAuthWrapper intercepts requests with proxy keys in the URL path,
+// extracts them, and modifies the request to use standard HTTP headers before routing.
+// This enables "Zero-SDK" integration for pre-built agents that don't support custom headers.
+func PathAuthWrapper(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pathParts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/"), "/", 3)
+		// Check if the first path segment is a Loopers key (lp-...) or a JWT (eyJ...)
+		if len(pathParts) >= 2 && (strings.HasPrefix(pathParts[0], "lp-") || strings.HasPrefix(pathParts[0], "eyJ")) {
+			proxyKey := pathParts[0]
+
+			authHeader := r.Header.Get("Authorization")
+			if authHeader != "" {
+				// Move real provider key to X-Loopers-Provider-Key
+				r.Header.Set("X-Loopers-Provider-Key", strings.TrimPrefix(authHeader, "Bearer "))
+			}
+
+			// Set the extracted Loopers key as the new Authorization header
+			r.Header.Set("Authorization", "Bearer "+proxyKey)
+
+			// Rewrite URL path to strip the proxy key
+			r.URL.Path = "/" + strings.Join(pathParts[1:], "/")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// GetHandler returns the main HTTP handler wrapped with necessary pre-routing middlewares.
+func (s *Server) GetHandler() http.Handler {
+	return PathAuthWrapper(s.router)
+}
+
 // GetAdminRouter retrieves the Gin engine for the admin port.
 func (s *Server) GetAdminRouter() *gin.Engine {
 	adminRouter := gin.New()

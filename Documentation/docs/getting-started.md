@@ -87,6 +87,15 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
   -d '{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hello Loopers"}]}'
 ```
 
+*Alternatively, for pre-built agents (like OpenClaw or AutoGPT) that don't support custom headers, you can encode the Loopers proxy key in the URL path and pass your real upstream provider key as the standard bearer token:*
+
+```bash
+curl -X POST http://localhost:8080/RAW_LP_KEY/openai/v1/chat/completions \
+  -H "Authorization: Bearer YOUR_REAL_OPENAI_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hello Loopers"}]}'
+```
+
 ## Method 3: From Source Code
 
 If you prefer to compile the code yourself:

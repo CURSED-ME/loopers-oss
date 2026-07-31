@@ -23,7 +23,7 @@
 > Want to help make Loopers better? We love community contributions! Check out our [Contributing Guide](./CONTRIBUTING.md) to see how you can get involved.
 
 
-Loopers is a baremetal, zero-delay firewall for the agentic era. It intercepts requests across **500+ AI models natively** (across 14 providers like OpenAI, Anthropic, Gemini, Groq, Ollama, vLLM, and more), plus **any OpenAI-compatible endpoint**, to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
+Loopers is a baremetal, zero-delay firewall for the agentic era. It intercepts requests across **500+ AI models natively** (across 14 providers like OpenAI, Anthropic, Gemini, Groq, Ollama, vLLM, and more), plus **any OpenAI-compatible endpoint** and **Model Context Protocol (MCP)** servers, to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
 
 ---
 
@@ -31,20 +31,21 @@ Loopers is a baremetal, zero-delay firewall for the agentic era. It intercepts r
 
 We constantly ship updates to make Loopers the fastest, most secure AI firewall. For full configuration details, visit the **[Loopers Documentation](https://docs.tryloopers.com)**.
 
-1. **Zero Standing Privileges (ZSP) Auth**: Shifts identity from static API keys to ephemeral, cryptographically bound JWTs with DPoP (Demonstrating Proof-of-Possession) token binding. Statelessly verifies Agent Delegation JWT signatures in under 150 microseconds.
-2. **Agent-to-Agent (A2A) Governance**: Built-in Escalation Broker mediates Agent-to-Agent trust handoffs and enforces dynamic consent escalation, ensuring agents operate under least privilege.
-3. **Local Policy Engine (OPA/Rego) & Stateful Taint Tracking**: Write fine-grained, attribute-based access control (ABAC) policies using the Rego language with hot-reload support. Features **stateful session context** (`input.session.taint_flags` and `input.session.tools_called`), enabling cross-call data exfiltration rules (e.g. "block `outbound_http` if `secret_accessed` taint is set"). See the **[Policy Engine Guide](./Documentation/docs/guides/policy-engine.md)**.
-4. **Agent Self-Correction Error Formats**: When an OPA policy blocks an MCP tool call, Loopers returns a valid **MCP JSON-RPC 2.0 error object** at HTTP 200 (code `-32001`) with `X-Loopers-Policy-Block: true` header. Frameworks surface this to the LLM as a tool failure message, allowing agents to self-correct without crashing. Native Python and TypeScript SDK wrappers (`LoopersPolicyDenied`, `onPolicyBlock`) are included.
-5. **Agent Identity & Key Metadata**: Attach rich identity to every proxy key with `--agent-name`, `--owner`, `--allowed-tools`, `--allowed-providers`, and `--tags`. This metadata flows into policy evaluation, OpenTelemetry spans, and security events for full audit trails.
-6. **CrewAI & AutoGen Framework Adapters**: Native Python SDK adapters for CrewAI and Microsoft AutoGen. Drop in `get_loopers_crewai_llm()` or `get_loopers_autogen_config()` to route all agent LLM traffic through the Loopers proxy with zero config. See the **[Framework Adapters Guide](./Documentation/docs/guides/framework-adapters.md)**.
-7. **Per-Key Rate Limiting**: Sliding window rate limiter powered by an atomic Redis Lua script. Set `rate_limit.requests_per_minute` in your config to cap request velocity per key, independent of budget limits.
-8. **Model Context Protocol (MCP) Governance**: Loopers governs MCP traffic natively. Features include a transparent JSON-RPC 2.0 proxy, per-tool budget enforcement (e.g., $0.05 per Snowflake query), deterministic tool-call circuit breakers to stop infinite loops, and strict Blast Radius (lateral movement) prevention. Check out the **[MCP Setup Guide](./Documentation/docs/guides/mcp-setup.md)** to get started in 2 minutes.
-9. **Security Events & OpenTelemetry**: Emits OWASP Top 10 for LLMs security payloads for budget/loop blocks, and supports W3C OTLP tracing with a smart sampling processor designed for EU AI Act compliance.
-10. **Loop Detection Engine v1.1**: Deterministic and fuzzy circuit breakers for autonomous agents, featuring Bi-Gram Jaccard Similarity matching to catch polymorphic/mutating prompts, a Velocity Limiter, and a Stall Detector for TOCTOU-safe enforcement.
-11. **Generic OpenAI-Compatible Endpoints**: Bring your own provider! Route traffic to vLLM, local Llama.cpp, or custom proxies while retaining full budget enforcement.
-12. **Dynamic Pricing Fetcher**: Hands-free token accounting. Loopers automatically synchronizes real-time token prices from a remote JSON endpoint.
-13. **Enterprise-Grade Security**: Dedicated, isolated admin ports (`/metrics`), strict TLS enforcement, and secure Redis configurations for bare-metal deployments.
-14. **LangChain, LlamaIndex, CrewAI & AutoGen Adapters**: Drop-in Python SDK wrappers (`ChatLoopers`, `LoopersLLM`, `get_loopers_crewai_llm`, `get_loopers_autogen_config`) to effortlessly inject session IDs and track step counts in native agent frameworks.
+1. **Zero-Code Path-Based Auth Integration**: Use Loopers with pre-built agents (like **OpenClaw**, **AutoGPT**, or **Hermes**) that do not support custom HTTP headers. Simply include your Loopers proxy key in the base URL (`OPENAI_BASE_URL=http://localhost:8080/lp-xxx/openai/v1`), and pass your real upstream provider key as the standard Bearer API key. Loopers transparently extracts the proxy key, remaps headers, and rewrites the path on the fly.
+2. **Zero Standing Privileges (ZSP) Auth**: Shifts identity from static API keys to ephemeral, cryptographically bound JWTs with DPoP (Demonstrating Proof-of-Possession, RFC 9449) token binding. Statistically verifies Agent Delegation JWT signatures in under 150 microseconds.
+3. **Agent-to-Agent (A2A) Governance**: Built-in Escalation Broker mediates Agent-to-Agent trust handoffs and enforces dynamic consent escalation, ensuring sub-agents operate under strictly bounded budget and capability scopes.
+4. **Local Policy Engine (OPA/Rego) & Stateful Taint Tracking**: Write fine-grained, attribute-based access control (ABAC) policies using the Rego language with hot-reload support. Features **stateful session context** (`input.session.taint_flags` and `input.session.tools_called`), enabling cross-call data exfiltration rules (e.g. "block `outbound_http` if `secret_accessed` taint is set"). See the **[Policy Engine Guide](./Documentation/docs/guides/policy-engine.md)**.
+5. **Agent Self-Correction Error Formats**: When an OPA policy blocks an MCP tool call, Loopers returns a valid **MCP JSON-RPC 2.0 error object** at HTTP 200 (code `-32001`) with `X-Loopers-Policy-Block: true` header. Frameworks surface this to the LLM as a tool failure message, allowing agents to self-correct without crashing. Native Python and TypeScript SDK wrappers (`LoopersPolicyDenied`, `onPolicyBlock`) are included.
+6. **Agent Identity & Key Metadata**: Attach rich identity to every proxy key with `--agent-name`, `--owner`, `--allowed-tools`, `--allowed-providers`, and `--tags`. This metadata flows into policy evaluation, OpenTelemetry spans, and security events for full audit trails.
+7. **CrewAI & AutoGen Framework Adapters**: Native Python SDK adapters for CrewAI and Microsoft AutoGen. Drop in `get_loopers_crewai_llm()` or `get_loopers_autogen_config()` to route all agent LLM traffic through the Loopers proxy with zero config. See the **[Framework Adapters Guide](./Documentation/docs/guides/framework-adapters.md)**.
+8. **Per-Key Rate Limiting**: Sliding window rate limiter powered by an atomic Redis Lua script. Set `rate_limit.requests_per_minute` in your config to cap request velocity per key, independent of budget limits.
+9. **Model Context Protocol (MCP) Governance**: Loopers governs MCP traffic natively. Features include a transparent JSON-RPC 2.0 proxy, per-tool budget enforcement (e.g., $0.05 per Snowflake query), deterministic tool-call circuit breakers to stop infinite loops, and strict Blast Radius (lateral movement) prevention. Check out the **[MCP Setup Guide](./Documentation/docs/guides/mcp-setup.md)** to get started in 2 minutes.
+10. **Security Events & OpenTelemetry**: Emits OWASP Top 10 for LLMs security payloads for budget/loop blocks, and supports W3C OTLP tracing with a smart sampling processor designed for EU AI Act compliance.
+11. **Loop Detection Engine v1.1**: Deterministic and fuzzy circuit breakers for autonomous agents, featuring Bi-Gram Jaccard Similarity matching to catch polymorphic/mutating prompts, a Velocity Limiter, and a Stall Detector for TOCTOU-safe enforcement.
+12. **Generic OpenAI-Compatible Endpoints**: Bring your own provider! Route traffic to vLLM, local Llama.cpp, or custom proxies while retaining full budget enforcement.
+13. **Dynamic Pricing Fetcher**: Hands-free token accounting. Loopers automatically synchronizes real-time token prices from a remote JSON endpoint.
+14. **Enterprise-Grade Security**: Dedicated, isolated admin ports (`/metrics`), strict TLS enforcement, and secure Redis configurations for bare-metal deployments.
+15. **LangChain, LlamaIndex, CrewAI & AutoGen Adapters**: Drop-in Python SDK wrappers (`ChatLoopers`, `LoopersLLM`, `get_loopers_crewai_llm`, `get_loopers_autogen_config`) to effortlessly inject session IDs and track step counts in native agent frameworks.
 
 ---
 
@@ -72,13 +73,15 @@ Loopers is engineered specifically as a high-performance infrastructure-level fi
 | **Agent Loop Circuit Breaking** | **Yes** | No | Yes | No |
 | **MCP Tool-Call Enforcement** | **Yes (Cost-based)** | Policy-based only | No | No |
 | **Agent Blast Radius Limits** | **Yes** | No | No | No |
+| **Zero-Code Path-Based Auth** | **Yes (`/lp-xxx/`)** | No | No | No |
+| **Zero Standing Privileges (ZSP)** | **Yes (Sub-150µs DPoP)** | No | No | No |
 | **Fail-Closed Guarantee** | **Yes** | Varies | N/A | No |
 
 ---
 
-## Performance Benchmarks (Episode 1)
+## Performance Benchmarks
 
-Loopers is engineered to handle massive concurrent traffic spikes without dropping the ball on budget enforcement. In our latest LLM Firewall benchmarks against Python/FastAPI alternatives like LiteLLM, Loopers demonstrated:
+Loopers is engineered to handle massive concurrent traffic spikes without dropping the ball on budget enforcement. In our LLM Firewall benchmarks against Python/FastAPI alternatives like LiteLLM, Loopers demonstrated:
 
 | Metric | Loopers (Go) | LiteLLM | Advantage |
 | :--- | :--- | :--- | :--- |
@@ -87,7 +90,7 @@ Loopers is engineered to handle massive concurrent traffic spikes without droppi
 | **Proxy Overhead** (P99 Latency) | **240.98 ms** | 46,812.60 ms | *190x Lower Latency* |
 | **Resource Footprint** (Idle RAM) | **41.58 MB** | 957.83 MB | *23x Lighter* |
 
-Read the full deep-dive with raw data and methodology in our [Final Benchmark Results](./final_results.md).
+Read the full deep-dive with raw data and methodology in our [Final Benchmark Results](./docs/reference/loopers_master_strategy_v2.md).
 
 ---
 
@@ -105,7 +108,11 @@ Read the full deep-dive with raw data and methodology in our [Final Benchmark Re
 | **Cohere** | `command-r`, etc. | Supported | Supported | Supported | Supported (Model Tokenizer) |
 | **DeepSeek** | `deepseek-chat`, etc. | Supported | Supported | Supported | Supported (tiktoken) |
 | **Together** | Llama 3 on Together, etc. | Supported | Supported | Supported | Supported (tiktoken) |
-| **Generic (BYO)** | Any OpenAI-compatible model (LM Studio, LocalAI, OpenRouter, etc.) | Supported | Supported | Supported | Supported (tiktoken) |
+| **Ollama** | Local Ollama models | Supported | Supported | Supported | Supported (Native) |
+| **vLLM** | Local/Cloud vLLM instances | Supported | Supported | Supported | Supported (tiktoken) |
+| **Fireworks** | Fireworks hosted models | Supported | Supported | Supported | Supported (tiktoken) |
+| **xAI Grok** | `grok-2`, etc. | Supported | Supported | Supported | Supported (tiktoken) |
+| **Generic (BYO)** | Any OpenAI-compatible model | Supported | Supported | Supported | Supported (tiktoken) |
 | **MCP Servers** | Any JSON-RPC 2.0 MCP server | N/A | N/A | Supported (Per-tool Cost) | N/A |
 
 ---
@@ -120,7 +127,7 @@ cd loopers-oss
 docker-compose -f docker-compose.demo.yml up
 ```
 
-Check the `bootstrap` container logs for the ready curl commands. The demo uses a mock OpenAI server so you won't spend any real credits.
+Check the `bootstrap` container logs for ready cURL commands. The demo uses a mock OpenAI server so you won't spend any real credits.
 
 ---
 
@@ -149,9 +156,14 @@ docker-compose up -d
 ```
 
 - [ ] **Step 3: Create a Key and Configure a Budget**
-Generate an API proxy key for OpenAI:
+Generate an API proxy key with rich identity metadata:
 ```bash
-docker-compose exec loopers /app/loopers keys create --name my-app-key --provider openai
+docker-compose exec loopers /app/loopers keys create --name my-app-key --provider openai \
+  --agent-name coding-bot \
+  --owner secops \
+  --allowed-tools "read_file,search_codebase" \
+  --allowed-providers "openai,anthropic" \
+  --tags "production,finance"
 ```
 *Note the generated raw key (`lp-xxx`) and its hash.*
 
@@ -168,7 +180,7 @@ docker-compose exec loopers /app/loopers budget set <KEY_HASH> \
 All five windows (`--minute`, `--hourly`, `--daily`, `--weekly`, `--monthly`) are optional and can be combined freely. The first limit hit wins and blocks the request.
 
 - [ ] **Step 4: Route Your Requests**
-Make API calls through the Loopers proxy using one of our official SDKs or raw cURL:
+Make API calls through the Loopers proxy using zero-code path auth, official SDKs, or raw cURL:
 
 ```bash
 curl -X POST http://localhost:8080/openai/v1/chat/completions \
@@ -183,23 +195,23 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 
 ---
 
-## CLI Reference
+## Zero-Code Integration (For Pre-Built Agents)
 
-| Command | Description |
-|---|---|
-| `loopers init` | Interactive wizard — generates `loopers.yaml` and `docker-compose.yml` |
-| `loopers serve` | Start the proxy server |
-| `loopers keys create --name <n> --provider <p>` | Create a new proxy key (providers: `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`, `ollama`, `fireworks`, `xai`, `vllm`). Supports optional identity flags: `--agent-name`, `--owner`, `--allowed-tools`, `--allowed-providers`, `--tags` |
-| `loopers keys list` | List all proxy keys with metadata |
-| `loopers keys revoke <hash>` | Revoke a key by hash |
-| `loopers budget set <hash> [flags]` | Set budget limits (`--minute`, `--hourly`, `--daily`, `--weekly`, `--monthly`) |
-| `loopers budget status <hash>` | View current spend vs. limits for a key |
+If you are using a pre-built agent framework (like **OpenClaw**, **AutoGPT**, or **Hermes**) that does not allow you to inject custom HTTP headers, you can use our path-based auth feature.
+Configure your agent's API settings to include the Loopers proxy key in the base URL, and provide your real upstream provider key as the standard API key:
+
+```env
+OPENAI_BASE_URL=http://localhost:8080/lp-xxx/openai/v1
+OPENAI_API_KEY=sk-proj-YOUR_REAL_OPENAI_KEY
+```
+
+Loopers will automatically intercept the URL, extract your `lp-xxx` proxy key, remap the upstream key to internal headers, and securely route the request.
 
 ---
 
-## Zero-SDK Integration
+## Generic SDK Integration (Header Injection)
 
-If you cannot use our SDK wrappers, you can use any standard OpenAI-compatible client by configuring it to point to Loopers and injecting the required HTTP headers using the `default_headers` parameter available in most SDKs.
+If you are building a custom app using standard SDKs but cannot use our native wrappers, you can point to the standard Loopers endpoint and inject the required headers using `default_headers`.
 
 ```python
 import os
@@ -251,7 +263,10 @@ const client = new LoopersOpenAI({
   providerKey: 'sk-proj-...',
   sessionId: 'agent-run-1',
   sessionBudget: 5.00,
-  maxSteps: 20
+  maxSteps: 20,
+  onPolicyBlock: (error) => {
+    console.warn(`Policy Blocked: ${error.policyName} - ${error.reason}`);
+  }
 });
 ```
 
@@ -259,9 +274,23 @@ For full details, see the [Python SDK documentation](./sdk/python/README.md) and
 
 ---
 
+## CLI Reference
+
+| Command | Description |
+|---|---|
+| `loopers init` | Interactive wizard — generates `loopers.yaml` and `docker-compose.yml` |
+| `loopers serve` | Start the proxy server |
+| `loopers keys create --name <n> --provider <p>` | Create a new proxy key (providers: `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`, `ollama`, `fireworks`, `xai`, `vllm`). Supports identity flags: `--agent-name`, `--owner`, `--allowed-tools`, `--allowed-providers`, `--tags` |
+| `loopers keys list` | List all proxy keys with metadata |
+| `loopers keys revoke <hash>` | Revoke a key by hash |
+| `loopers budget set <hash> [flags]` | Set budget limits (`--minute`, `--hourly`, `--daily`, `--weekly`, `--monthly`) |
+| `loopers budget status <hash>` | View current spend vs. limits for a key |
+
+---
+
 ## Architecture
 
-Loopers acts as a transparent reverse proxy between your application clients and the upstream LLM providers, utilizing Redis for atomic budget reservation and transaction management.
+Loopers acts as a transparent reverse proxy between your application clients and upstream LLM providers / MCP tools, utilizing Redis for atomic budget reservation and transaction management.
 
 For a detailed system overview and sequence diagram, please see our [Architecture Documentation](./docs/architecture.md).
 
@@ -285,6 +314,9 @@ The OSS version is the full circuit-breaker engine — everything you need to se
 | Mid-stream SSE cutoff | Yes | Yes |
 | Fail-closed Redis guarantee | Yes | Yes |
 | Zero-storage pass-through key model | Yes | Yes |
+| Zero-Code Path-Based Auth (`/lp-xxx/`) | Yes | Yes |
+| Zero Standing Privileges (ZSP) Auth + DPoP | Yes | Yes |
+| Agent-to-Agent (A2A) Governance | Yes | Yes |
 | Prometheus metrics + Grafana dashboard | Yes | Yes |
 | Helm chart for Kubernetes | Yes | — |
 | Web dashboard & spend analytics | No | Yes |
@@ -302,8 +334,6 @@ The OSS version is the full circuit-breaker engine — everything you need to se
 | SOC 2 compliance export | No | Yes (Business+) |
 | Managed infrastructure (no Redis to run) | No | Yes |
 | Support | Community | Email / Priority / Dedicated |
-
-> **Self-hosting Loopers?** You own your data, your infra, and your keys. If you want the managed experience with zero ops overhead, [start free at tryloopers.com](https://tryloopers.com).
 
 ---
 
