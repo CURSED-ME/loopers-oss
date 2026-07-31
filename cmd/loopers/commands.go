@@ -165,7 +165,7 @@ var serveCmd = &cobra.Command{
 
 		srv := &http.Server{
 			Addr:              ":" + port,
-			Handler:           s.GetRouter(),
+			Handler:           s.GetHandler(),
 			ReadHeaderTimeout: time.Duration(readHeaderTimeoutSec) * time.Second,
 			ReadTimeout:       time.Duration(readTimeoutSec) * time.Second,
 			WriteTimeout:      time.Duration(writeTimeoutSec) * time.Second,

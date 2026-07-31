@@ -13,8 +13,8 @@ Loopers uses headers to get settings from your application and return informatio
 
 | Header | Required | Description |
 |---|---|---|
-| Authorization: Bearer LP_KEY | Yes | Your Loopers key starting with lp |
-| X-Loopers-Provider-Key | Yes | Your real AI provider API key |
+| Authorization: Bearer <KEY> | Yes | Your Loopers proxy key, OR your real upstream provider key if using Zero-Code Path Integration. |
+| X-Loopers-Provider-Key | Yes* | Your real AI provider API key (*Not required if using Zero-Code Path Integration) |
 | X-Loopers-Session-ID | No | Unique name for this session (for loop detection) |
 | X-Loopers-Session-Budget | No | Maximum spending limit in USD for this session |
 | X-Loopers-Session-Max-Steps | No | Maximum AI calls allowed for this session |

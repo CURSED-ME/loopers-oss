@@ -197,9 +197,23 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 
 ---
 
-## Zero-SDK Integration
+## Zero-Code Integration (For Pre-Built Agents)
 
-If you cannot use our SDK wrappers, you can use any standard OpenAI-compatible client by configuring it to point to Loopers and injecting the required HTTP headers using the `default_headers` parameter available in most SDKs.
+If you are using a pre-built agent framework (like **OpenClaw**, **AutoGPT**, or **Hermes**) that does not allow you to inject custom HTTP headers, you can use our path-based auth feature.
+Configure your agent's API settings to include the Loopers proxy key in the base URL, and provide your real upstream provider key as the standard API key:
+
+```env
+OPENAI_BASE_URL=http://localhost:8080/lp-xxx/openai/v1
+OPENAI_API_KEY=sk-proj-YOUR_REAL_OPENAI_KEY
+```
+
+Loopers will automatically intercept the URL, extract your `lp-xxx` proxy key, remap the upstream key to the internal headers, and securely route the request.
+
+---
+
+## Generic SDK Integration (Header Injection)
+
+If you are building a custom app using standard SDKs but cannot use our native wrappers, you can point to the standard Loopers endpoint and inject the required headers using `default_headers`.
 
 ```python
 import os

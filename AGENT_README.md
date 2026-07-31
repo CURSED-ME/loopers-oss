@@ -61,3 +61,9 @@ client = LoopersOpenAI(
     max_steps=20
 )
 ```
+
+## 7. Zero-Code Integration (Pre-Built Agents)
+For pre-built agents like OpenClaw or Hermes that don't support custom headers, use path-based auth:
+1. Encode Loopers Proxy Key in URL: `OPENAI_BASE_URL=http://localhost:8080/lp-xxx/openai/v1`
+2. Pass real provider key as the standard Bearer token.
+The `PathAuthWrapper` in `internal/server/server.go` securely maps this to internal headers, adhering to the Zero-Storage Pass-Through constraint.
