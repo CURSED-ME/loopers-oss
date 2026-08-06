@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -34,6 +35,10 @@ var (
 	dailyLimit          string
 	weeklyLimit         string
 	monthlyLimit        string
+	
+	execProxyURL        string
+	execProvider        string
+	execKey             string
 )
 
 func getRedisClient() (*budget.Client, error) {
@@ -788,10 +793,75 @@ networks:
 	},
 }
 
+var execCmd = &cobra.Command{
+	Use:   "exec --key <lp-xxx> --provider <name> -- <command...>",
+	Short: "Execute a command with Loopers proxy environment variables injected",
+	Args:  cobra.MinimumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		if execKey == "" || execProvider == "" {
+			logging.Logger.Fatal().Msg("--key and --provider are required")
+		}
+
+		proxyURL := strings.TrimSuffix(execProxyURL, "/")
+		baseURL := fmt.Sprintf("%s/%s/%s/v1", proxyURL, execKey, execProvider)
+
+		var envBaseURL string
+		var envAPIKey string
+
+		switch execProvider {
+		case "anthropic":
+			envBaseURL = "ANTHROPIC_BASE_URL"
+			envAPIKey = "ANTHROPIC_API_KEY"
+		case "gemini":
+			envBaseURL = "GEMINI_BASE_URL"
+			envAPIKey = "GEMINI_API_KEY"
+		default:
+			// openai, groq, etc all use OPENAI_ compatible SDKs mostly
+			envBaseURL = "OPENAI_BASE_URL"
+			envAPIKey = "OPENAI_API_KEY"
+		}
+
+		// Prepare command
+		c := exec.Command(args[0], args[1:]...)
+		c.Stdin = os.Stdin
+		c.Stdout = os.Stdout
+		c.Stderr = os.Stderr
+
+		// Copy existing env and append
+		c.Env = os.Environ()
+		c.Env = append(c.Env, fmt.Sprintf("%s=%s", envBaseURL, baseURL))
+
+		// Warn if real API key is missing
+		foundRealKey := false
+		for _, e := range c.Env {
+			if strings.HasPrefix(e, envAPIKey+"=") {
+				foundRealKey = true
+				break
+			}
+		}
+		if !foundRealKey {
+			logging.Logger.Warn().Msgf("Warning: %s is not set in your environment. The underlying agent command might fail if it requires an upstream key.", envAPIKey)
+		}
+
+		if err := c.Run(); err != nil {
+			if exitError, ok := err.(*exec.ExitError); ok {
+				os.Exit(exitError.ExitCode())
+			}
+			logging.Logger.Fatal().Err(err).Msg("failed to execute command")
+		}
+	},
+}
+
 func init() {
 	// Root flags
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(initCmd)
+
+	// Exec command
+	execCmd.Flags().StringVar(&execKey, "key", "", "Loopers proxy key (lp-xxx) (required)")
+	execCmd.Flags().StringVar(&execProvider, "provider", "", "Provider (openai|anthropic|gemini|...) (required)")
+	execCmd.Flags().StringVar(&execProxyURL, "proxy-url", "http://localhost:8080", "Loopers proxy base URL")
+	rootCmd.AddCommand(execCmd)
 
 	// Keys commands
 	keysCreateCmd.Flags().StringVar(&keyName, "name", "", "Name of the proxy key (required)")

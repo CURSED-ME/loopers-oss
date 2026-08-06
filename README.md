@@ -195,6 +195,7 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 
 ---
 
+
 ## Zero-Code Integration (For Pre-Built Agents)
 
 If you are using a pre-built agent framework (like **OpenClaw**, **AutoGPT**, or **Hermes**) that does not allow you to inject custom HTTP headers, you can use our path-based auth feature.
@@ -280,11 +281,27 @@ For full details, see the [Python SDK documentation](./sdk/python/README.md) and
 |---|---|
 | `loopers init` | Interactive wizard — generates `loopers.yaml` and `docker-compose.yml` |
 | `loopers serve` | Start the proxy server |
+| `loopers exec` | Execute an agent CLI tool with dynamically injected base URLs and API keys |
 | `loopers keys create --name <n> --provider <p>` | Create a new proxy key (providers: `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`, `ollama`, `fireworks`, `xai`, `vllm`). Supports identity flags: `--agent-name`, `--owner`, `--allowed-tools`, `--allowed-providers`, `--tags` |
 | `loopers keys list` | List all proxy keys with metadata |
 | `loopers keys revoke <hash>` | Revoke a key by hash |
 | `loopers budget set <hash> [flags]` | Set budget limits (`--minute`, `--hourly`, `--daily`, `--weekly`, `--monthly`) |
 | `loopers budget status <hash>` | View current spend vs. limits for a key |
+
+---
+
+## Agent CLI Integrations (Claude Code, OpenCode, Codex)
+
+If you use terminal-based autonomous agents, the most seamless way to secure them with Loopers is using the `loopers exec` wrapper command. This dynamically injects the correct Base URL configuration into the agent process without modifying your global shell settings.
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-YOUR_REAL_KEY"
+
+# Run Claude Code securely through the Loopers proxy
+loopers exec --key lp-xxx --provider anthropic -- claude
+```
+
+For full details on configuring specific CLI agents, see the [Agent CLI Integrations Guide](./Documentation/docs/guides/agent-cli-integrations.md).
 
 ---
 
