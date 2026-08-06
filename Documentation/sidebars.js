@@ -47,6 +47,7 @@ const sidebars = {
         'guides/policy-engine',
         'guides/framework-adapters',
         'guides/mcp-setup',
+        'guides/agent-cli-integrations',
         'guides/ci-cd-integration',
         'guides/kubernetes-helm',
         'guides/monitoring-grafana',

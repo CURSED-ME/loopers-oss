@@ -34,6 +34,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/provider/mistral"
 	"github.com/CURSED-ME/loopers-oss/internal/provider/ollama"
 	"github.com/CURSED-ME/loopers-oss/internal/provider/openai"
+	"github.com/CURSED-ME/loopers-oss/internal/provider/openrouter"
 	"github.com/CURSED-ME/loopers-oss/internal/provider/together"
 	"github.com/CURSED-ME/loopers-oss/internal/provider/vllm"
 	"github.com/CURSED-ME/loopers-oss/internal/provider/xai"
@@ -113,6 +114,7 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 	mustRegister(fireworks.NewFireworksProvider())
 	mustRegister(xai.NewXAIProvider())
 	mustRegister(vllm.NewVLLMProvider())
+	mustRegister(openrouter.NewOpenRouterProvider())
 
 	type GenericProviderConfig struct {
 		Name    string `mapstructure:"name"`
