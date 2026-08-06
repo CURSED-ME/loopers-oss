@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.2.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.1.0...v2.2.0) (2026-08-06)
+
+
+### Features
+
+* **cli:** add loopers exec wrapper for seamless agent integration ([828a1a8](https://github.com/CURSED-ME/loopers-oss/commit/828a1a8061507787118a9518c4835093d1086f80))
+* **provider:** add native OpenRouter provider support to server and exec CLI wrapper ([657dad1](https://github.com/CURSED-ME/loopers-oss/commit/657dad1f089f5796585f7feb1df49777aa2dae75))
+
 ## [2.1.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.0.4...v2.1.0) (2026-07-31)
 
 
