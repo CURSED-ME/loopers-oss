@@ -14,6 +14,8 @@ bin/
 .agents/
 loopers.yaml
 docker-compose.yml
+dump.rdb
+*.rdb
 
 # Python
 __pycache__/

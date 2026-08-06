@@ -190,6 +190,13 @@ providers:
         input_per_1m: 0.00
         output_per_1m: 0.00
 
+  openrouter:
+    default_max_output_tokens: 16384
+    models:
+      "_fallback":
+        input_per_1m: 1.00
+        output_per_1m: 3.00
+
 tool_costs:
   defaults:
     unknown_tool: 0.001

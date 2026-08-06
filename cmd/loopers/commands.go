@@ -35,10 +35,10 @@ var (
 	dailyLimit          string
 	weeklyLimit         string
 	monthlyLimit        string
-	
-	execProxyURL        string
-	execProvider        string
-	execKey             string
+
+	execProxyURL string
+	execProvider string
+	execKey      string
 )
 
 func getRedisClient() (*budget.Client, error) {
@@ -236,6 +236,7 @@ var keysCreateCmd = &cobra.Command{
 							huh.NewOption("Fireworks", "fireworks"),
 							huh.NewOption("xAI", "xai"),
 							huh.NewOption("vLLM", "vllm"),
+							huh.NewOption("OpenRouter", "openrouter"),
 						).
 						Value(&keyProvider),
 				),
@@ -251,7 +252,7 @@ var keysCreateCmd = &cobra.Command{
 		validProviders := map[string]bool{
 			"openai": true, "anthropic": true, "gemini": true, "bedrock": true, "azure": true, "mistral": true,
 			"groq": true, "cohere": true, "deepseek": true, "together": true,
-			"ollama": true, "fireworks": true, "xai": true, "vllm": true,
+			"ollama": true, "fireworks": true, "xai": true, "vllm": true, "openrouter": true,
 		}
 
 		type GenericProviderConfig struct {
@@ -815,6 +816,9 @@ var execCmd = &cobra.Command{
 		case "gemini":
 			envBaseURL = "GEMINI_BASE_URL"
 			envAPIKey = "GEMINI_API_KEY"
+		case "openrouter":
+			envBaseURL = "OPENROUTER_BASE_URL"
+			envAPIKey = "OPENROUTER_API_KEY"
 		default:
 			// openai, groq, etc all use OPENAI_ compatible SDKs mostly
 			envBaseURL = "OPENAI_BASE_URL"
@@ -830,6 +834,9 @@ var execCmd = &cobra.Command{
 		// Copy existing env and append
 		c.Env = os.Environ()
 		c.Env = append(c.Env, fmt.Sprintf("%s=%s", envBaseURL, baseURL))
+		if execProvider == "openrouter" {
+			c.Env = append(c.Env, fmt.Sprintf("OPENAI_BASE_URL=%s", baseURL))
+		}
 
 		// Warn if real API key is missing
 		foundRealKey := false
@@ -865,7 +872,7 @@ func init() {
 
 	// Keys commands
 	keysCreateCmd.Flags().StringVar(&keyName, "name", "", "Name of the proxy key (required)")
-	keysCreateCmd.Flags().StringVar(&keyProvider, "provider", "", "Provider for the key (openai|anthropic|gemini|bedrock|azure|mistral|groq|cohere|deepseek|together|ollama|fireworks|xai|vllm) (required)")
+	keysCreateCmd.Flags().StringVar(&keyProvider, "provider", "", "Provider for the key (openai|anthropic|gemini|bedrock|azure|mistral|groq|cohere|deepseek|together|ollama|fireworks|xai|vllm|openrouter) (required)")
 	keysCreateCmd.Flags().StringVar(&keyAgentName, "agent-name", "", "Name of the agent associated with this key (optional)")
 	keysCreateCmd.Flags().StringVar(&keyOwner, "owner", "", "Owner of the key (optional)")
 	keysCreateCmd.Flags().StringVar(&keyAllowedTools, "allowed-tools", "", "Comma-separated list of allowed tools (optional)")
