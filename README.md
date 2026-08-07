@@ -294,11 +294,28 @@ For full details, see the [Python SDK documentation](./sdk/python/README.md) and
 
 If you use terminal-based autonomous agents, the most seamless way to secure them with Loopers is using the `loopers exec` wrapper command. This dynamically injects the correct Base URL configuration into the agent process without modifying your global shell settings.
 
+**Unix (Bash/Zsh):**
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-YOUR_REAL_KEY"
 export LOOPERS_PROXY_KEY="lp-xxx"
 
 # Provider is auto-detected from the 'claude' command
+loopers exec -- claude
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:ANTHROPIC_API_KEY="sk-ant-YOUR_REAL_KEY"
+$env:LOOPERS_PROXY_KEY="lp-xxx"
+
+loopers exec -- claude
+```
+
+**Windows (Command Prompt):**
+```cmd
+set ANTHROPIC_API_KEY=sk-ant-YOUR_REAL_KEY
+set LOOPERS_PROXY_KEY=lp-xxx
+
 loopers exec -- claude
 ```
 
