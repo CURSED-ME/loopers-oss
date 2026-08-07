@@ -36,15 +36,16 @@ The `loopers exec` command dynamically injects the necessary environment variabl
 
 ### Basic Usage
 
+To prevent your proxy key from leaking into shell history or process lists, `loopers exec` reads configuration securely from environment variables.
+
 ```bash
-loopers exec --key <loopers_key> --provider <provider_name> -- <agent_command>
+export LOOPERS_PROXY_KEY="lp-xxx"
+loopers exec -- <agent_command>
 ```
 
-- `--key`: Your Loopers proxy key (e.g., `lp-xxx`).
-- `--provider`: The upstream provider (e.g., `anthropic`, `openai`, `gemini`).
-- `--proxy-url`: (Optional) The base URL of your Loopers proxy. Defaults to `http://localhost:8080`.
+**Auto-Detection Feature:** `loopers exec` will automatically detect the provider based on the executable name (e.g. `claude` -> anthropic, `codex` -> openai, `opencode` -> openai, `antigravity-agent` -> openai). If your CLI agent is not natively recognized, you can specify it via the `LOOPERS_PROVIDER` environment variable.
 
-> **Note:** The `loopers exec` command does **not** take your real API key as an argument. It reads your real API key from your existing shell environment (e.g., `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) and forwards it securely.
+> **Note:** The `loopers exec` command **inherits** your real API key from your existing shell environment (e.g., `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) and forwards it securely. You never pass your real API key as an argument.
 
 ---
 
@@ -57,7 +58,10 @@ Ensure your real Anthropic API key is exported in your terminal, then run:
 
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-YOUR_REAL_KEY"
-loopers exec --key lp-xxx --provider anthropic -- claude
+export LOOPERS_PROXY_KEY="lp-xxx"
+
+# Provider is auto-detected from 'claude'
+loopers exec -- claude
 ```
 
 ### Manual Configuration
@@ -80,7 +84,10 @@ The Codex CLI relies on an OpenAI-compatible endpoint.
 ### Using `loopers exec` (Recommended)
 ```bash
 export OPENAI_API_KEY="sk-YOUR_REAL_KEY"
-loopers exec --key lp-xxx --provider openai -- codex "build a python web scraper"
+export LOOPERS_PROXY_KEY="lp-xxx"
+
+# Provider is auto-detected from 'codex'
+loopers exec -- codex "build a python web scraper"
 ```
 
 ### Manual Configuration
@@ -104,7 +111,10 @@ OpenCode uses a JSON configuration file for managing providers.
 ### Using `loopers exec` (Recommended)
 ```bash
 export OPENAI_API_KEY="sk-YOUR_REAL_KEY"
-loopers exec --key lp-xxx --provider openai -- opencode
+export LOOPERS_PROXY_KEY="lp-xxx"
+
+# Provider is auto-detected from 'opencode'
+loopers exec -- opencode
 ```
 
 ### Manual Configuration
@@ -134,7 +144,10 @@ You can use `loopers exec` inside the Antigravity integrated terminal exactly as
 
 ```bash
 export OPENAI_API_KEY="sk-YOUR_REAL_KEY"
-loopers exec --key lp-xxx --provider openai -- antigravity-agent run
+export LOOPERS_PROXY_KEY="lp-xxx"
+
+# Provider is auto-detected from 'antigravity-agent'
+loopers exec -- antigravity-agent run
 ```
 
 ### For IDE Configuration
