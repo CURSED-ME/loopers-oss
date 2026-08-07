@@ -35,10 +35,6 @@ var (
 	dailyLimit          string
 	weeklyLimit         string
 	monthlyLimit        string
-
-	execProxyURL string
-	execProvider string
-	execKey      string
 )
 
 func getRedisClient() (*budget.Client, error) {
@@ -795,21 +791,40 @@ networks:
 }
 
 var execCmd = &cobra.Command{
-	Use:   "exec --key <lp-xxx> --provider <name> -- <command...>",
+	Use:   "exec -- <command...>",
 	Short: "Execute a command with Loopers proxy environment variables injected",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if execKey == "" || execProvider == "" {
-			logging.Logger.Fatal().Msg("--key and --provider are required")
+		proxyKey := os.Getenv("LOOPERS_PROXY_KEY")
+		if proxyKey == "" {
+			logging.Logger.Fatal().Msg("LOOPERS_PROXY_KEY environment variable is required. Example: export LOOPERS_PROXY_KEY=lp-xxx")
 		}
 
-		proxyURL := strings.TrimSuffix(execProxyURL, "/")
-		baseURL := fmt.Sprintf("%s/%s/%s/v1", proxyURL, execKey, execProvider)
+		proxyURL := os.Getenv("LOOPERS_PROXY_URL")
+		if proxyURL == "" {
+			proxyURL = "http://localhost:8080"
+		}
+		proxyURL = strings.TrimSuffix(proxyURL, "/")
+
+		provider := os.Getenv("LOOPERS_PROVIDER")
+		if provider == "" {
+			executable := strings.ToLower(args[0])
+			switch executable {
+			case "claude":
+				provider = "anthropic"
+			case "codex", "opencode", "antigravity-agent", "agy":
+				provider = "openai"
+			default:
+				logging.Logger.Fatal().Msgf("Could not auto-detect provider for '%s'. Please set LOOPERS_PROVIDER environment variable.", executable)
+			}
+		}
+
+		baseURL := fmt.Sprintf("%s/%s/%s/v1", proxyURL, proxyKey, provider)
 
 		var envBaseURL string
 		var envAPIKey string
 
-		switch execProvider {
+		switch provider {
 		case "anthropic":
 			envBaseURL = "ANTHROPIC_BASE_URL"
 			envAPIKey = "ANTHROPIC_API_KEY"
@@ -834,7 +849,7 @@ var execCmd = &cobra.Command{
 		// Copy existing env and append
 		c.Env = os.Environ()
 		c.Env = append(c.Env, fmt.Sprintf("%s=%s", envBaseURL, baseURL))
-		if execProvider == "openrouter" {
+		if provider == "openrouter" {
 			c.Env = append(c.Env, fmt.Sprintf("OPENAI_BASE_URL=%s", baseURL))
 		}
 
@@ -865,9 +880,6 @@ func init() {
 	rootCmd.AddCommand(initCmd)
 
 	// Exec command
-	execCmd.Flags().StringVar(&execKey, "key", "", "Loopers proxy key (lp-xxx) (required)")
-	execCmd.Flags().StringVar(&execProvider, "provider", "", "Provider (openai|anthropic|gemini|...) (required)")
-	execCmd.Flags().StringVar(&execProxyURL, "proxy-url", "http://localhost:8080", "Loopers proxy base URL")
 	rootCmd.AddCommand(execCmd)
 
 	// Keys commands

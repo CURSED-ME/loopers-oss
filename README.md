@@ -296,9 +296,10 @@ If you use terminal-based autonomous agents, the most seamless way to secure the
 
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-YOUR_REAL_KEY"
+export LOOPERS_PROXY_KEY="lp-xxx"
 
-# Run Claude Code securely through the Loopers proxy
-loopers exec --key lp-xxx --provider anthropic -- claude
+# Provider is auto-detected from the 'claude' command
+loopers exec -- claude
 ```
 
 For full details on configuring specific CLI agents, see the [Agent CLI Integrations Guide](./Documentation/docs/guides/agent-cli-integrations.md).
