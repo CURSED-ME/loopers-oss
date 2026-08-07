@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.3.1](https://github.com/CURSED-ME/loopers-oss/compare/v2.3.0...v2.3.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* add powershell env var example in fatal log ([e237997](https://github.com/CURSED-ME/loopers-oss/commit/e237997161edbf7bd7d3d4914825b51d13febebb))
+* add powershell env var example in fatal log ([2ecb13c](https://github.com/CURSED-ME/loopers-oss/commit/2ecb13c83b764f950c4e82a45f9a438b7366f1ca))
+
 ## [2.3.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.2.0...v2.3.0) (2026-08-07)
 
 
