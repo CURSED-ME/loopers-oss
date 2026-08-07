@@ -106,14 +106,17 @@ If you prefer to compile the code yourself:
    cd loopers-oss
    ```
 
-2. Build the project:
+2. **Option A: Build locally (for testing)**
    ```bash
    go build -o loopers ./cmd/loopers
+   ./loopers serve
    ```
 
-3. Run the server:
+3. **Option B: Install globally (Recommended for CLI agents)**
+   To use the `loopers exec` wrapper from anywhere on your computer without paths, install it to your Go bin folder (which is usually in your system `PATH`):
    ```bash
-   ./loopers serve
+   go install ./cmd/loopers
+   loopers serve
    ```
 
 ## Next Steps
