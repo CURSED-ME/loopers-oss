@@ -821,48 +821,93 @@ var execCmd = &cobra.Command{
 
 		baseURL := fmt.Sprintf("%s/%s/%s/v1", proxyURL, proxyKey, provider)
 
-		var envBaseURL string
-		var envAPIKey string
-
-		switch provider {
-		case "anthropic":
-			envBaseURL = "ANTHROPIC_BASE_URL"
-			envAPIKey = "ANTHROPIC_API_KEY"
-		case "gemini":
-			envBaseURL = "GEMINI_BASE_URL"
-			envAPIKey = "GEMINI_API_KEY"
-		case "openrouter":
-			envBaseURL = "OPENROUTER_BASE_URL"
-			envAPIKey = "OPENROUTER_API_KEY"
-		default:
-			// openai, groq, etc all use OPENAI_ compatible SDKs mostly
-			envBaseURL = "OPENAI_BASE_URL"
-			envAPIKey = "OPENAI_API_KEY"
-		}
-
 		// Prepare command
 		c := exec.Command(args[0], args[1:]...)
 		c.Stdin = os.Stdin
 		c.Stdout = os.Stdout
 		c.Stderr = os.Stderr
 
-		// Copy existing env and append
-		c.Env = os.Environ()
-		c.Env = append(c.Env, fmt.Sprintf("%s=%s", envBaseURL, baseURL))
-		if provider == "openrouter" {
-			c.Env = append(c.Env, fmt.Sprintf("OPENAI_BASE_URL=%s", baseURL))
+		// Copy existing env, but STRIP all provider-specific API key and base URL vars.
+		// We will re-inject only the correct ones for the selected provider below.
+		// This prevents the CLI tool from detecting stray vars (e.g. OPENROUTER_API_KEY
+		// from the parent shell) and activating unwanted provider modes.
+		stripPrefixes := []string{
+			"OPENAI_API_KEY=", "OPENAI_BASE_URL=",
+			"OPENROUTER_API_KEY=", "OPENROUTER_BASE_URL=",
+			"ANTHROPIC_API_KEY=", "ANTHROPIC_BASE_URL=", "ANTHROPIC_AUTH_TOKEN=",
+			"GEMINI_API_KEY=", "GEMINI_BASE_URL=",
+			"GOOGLE_GENERATIVE_AI_API_KEY=", "GOOGLE_GENERATIVE_AI_BASE_URL=", "GOOGLE_API_KEY=",
+			"AZURE_OPENAI_API_KEY=", "AZURE_OPENAI_BASE_URL=",
+			"LOOPERS_PROXY_KEY=", "LOOPERS_PROXY_URL=", "LOOPERS_PROVIDER=",
+		}
+		for _, e := range os.Environ() {
+			stripped := false
+			for _, prefix := range stripPrefixes {
+				if strings.HasPrefix(e, prefix) {
+					stripped = true
+					break
+				}
+			}
+			if !stripped {
+				c.Env = append(c.Env, e)
+			}
 		}
 
-		// Warn if real API key is missing
-		foundRealKey := false
-		for _, e := range c.Env {
-			if strings.HasPrefix(e, envAPIKey+"=") {
-				foundRealKey = true
+		// Find the user's real API key from the environment.
+		realAPIKey := ""
+		for _, envName := range []string{"OPENAI_API_KEY", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"} {
+			if v := os.Getenv(envName); v != "" {
+				realAPIKey = v
 				break
 			}
 		}
-		if !foundRealKey {
-			logging.Logger.Warn().Msgf("Warning: %s is not set in your environment. The underlying agent command might fail if it requires an upstream key.", envAPIKey)
+
+		if realAPIKey == "" {
+			logging.Logger.Warn().Msg("Warning: No API key found in environment. The agent may fail.")
+		}
+
+		// Dynamically determine which env vars to inject based on the selected provider.
+		// We ONLY inject vars for the selected provider and its compatible aliases.
+		// This prevents the CLI tool from trying to authenticate with unrelated providers
+		// using an invalid key (e.g., sending an OpenRouter key to Google's API).
+		var baseURLVars []string
+		var apiKeyVars []string
+
+		switch provider {
+		case "openrouter":
+			// Only inject OPENAI_* vars. This makes the CLI tool (e.g. OpenCode) think
+			// it's talking to a standard OpenAI endpoint and default to GPT models
+			// that support tool use. The proxy path already contains /openrouter/
+			// so the Loopers engine routes to OpenRouter behind the scenes.
+			baseURLVars = []string{"OPENAI_BASE_URL"}
+			apiKeyVars = []string{"OPENAI_API_KEY"}
+		case "anthropic":
+			baseURLVars = []string{"ANTHROPIC_BASE_URL"}
+			apiKeyVars = []string{"ANTHROPIC_API_KEY"}
+			// Also set anthropic-specific auth token
+			if realAPIKey != "" {
+				c.Env = append(c.Env, "ANTHROPIC_AUTH_TOKEN="+realAPIKey)
+			}
+		case "gemini", "google":
+			baseURLVars = []string{"GEMINI_BASE_URL", "GOOGLE_GENERATIVE_AI_BASE_URL"}
+			apiKeyVars = []string{"GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "GOOGLE_API_KEY"}
+		case "azure":
+			baseURLVars = []string{"AZURE_OPENAI_BASE_URL", "OPENAI_BASE_URL"}
+			apiKeyVars = []string{"AZURE_OPENAI_API_KEY", "OPENAI_API_KEY"}
+		default:
+			// openai, groq, together, fireworks, deepinfra, mistral, cohere, deepseek, etc.
+			// All use OpenAI-compatible SDK
+			baseURLVars = []string{"OPENAI_BASE_URL"}
+			apiKeyVars = []string{"OPENAI_API_KEY"}
+		}
+
+		for _, urlVar := range baseURLVars {
+			c.Env = append(c.Env, fmt.Sprintf("%s=%s", urlVar, baseURL))
+		}
+		if realAPIKey != "" {
+			for _, keyVar := range apiKeyVars {
+				c.Env = append(c.Env, fmt.Sprintf("%s=%s", keyVar, realAPIKey))
+			}
 		}
 
 		if err := c.Run(); err != nil {
