@@ -797,7 +797,7 @@ var execCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		proxyKey := os.Getenv("LOOPERS_PROXY_KEY")
 		if proxyKey == "" {
-			logging.Logger.Fatal().Msg("LOOPERS_PROXY_KEY environment variable is required. Example: export LOOPERS_PROXY_KEY=lp-xxx")
+			logging.Logger.Fatal().Msg("LOOPERS_PROXY_KEY environment variable is required. Unix: export LOOPERS_PROXY_KEY=lp-xxx | Windows (PS): $env:LOOPERS_PROXY_KEY=\"lp-xxx\"")
 		}
 
 		proxyURL := os.Getenv("LOOPERS_PROXY_URL")
