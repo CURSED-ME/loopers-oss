@@ -34,10 +34,27 @@ Once you have your `lp-xxx` key, you can integrate your agents.
 
 The `loopers exec` command dynamically injects the necessary environment variables into the agent's process at runtime. This avoids permanently modifying your shell configuration files and ensures the Loopers proxy key is isolated.
 
+### Cross-Platform Environment Variables
+
+The examples throughout this guide use the Unix `export` syntax (for macOS, Linux, and Windows WSL/Git Bash). If you are using native Windows terminals, set environment variables using the following equivalents:
+
+**Windows PowerShell:**
+```powershell
+$env:LOOPERS_PROXY_KEY="lp-xxx"
+loopers exec -- <agent_command>
+```
+
+**Windows Command Prompt (cmd.exe):**
+```cmd
+set LOOPERS_PROXY_KEY=lp-xxx
+loopers exec -- <agent_command>
+```
+
 ### Basic Usage
 
 To prevent your proxy key from leaking into shell history or process lists, `loopers exec` reads configuration securely from environment variables.
 
+**Unix (Bash/Zsh):**
 ```bash
 export LOOPERS_PROXY_KEY="lp-xxx"
 loopers exec -- <agent_command>
