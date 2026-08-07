@@ -35,8 +35,6 @@ var (
 	dailyLimit          string
 	weeklyLimit         string
 	monthlyLimit        string
-
-
 )
 
 func getRedisClient() (*budget.Client, error) {
