@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.3.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.2.0...v2.3.0) (2026-08-07)
+
+
+### Features
+
+* secure exec wrapper using env vars ([94a87d7](https://github.com/CURSED-ME/loopers-oss/commit/94a87d7cd764843913425e3fd478253805d93f6a))
+* secure exec wrapper using env vars ([1aa282a](https://github.com/CURSED-ME/loopers-oss/commit/1aa282a854c9f88d71985ae0c60f16736aa7c08b))
+
 ## [2.2.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.1.0...v2.2.0) (2026-08-06)
 
 
