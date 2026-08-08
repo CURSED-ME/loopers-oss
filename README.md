@@ -10,7 +10,7 @@
 
 <p align="left">
   <img src="https://img.shields.io/badge/license-MIT-black.svg?style=for-the-badge" alt="License" />
-  <img src="https://img.shields.io/badge/go-1.26.5-black.svg?style=for-the-badge" alt="Go Version" />
+  <img src="https://img.shields.io/badge/go-1.25%2B-black.svg?style=for-the-badge" alt="Go Version" />
   <img src="https://img.shields.io/badge/models-500%2B%20Supported-black.svg?style=for-the-badge" alt="Models Supported" />
   <a href="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml"><img src="https://github.com/CURSED-ME/loopers-oss/actions/workflows/ci.yml/badge.svg" alt="Build Status" /></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/CURSED-ME/loopers-oss"><img src="https://api.securityscorecards.dev/projects/github.com/CURSED-ME/loopers-oss/badge?style=for-the-badge" alt="OpenSSF Scorecard" /></a>
@@ -31,7 +31,7 @@ Loopers is a baremetal, zero-delay firewall for the agentic era. It intercepts r
 
 We constantly ship updates to make Loopers the fastest, most secure AI firewall. For full configuration details, visit the **[Loopers Documentation](https://docs.tryloopers.com)**.
 
-1. **Zero-Code Path-Based Auth Integration**: Use Loopers with pre-built agents (like **OpenClaw**, **AutoGPT**, or **Hermes**) that do not support custom HTTP headers. Simply include your Loopers proxy key in the base URL (`OPENAI_BASE_URL=http://localhost:8080/lp-xxx/openai/v1`), and pass your real upstream provider key as the standard Bearer API key. Loopers transparently extracts the proxy key, remaps headers, and rewrites the path on the fly.
+1. **Zero-Code Path-Based Auth Integration**: Use Loopers with pre-built agents (like `opencode`, `codex`, or any OpenAI-compatible CLI tool) that do not support custom HTTP headers. Simply include your Loopers proxy key in the base URL (`OPENAI_BASE_URL=http://localhost:8080/lp-xxx/openai/v1`), and pass your real upstream provider key as the standard Bearer API key. Loopers transparently extracts the proxy key, remaps headers, and rewrites the path on the fly.
 2. **Zero Standing Privileges (ZSP) Auth**: Shifts identity from static API keys to ephemeral, cryptographically bound JWTs with DPoP (Demonstrating Proof-of-Possession, RFC 9449) token binding. Statistically verifies Agent Delegation JWT signatures in under 150 microseconds.
 3. **Agent-to-Agent (A2A) Governance**: Built-in Escalation Broker mediates Agent-to-Agent trust handoffs and enforces dynamic consent escalation, ensuring sub-agents operate under strictly bounded budget and capability scopes.
 4. **Local Policy Engine (OPA/Rego) & Stateful Taint Tracking**: Write fine-grained, attribute-based access control (ABAC) policies using the Rego language with hot-reload support. Features **stateful session context** (`input.session.taint_flags` and `input.session.tools_called`), enabling cross-call data exfiltration rules (e.g. "block `outbound_http` if `secret_accessed` taint is set"). See the **[Policy Engine Guide](./Documentation/docs/guides/policy-engine.md)**.
@@ -117,17 +117,29 @@ Read the full deep-dive with raw data and methodology in our [Final Benchmark Re
 
 ---
 
-## Try It In 60 Seconds (No Go Required)
+## Try It In 5 Minutes (From Source)
 
-Want to see Loopers block a runaway request before touching your real API keys? Start the self-contained demo:
+The fastest way to see Loopers working locally with your own API key:
 
+**macOS / Linux:**
 ```bash
 git clone https://github.com/CURSED-ME/loopers-oss.git
 cd loopers-oss
-docker-compose -f docker-compose.demo.yml up
+docker-compose up -d redis     # start ONLY Redis
+go install ./cmd/loopers       # install the CLI
+SERVER_INSECURE_DEV=true loopers serve
 ```
 
-Check the `bootstrap` container logs for ready cURL commands. The demo uses a mock OpenAI server so you won't spend any real credits.
+**Windows (PowerShell):**
+```powershell
+git clone https://github.com/CURSED-ME/loopers-oss.git
+cd loopers-oss
+docker-compose up -d redis     # start ONLY Redis
+go install ./cmd/loopers       # install the CLI
+$env:SERVER_INSECURE_DEV="true"; loopers serve
+```
+
+In a new terminal, create a key, set a budget, and make your first guarded request.
 
 ---
 
@@ -158,7 +170,7 @@ docker-compose up -d
 - [ ] **Step 3: Create a Key and Configure a Budget**
 Generate an API proxy key with rich identity metadata:
 ```bash
-docker-compose exec loopers /app/loopers keys create --name my-app-key --provider openai \
+loopers keys create --name my-app-key --provider openai \
   --agent-name coding-bot \
   --owner secops \
   --allowed-tools "read_file,search_codebase" \
@@ -169,7 +181,7 @@ docker-compose exec loopers /app/loopers keys create --name my-app-key --provide
 
 Set budget limits across 5 granular time windows for the key hash:
 ```bash
-docker-compose exec loopers /app/loopers budget set <KEY_HASH> \
+loopers budget set <KEY_HASH> \
   --minute 0.50 \
   --hourly 2.00 \
   --daily 10.00 \
@@ -198,7 +210,7 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 
 ## Zero-Code Integration (For Pre-Built Agents)
 
-If you are using a pre-built agent framework (like **OpenClaw**, **AutoGPT**, or **Hermes**) that does not allow you to inject custom HTTP headers, you can use our path-based auth feature.
+If you are using a pre-built agent or framework that does not allow you to inject custom HTTP headers (e.g. `opencode`, `codex`, or any OpenAI-compatible tool), you can use our path-based auth feature.
 Configure your agent's API settings to include the Loopers proxy key in the base URL, and provide your real upstream provider key as the standard API key:
 
 ```env
@@ -281,8 +293,9 @@ For full details, see the [Python SDK documentation](./sdk/python/README.md) and
 |---|---|
 | `loopers init` | Interactive wizard — generates `loopers.yaml` and `docker-compose.yml` |
 | `loopers serve` | Start the proxy server |
-| `loopers exec` | Execute an agent CLI tool with dynamically injected base URLs and API keys |
-| `loopers keys create --name <n> --provider <p>` | Create a new proxy key (providers: `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`, `ollama`, `fireworks`, `xai`, `vllm`). Supports identity flags: `--agent-name`, `--owner`, `--allowed-tools`, `--allowed-providers`, `--tags` |
+| `loopers doctor` | Diagnose Loopers configuration and connectivity |
+| `loopers exec -- <command>` | Execute an agent CLI tool with dynamically injected base URLs and API keys. Supports `--model-override` and `--model-map` flags |
+| `loopers keys create --name <n> --provider <p>` | Create a new proxy key (providers: `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`, `ollama`, `fireworks`, `xai`, `vllm`, `openrouter`). Supports identity flags: `--agent-name`, `--owner`, `--allowed-tools`, `--allowed-providers`, `--tags` |
 | `loopers keys list` | List all proxy keys with metadata |
 | `loopers keys revoke <hash>` | Revoke a key by hash |
 | `loopers budget set <hash> [flags]` | Set budget limits (`--minute`, `--hourly`, `--daily`, `--weekly`, `--monthly`) |
@@ -294,29 +307,48 @@ For full details, see the [Python SDK documentation](./sdk/python/README.md) and
 
 If you use terminal-based autonomous agents, the most seamless way to secure them with Loopers is using the `loopers exec` wrapper command. This dynamically injects the correct Base URL configuration into the agent process without modifying your global shell settings.
 
-**Unix (Bash/Zsh):**
+`loopers exec` requires two environment variables:
+- `LOOPERS_PROXY_KEY` — your Loopers proxy key (`lp-xxx`)
+- `LOOPERS_PROVIDER` — the upstream provider to route traffic through (e.g. `openai`, `anthropic`, `openrouter`). If not set, the provider is auto-detected from the executable name where possible.
+
+Optional flags:
+- `--model-override <model>` — force all requests to use a specific model (e.g. `google/gemma-2-9b-it:free`)
+- `--model-map <mappings>` — remap models by alias (e.g. `gpt-4o=google/gemini-2.5-pro`)
+
+**macOS / Linux (Bash/Zsh):**
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-YOUR_REAL_KEY"
 export LOOPERS_PROXY_KEY="lp-xxx"
+export LOOPERS_PROVIDER="anthropic"   # or omit — 'claude' is auto-detected
 
-# Provider is auto-detected from the 'claude' command
 loopers exec -- claude
+```
+
+**Using OpenRouter with any CLI (macOS / Linux):**
+```bash
+export OPENAI_API_KEY="sk-or-v1-YOUR_OPENROUTER_KEY"
+export LOOPERS_PROXY_KEY="lp-xxx"
+export LOOPERS_PROVIDER="openrouter"
+
+loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
 ```
 
 **Windows (PowerShell):**
 ```powershell
-$env:ANTHROPIC_API_KEY="sk-ant-YOUR_REAL_KEY"
+$env:OPENAI_API_KEY="sk-or-v1-YOUR_OPENROUTER_KEY"
 $env:LOOPERS_PROXY_KEY="lp-xxx"
+$env:LOOPERS_PROVIDER="openrouter"
 
-loopers exec -- claude
+loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
 ```
 
 **Windows (Command Prompt):**
 ```cmd
-set ANTHROPIC_API_KEY=sk-ant-YOUR_REAL_KEY
+set OPENAI_API_KEY=sk-or-v1-YOUR_OPENROUTER_KEY
 set LOOPERS_PROXY_KEY=lp-xxx
+set LOOPERS_PROVIDER=openrouter
 
-loopers exec -- claude
+loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
 ```
 
 For full details on configuring specific CLI agents, see the [Agent CLI Integrations Guide](./Documentation/docs/guides/agent-cli-integrations.md).
@@ -363,12 +395,24 @@ The OSS version is the full circuit-breaker engine — everything you need to se
 | Local Policy Engine (OPA/Rego) | Yes | Yes |
 | Stateful Taint Tracking & Self-Correction | Yes | Yes |
 | Tamper-proof audit log | No | Yes |
-| Slack / PagerDuty / webhook alerting | No | Yes |
+| Webhook alerting (budget threshold notifications) | Yes (webhook URL) | Yes (Slack / PagerDuty / webhook) |
 | Multi-project & org-level budget hierarchy | No | Yes |
 | SSO / SAML | No | Yes (Business+) |
 | SOC 2 compliance export | No | Yes (Business+) |
 | Managed infrastructure (no Redis to run) | No | Yes |
 | Support | Community | Email / Priority / Dedicated |
+
+---
+
+## AI Agent Resources
+
+If you are an AI agent (Claude Code, Cursor, Copilot, Codex, etc.) setting up or integrating this repository, use the following machine-readable context files instead of parsing this README:
+
+- **[`llms-full.txt`](https://docs.tryloopers.com/llms-full.txt)** — single file containing complete setup instructions, full CLI reference, accurate `loopers.yaml` schema, HTTP headers, OPA policy examples, and all supported providers. Ingest this in one shot for complete context.
+- **[`llms.txt`](https://docs.tryloopers.com/llms.txt)** — structured index with inline quick-reference (key env vars, CLI commands, auth models) and links to every documentation section.
+- **[`AGENT_README.md`](./AGENT_README.md)** — architectural constraints, directory map, and technical context specifically written for AI agents.
+
+For local use (when docs site is not deployed), both `.txt` files are in `Documentation/static/`.
 
 ---
 
