@@ -848,19 +848,19 @@ var execCmd = &cobra.Command{
 			Director: func(req *http.Request) {
 				req.URL.Scheme = targetURL.Scheme
 				req.URL.Host = targetURL.Host
-				
-				// Ensure path is properly joined without stripping /v1, 
+
+				// Ensure path is properly joined without stripping /v1,
 				// as providers like OpenRouter need /v1 in their upstream path.
 				req.URL.Path = strings.TrimSuffix(targetURL.Path, "/") + req.URL.Path
 				req.Host = targetURL.Host
-				
+
 				authHeader := req.Header.Get("Authorization")
 				if authHeader != "" {
 					// Move agent's API key to the provider key header
 					req.Header.Set("X-Loopers-Provider-Key", strings.TrimPrefix(authHeader, "Bearer "))
 				}
 				req.Header.Set("Authorization", "Bearer "+proxyKey)
-				
+
 				if execModelMap != "" {
 					req.Header.Set("X-Loopers-Model-Map", execModelMap)
 				}
@@ -896,13 +896,13 @@ var execCmd = &cobra.Command{
 
 		// Copy existing env and append
 		c.Env = os.Environ()
-		
+
 		// Set base URLs to point to our local transparent proxy
 		c.Env = append(c.Env, fmt.Sprintf("OPENAI_BASE_URL=%s", localProxyURL))
 		c.Env = append(c.Env, fmt.Sprintf("OPENAI_API_BASE=%s", localProxyURL))
 		c.Env = append(c.Env, fmt.Sprintf("ANTHROPIC_BASE_URL=%s", localProxyURL))
 		c.Env = append(c.Env, fmt.Sprintf("GEMINI_BASE_URL=%s", localProxyURL))
-		
+
 		// Always inject OPENROUTER_BASE_URL regardless of provider, since some CLIs
 		// (e.g. opencode) use it as an alternative base URL resolution path.
 		c.Env = append(c.Env, fmt.Sprintf("OPENROUTER_BASE_URL=%s", localProxyURL))
