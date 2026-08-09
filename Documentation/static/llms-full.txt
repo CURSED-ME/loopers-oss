@@ -1,132 +1,494 @@
-# Loopers – Consolidated Technical Specification & Knowledge Base
+# Loopers OSS – Complete Technical Context for AI Agents
 
-## Executive Summary
-Loopers is a baremetal, zero-delay firewall for the agentic era. Written in high-performance Go, it acts as a pass-through proxy intercepting API traffic between AI agent frameworks (LangChain, AutoGen, LlamaIndex, CrewAI, custom agents) and 500+ LLM endpoints across 14 providers (OpenAI, Anthropic, Google Gemini, AWS Bedrock, Azure OpenAI, Groq, DeepSeek, Mistral, Ollama, vLLM, OpenRouter, etc.), as well as Model Context Protocol (MCP) JSON-RPC 2.0 servers.
-
-Primary Objectives:
-1. **Prevent Token Overspending**: Real-time sliding window and fixed window budget caps (USD, tokens, request counts).
-2. **Stop Runaway Agent Loops**: Deterministic loop detection engine using Fingerprint Ring, Velocity Limiter, and Stall Detector algorithms.
-3. **Govern MCP Tools**: Enforce per-tool cost limits (e.g. max $0.05 per tool call) and prevent lateral movement (blast radius) in MCP environments.
-4. **Sub-Millisecond Overhead**: ~1-2ms latency penalty using Go reverse proxy with single-roundtrip Redis Lua transactions.
-5. **Zero-Storage Security Model**: Zero persistent storage of payloads or API keys on disk/database. Pass-through header evaluation ensures zero data breach liability.
+This file contains everything an AI agent needs to understand, set up, and integrate Loopers OSS from scratch. It is sourced directly from the codebase and documentation.
 
 ---
 
-## Technical Architecture & Concurrency Model
+## What Loopers Is
 
-### 1. Atomic Lua Budget Enforcement
-- Loopers uses a single Redis Lua script to perform atomic balance checks and decrements prior to forwarding requests to LLM providers.
-- Prevents Time-of-Check to Time-of-Use (TOCTOU) race conditions under high concurrency (tested at 1,000 parallel request bursts with 0% budget leakage).
-- If budget is exceeded or loop condition triggers, Loopers instantly short-circuits the connection with HTTP status code `429 Too Many Requests` or `402 Payment Required`, returning a standardized JSON error payload:
+Loopers is an open-source, zero-storage reverse proxy written in Go. It sits between your application and upstream LLM providers (OpenAI, Anthropic, Gemini, Groq, Bedrock, Azure OpenAI, Mistral, Cohere, DeepSeek, Together, Ollama, Fireworks, xAI, vLLM, OpenRouter) and enforces hard budget limits, agent loop detection, OPA/Rego policy evaluation, and per-tool MCP governance — all before forwarding requests upstream.
+
+**Core guarantee:** If Redis is unavailable, Loopers fails closed. No requests pass through. This prevents unbounded spending during infrastructure failures.
+
+---
+
+## Prerequisites
+
+- Go 1.25+ (toolchain go1.26.5) — required for native installation
+- Redis 7+ — required for all deployments (used for atomic budget reservation)
+- Docker + Docker Compose — recommended for running Redis locally
+
+---
+
+## Setup Method 1: Docker (Recommended)
+
+### Step 1: Clone the repository
+```bash
+git clone https://github.com/CURSED-ME/loopers-oss.git
+cd loopers-oss
+```
+
+### Step 2: Start Redis and the Loopers proxy
+```bash
+docker-compose up -d
+```
+
+The `docker-compose.yml` in the root starts two services:
+- `redis` — Redis 8 Alpine with password auth
+- `loopers` — the proxy image (`ghcr.io/cursed-me/loopers:latest`) on port 8080
+
+### Step 3: Create a proxy key
+```bash
+docker-compose exec loopers /app/loopers keys create --name mykey --provider openai
+```
+This returns a raw key (`lp-xxx`) and a hash. The raw key is only shown once — save it immediately.
+
+### Step 4: Set a budget
+```bash
+docker-compose exec loopers /app/loopers budget set <KEY_HASH> --daily 10.00 --hourly 2.00
+```
+
+### Step 5: Route your first request
+```bash
+curl -X POST http://localhost:8080/openai/v1/chat/completions \
+  -H "Authorization: Bearer lp-xxx" \
+  -H "X-Loopers-Provider-Key: YOUR_REAL_OPENAI_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hello"}]}'
+```
+
+---
+
+## Setup Method 2: Native Installation (Go 1.25+)
+
+### Step 1: Install the CLI globally
+
+macOS / Linux / Windows:
+```bash
+go install github.com/CURSED-ME/loopers-oss/cmd/loopers@latest
+```
+
+### Step 2: Initialize configuration
+```bash
+loopers init
+```
+This generates `loopers.yaml` (proxy config) and `docker-compose.yml` (Redis) in the current directory.
+
+### Step 3: Start Redis only
+```bash
+docker-compose up -d redis
+```
+> If you already have Redis running locally (e.g. via Homebrew, apt, or a remote instance), skip this step. Set `redis.addr` in `loopers.yaml` to point to your instance.
+
+### Step 4: Start the proxy server
+
+macOS / Linux:
+```bash
+SERVER_INSECURE_DEV=true loopers serve
+```
+
+Windows (PowerShell):
+```powershell
+$env:SERVER_INSECURE_DEV="true"; loopers serve
+```
+
+Windows (Command Prompt):
+```cmd
+set SERVER_INSECURE_DEV=true && loopers serve
+```
+
+`SERVER_INSECURE_DEV=true` disables the TLS requirement for local development. Do NOT use in production.
+
+### Step 5: Create a key and set a budget (new terminal)
+```bash
+loopers keys create --name mykey --provider openai
+loopers budget set <KEY_HASH> --daily 10.00
+```
+
+---
+
+## Authentication Models
+
+### Header Auth (standard)
+Pass the Loopers proxy key in the Authorization header. Pass your real provider API key in `X-Loopers-Provider-Key`.
+
+```bash
+curl -X POST http://localhost:8080/openai/v1/chat/completions \
+  -H "Authorization: Bearer lp-xxx" \
+  -H "X-Loopers-Provider-Key: sk-proj-YOUR_REAL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hi"}]}'
+```
+
+### Path-Based Auth (zero-code for CLI agents)
+Embed the proxy key in the URL. Pass your real API key as the standard Bearer token. No code changes needed.
+
+```bash
+curl -X POST http://localhost:8080/lp-xxx/openai/v1/chat/completions \
+  -H "Authorization: Bearer YOUR_REAL_OPENAI_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hi"}]}'
+```
+
+URL pattern: `http://localhost:8080/<proxy-key>/<provider>/v1/<path>`
+
+---
+
+## Complete CLI Reference
+
+### Global flags
+```
+--config string   config file path (default: ./loopers.yaml)
+-v, --verbose     enable verbose debug logging
+-h, --help
+```
+
+### loopers init
+Interactively generates `loopers.yaml` and `docker-compose.yml` in the current directory.
+```bash
+loopers init
+```
+
+### loopers serve
+Starts the proxy server. All config comes from `loopers.yaml` or environment variables.
+```bash
+loopers serve
+```
+
+### loopers doctor
+Diagnoses configuration and Redis connectivity.
+```bash
+loopers doctor
+```
+
+### loopers keys create
+```bash
+loopers keys create --name <name> --provider <provider> [flags]
+```
+Flags:
+- `--name string` (required) — name for the key
+- `--provider string` (required) — one of: `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`, `ollama`, `fireworks`, `xai`, `vllm`, `openrouter`
+- `--agent-name string` — agent identity for policy evaluation
+- `--owner string` — owner identity for policy evaluation
+- `--allowed-tools string` — comma-separated list of allowed MCP tools
+- `--allowed-providers string` — comma-separated list of allowed providers
+- `--tags string` — comma-separated `key=value` tags (e.g. `env=prod,team=alpha`)
+
+### loopers keys list
+```bash
+loopers keys list
+```
+
+### loopers keys revoke
+```bash
+loopers keys revoke <KEY_HASH>
+```
+
+### loopers budget set
+```bash
+loopers budget set <KEY_HASH> [--minute float] [--hourly float] [--daily float] [--weekly float] [--monthly float]
+```
+All flags are optional and in USD. The first limit reached blocks requests.
+
+### loopers budget status
+```bash
+loopers budget status <KEY_HASH>
+```
+
+### loopers exec
+Executes a CLI agent command with Loopers proxy environment injected automatically.
+```bash
+loopers exec [--model-override string] [--model-map string] -- <command>
+```
+
+Required environment variables:
+- `LOOPERS_PROXY_KEY` — your proxy key (`lp-xxx`)
+- `LOOPERS_PROVIDER` — upstream provider (e.g. `openai`, `anthropic`, `openrouter`). Auto-detected from executable name for `claude` (anthropic), `codex` (openai), `opencode` (openai). Must be set explicitly for all other tools.
+
+Optional flags:
+- `--model-override <model>` — force all requests to use a specific model (e.g. `google/gemma-2-9b-it:free`)
+- `--model-map <alias=model,...>` — remap model aliases (e.g. `gpt-4o=google/gemini-2.5-pro`)
+
+Examples:
+
+macOS / Linux — route opencode through OpenRouter:
+```bash
+export OPENAI_API_KEY="sk-or-v1-YOUR_KEY"
+export LOOPERS_PROXY_KEY="lp-xxx"
+export LOOPERS_PROVIDER="openrouter"
+loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
+```
+
+Windows (PowerShell):
+```powershell
+$env:OPENAI_API_KEY="sk-or-v1-YOUR_KEY"
+$env:LOOPERS_PROXY_KEY="lp-xxx"
+$env:LOOPERS_PROVIDER="openrouter"
+loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
+```
+
+---
+
+## Configuration File (loopers.yaml)
+
+Full schema with all defaults:
+
+```yaml
+server:
+  port: 8080
+  admin_host: 127.0.0.1       # set to 0.0.0.0 in Docker/K8s for Prometheus scraping
+  admin_port: 9090
+  log_level: info              # debug | info | warn | error
+  read_timeout: 30s
+  write_timeout: 120s          # increase for long streaming responses
+  max_payload_bytes: 2097152   # 2MB
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+  max_retries: 3
+  dial_timeout: 5s
+  read_timeout: 2s
+  write_timeout: 2s
+
+proxy:
+  upstream_timeout: 300s
+
+session:
+  max_per_key: 0              # 0 = unlimited concurrent sessions per key
+
+loop_detection:
+  enabled: true
+  fingerprint:
+    threshold: 3              # repeat count before flagging loop
+    window_seconds: 60
+    similarity_threshold: 0.95
+    defeat_padding: false
+  velocity:
+    max_rps: 0                # 0 = disabled
+    max_endpoint_repeats: 0
+    repeat_window_seconds: 60
+  stall:
+    min_hamming_distance: 0
+    low_diversity_threshold: 5
+    action: "warn"            # warn | block
+
+mcp:
+  enabled: false
+  max_request_size: 1048576
+  servers:
+    - name: "my-mcp-server"
+      url: "http://mcp-server:3001"
+  circuit_breaker:
+    enabled: true
+    threshold: 5
+    window_seconds: 60
+  sanitizer:
+    max_description_length: 512
+    tool_allowlist: []
+
+alerting:
+  webhook_url: ""
+  thresholds:
+    - percent: 80
+      message: "Budget 80% consumed"
+
+policy:
+  enabled: false
+  policy_dir: "./policies"
+  default_action: "deny"
+
+rate_limit:
+  enabled: false
+  requests_per_minute: 60
+
+otel:
+  enabled: false
+  endpoint: "localhost:4317"
+  protocol: "grpc"            # grpc | http
+  sampling_rate: 1.0
+
+providers:
+  openai:
+    base_url: https://api.openai.com
+  anthropic:
+    base_url: https://api.anthropic.com
+  gemini:
+    base_url: https://generativelanguage.googleapis.com
+```
+
+Environment variable overrides:
+```
+SERVER_PORT          overrides server.port
+SERVER_INSECURE_DEV  set to "true" to disable TLS requirement for local dev
+REDIS_ADDR           overrides redis.addr
+REDIS_PASSWORD       overrides redis.password
+LOG_LEVEL            overrides server.log_level
+```
+
+---
+
+## HTTP Headers Reference
+
+### Request Headers
+
+| Header | Required | Description |
+|---|---|---|
+| `Authorization: Bearer <KEY>` | Yes | Loopers proxy key (`lp-xxx`), or real provider key when using path-based auth |
+| `X-Loopers-Provider-Key` | Yes* | Real upstream API key (*not required for path-based auth) |
+| `X-Loopers-Session-ID` | No | Session identifier for loop detection and session budgets |
+| `X-Loopers-Session-Budget` | No | Max USD spend for this session |
+| `X-Loopers-Session-Max-Steps` | No | Max number of AI calls for this session |
+| `Content-Type: application/json` | Yes | Required for all POST requests |
+
+### Response Headers
+
+| Header | Description |
+|---|---|
+| `X-Loopers-Request-Cost` | Real cost of this request in USD |
+| `X-Loopers-Session-Spend` | Total session spend so far |
+| `X-Loopers-Session-Steps` | Number of AI calls made in this session |
+| `X-Loopers-Session-Remaining` | Remaining budget in the most constrained window |
+| `X-Loopers-Budget-Window` | Which budget window is closest to its limit (e.g. `daily`) |
+| `X-Loopers-Request-ID` | Unique request ID for debugging |
+| `X-Loopers-Policy-Block` | `"true"` when a request is blocked by OPA policy |
+| `X-Loopers-Block-Reason` | The deny reason text from the matching Rego rule |
+
+### Error Codes
+
+| HTTP Status | Type | Cause |
+|---|---|---|
+| 401 | `invalid_key` | Proxy key is invalid or revoked |
+| 403 | `policy_denied` | Request blocked by OPA policy (LLM calls) |
+| 200 (MCP JSON-RPC `-32001`) | `policy_denied` | MCP tool call denied (returned as 200 so LLM can self-correct) |
+| 429 | `budget_exceeded` | Budget window limit reached |
+| 429 | `loop_detected` | Agent loop detected in session |
+| 429 | `max_steps_exceeded` | Session max steps reached |
+| 503 | `redis_unavailable` | Redis offline — all requests blocked (fail-closed) |
+
+---
+
+## OPA/Rego Policy Engine
+
+All `.rego` files must use `package loopers.policy`. Place them in the `policy_dir` defined in `loopers.yaml`. Loopers hot-reloads policies on file change.
+
+### Input schema for LLM calls
 ```json
 {
-  "error": {
-    "code": "budget_exceeded",
-    "message": "Session token budget of 50000 tokens exceeded for session 'sess_99a81b'.",
-    "details": {
-      "session_id": "sess_99a81b",
-      "limit": 50000,
-      "current_usage": 50120
-    }
+  "agent": {
+    "key_hash": "sha256:...",
+    "name": "my-app",
+    "agent_name": "research-agent",
+    "owner": "alice",
+    "provider": "openai",
+    "tags": {"env": "prod", "team": "alpha"}
+  },
+  "request": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "method": "llm_call",
+    "path": "/v1/chat/completions"
   }
 }
 ```
 
-### 2. Loop Detection Engine v1.1
-- **Fingerprint Ring**: Computes cryptographic hashes of tool calls, prompt messages, and output patterns over a sliding window of N turns.
-- **Velocity Limiter**: Monitors turn frequency and detects anomalous high-frequency repetitive calling patterns.
-- **Stall Detector**: Identifies state loops where an agent produces identical responses or tool parameters repeatedly without progression.
-- When triggered, Loopers sets HTTP header `X-Loopers-Loop-Detected: true` and blocks request forwarding.
-
-### 3. MCP (Model Context Protocol) Governance
-- Intercepts JSON-RPC 2.0 requests sent over HTTP/SSE or stdio to MCP servers.
-- Analyzes method `tools/call` payloads to evaluate tool name and argument complexity.
-- Applies per-tool budget constraints (e.g. maximum cost per tool invocation or maximum calls per session).
-
-### 4. OpenTelemetry & OWASP Top 10 for LLMs
-- Emits structured security audit logs for block events mapped to OWASP Top 10 for LLMs (LLM04: Model Denial of Service, LLM10: Unbounded Consumption).
-- W3C OTLP gRPC/HTTP exporter integration with dynamic tail sampling for EU AI Act compliance audit trails.
-
----
-
-## Benchmark Comparison (Loopers vs Alternatives)
-
-| Metric | Loopers (Go) | LiteLLM (Python) | Bifrost | AgentBudget |
-| :--- | :--- | :--- | :--- | :--- |
-| **Language / Runtime** | **Go (Native Binary)** | Python (FastAPI/Uvicorn) | Go | Python SDK |
-| **Budget Leakage (1k req flood)** | **0% ($0.00)** | 0.17% ($0.000017) | 0% | High |
-| **Peak Throughput (RPS)** | **4,623 req/s** | ~176 req/s | ~3,200 req/s | N/A (SDK) |
-| **P99 Proxy Overhead** | **240.98 ms** | 46,812.60 ms | ~310 ms | N/A |
-| **Idle Memory Footprint** | **41.58 MB** | 957.83 MB | ~65 MB | N/A |
-| **Storage Security** | **Zero-Storage Pass-Through** | PostgreSQL / Redis DB | In-Memory | In-Process |
-| **Agent Loop Circuit Breaker** | **Yes (Deterministic)** | No | No | Partial |
-| **MCP Tool-Call Governance** | **Yes (Per-tool cost)** | No | Policy-only | No |
-
----
-
-## Configuration Reference (`loopers.yaml`)
-
-```yaml
-version: "1.0"
-server:
-  port: 8080
-  admin_host: 127.0.0.1
-  admin_port: 9090
-  tls:
-    enabled: false
-
-redis:
-  address: "localhost:6379"
-  password: ""
-  db: 0
-
-providers:
-  openai:
-    api_key_env: "OPENAI_API_KEY"
-    base_url: "https://api.openai.com/v1"
-  anthropic:
-    api_key_env: "ANTHROPIC_API_KEY"
-    base_url: "https://api.anthropic.com"
-
-policies:
-  default:
-    max_cost_per_minute_usd: 10.0
-    max_tokens_per_minute: 100000
-    loop_detection:
-      enabled: true
-      max_repeated_fingerprints: 3
-      velocity_threshold_rpm: 60
-  
-  mcp_governance:
-    enabled: true
-    tools:
-      - name: "snowflake_query"
-        max_cost_per_call_usd: 0.05
-      - name: "web_search"
-        max_cost_per_call_usd: 0.01
-
-logging:
-  level: "info"
-  opentelemetry:
-    enabled: true
-    endpoint: "localhost:4317"
+### Input schema for MCP tool calls
+```json
+{
+  "agent": { "key_hash": "...", "name": "...", "agent_name": "...", "owner": "...", "provider": "...", "tags": {} },
+  "request": {
+    "provider": "filesystem",
+    "method": "mcp_tool_call",
+    "tool_name": "read_file",
+    "mcp_server": "filesystem",
+    "path": "/mcp/filesystem/tools/call"
+  },
+  "session": {
+    "id": "sess-...",
+    "spend": 0.42,
+    "steps": 5,
+    "taint_flags": {"secret_accessed": true},
+    "tools_called": ["read_file", "read_secret"]
+  }
+}
 ```
 
+### Example policies
+
+Allow admin users:
+```rego
+package loopers.policy
+
+default allow = false
+
+allow {
+    input.agent.owner == "admin"
+}
+```
+
+Deny after taint (exfiltration prevention):
+```rego
+package loopers.policy
+
+deny["outbound HTTP blocked after secret access"] {
+    input.request.method == "mcp_tool_call"
+    input.request.tool_name == "outbound_http"
+    input.session.taint_flags["secret_accessed"]
+}
+```
+
+Restrict models by team:
+```rego
+package loopers.policy
+
+deny["only ML team can use Claude"] {
+    startswith(input.request.model, "claude")
+    input.agent.tags["team"] != "ml"
+}
+```
+
+When an MCP tool call is denied, Loopers returns HTTP 200 with a JSON-RPC 2.0 error (`code: -32001`) so the LLM agent can read the denial reason and self-correct its plan.
+
 ---
 
-## Frequently Asked Questions (FAQ)
+## Supported Providers
 
-### Q: How does Loopers intercept API requests?
-Loopers runs as a lightweight, zero-latency HTTP reverse proxy. Developers point their OpenAI SDK, Anthropic SDK, or MCP client base URL to `http://localhost:8080/v1` (or deployed Loopers address). Loopers inspects headers and payload metadata, enforces budget and loop checks in Redis, and proxies the request to the upstream LLM provider using native Go connection pools.
+| Provider | `--provider` value |
+|---|---|
+| OpenAI | `openai` |
+| Anthropic | `anthropic` |
+| Google Gemini | `gemini` |
+| AWS Bedrock | `bedrock` |
+| Azure OpenAI | `azure` |
+| Mistral | `mistral` |
+| Groq | `groq` |
+| Cohere | `cohere` |
+| DeepSeek | `deepseek` |
+| Together AI | `together` |
+| Ollama (local) | `ollama` |
+| Fireworks | `fireworks` |
+| xAI Grok | `xai` |
+| vLLM (local/cloud) | `vllm` |
+| OpenRouter | `openrouter` |
 
-### Q: Does Loopers store my prompt text or private API keys?
-No. Loopers operates under a **Zero-Storage Security Model**. API keys and payload bodies remain strictly in volatile memory during the lifecycle of the HTTP request and are never written to disk, database, or external logs.
+---
 
-### Q: How does Loopers handle streaming (SSE) responses?
-Loopers inspects streaming Server-Sent Events in real-time as chunks arrive from upstream model providers. Token counts are evaluated dynamically mid-stream. If a session limit is exceeded mid-completion, Loopers severs the connection immediately, protecting against unbounded output generation.
+## Monitoring
 
-### Q: How do I get started with Loopers?
-Run with Docker:
-`docker run -d -p 8080:8080 -e REDIS_ADDRESS=host.docker.internal:6379 tryloopers/loopers:latest`
-Or with Go:
-`go build -o loopers ./cmd/server && ./loopers --config loopers.yaml`
+Loopers exposes Prometheus metrics at `http://<admin_host>:<admin_port>/metrics` (default: `http://127.0.0.1:9090/metrics`). In Docker/Kubernetes, set `SERVER_ADMIN_HOST=0.0.0.0` to allow external scraping. A pre-built Grafana dashboard is in `./grafana/`.
+
+---
+
+## Key Identity Metadata for Policies
+
+When creating keys, attach metadata to make OPA policies effective:
+```bash
+loopers keys create \
+  --name my-app-key \
+  --provider openai \
+  --agent-name research-agent \
+  --owner alice \
+  --tags "env=prod,team=alpha"
+```
+This metadata populates `input.agent` on every request made with that key.

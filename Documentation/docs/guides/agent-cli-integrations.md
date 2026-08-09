@@ -60,7 +60,12 @@ export LOOPERS_PROXY_KEY="lp-xxx"
 loopers exec -- <agent_command>
 ```
 
-**Auto-Detection Feature:** `loopers exec` will automatically detect the provider based on the executable name (e.g. `claude` -> anthropic, `codex` -> openai, `opencode` -> openai, `antigravity-agent` -> openai). If your CLI agent is not natively recognized, you can specify it via the `LOOPERS_PROVIDER` environment variable.
+**Auto-Detection Feature:** `loopers exec` will automatically detect the provider based on the executable name (e.g. `claude` → anthropic, `codex` → openai, `opencode` → openai). For all other CLIs, or when using a non-default provider like OpenRouter, set `LOOPERS_PROVIDER` explicitly:
+
+```bash
+# Force OpenRouter as the upstream provider for any CLI
+export LOOPERS_PROVIDER="openrouter"
+```
 
 > **Note:** The `loopers exec` command **inherits** your real API key from your existing shell environment (e.g., `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) and forwards it securely. You never pass your real API key as an argument.
 
@@ -152,23 +157,38 @@ Add a custom provider block targeting the Loopers proxy endpoint in `~/.config/o
 
 ---
 
-## 4. Google Antigravity
+## 4. OpenRouter (Any CLI)
 
-Google Antigravity is an agentic IDE that supports both GUI and CLI operations.
+OpenRouter lets you access 500+ models from a single API. You can use `loopers exec` to route any CLI agent through OpenRouter with a specific model.
 
-### For CLI/Terminal Tasks
-You can use `loopers exec` inside the Antigravity integrated terminal exactly as you would in any other shell:
+### Using `loopers exec` (Recommended)
 
+**macOS / Linux:**
 ```bash
-export OPENAI_API_KEY="sk-YOUR_REAL_KEY"
+export OPENAI_API_KEY="sk-or-v1-YOUR_OPENROUTER_KEY"
 export LOOPERS_PROXY_KEY="lp-xxx"
+export LOOPERS_PROVIDER="openrouter"
 
-# Provider is auto-detected from 'antigravity-agent'
-loopers exec -- antigravity-agent run
+# Force a specific free model
+loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
 ```
 
-### For IDE Configuration
-To govern the IDE's built-in agents:
-1. Open the **API Proxy** settings tab in Google Antigravity.
-2. Set the Base URL to: `http://localhost:8080/lp-xxx/openai/v1` (or the relevant provider path).
-3. Set your API Key to your real upstream key (e.g., `sk-proj-...`). Loopers will automatically extract the `lp-xxx` key from the URL path.
+**Windows (PowerShell):**
+```powershell
+$env:OPENAI_API_KEY="sk-or-v1-YOUR_OPENROUTER_KEY"
+$env:LOOPERS_PROXY_KEY="lp-xxx"
+$env:LOOPERS_PROVIDER="openrouter"
+
+loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
+```
+
+**Windows (Command Prompt):**
+```cmd
+set OPENAI_API_KEY=sk-or-v1-YOUR_OPENROUTER_KEY
+set LOOPERS_PROXY_KEY=lp-xxx
+set LOOPERS_PROVIDER=openrouter
+
+loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
+```
+
+> **Note:** `OPENAI_API_KEY` is the correct environment variable to use with OpenRouter when routing through Loopers. The `loopers exec` wrapper automatically injects `OPENROUTER_BASE_URL` so the CLI does not need to be specially configured.

@@ -14,42 +14,23 @@ This guide will help you get set up and protected in under five minutes.
 ## Prerequisites
 
 Before starting, you will need:
-* Go version 1.20 or higher (only if building from code)
-* Redis version 7.0 or higher
-* Docker and Docker Compose (this is the recommended way)
+* Go 1.25 or higher (required when building from source)
+* Docker and Docker Compose (recommended for running Redis)
 
-## Method 1: Docker Demo
+## Method 1: Docker (Recommended)
 
-This is the fastest way to see Loopers in action. It uses a mock AI server so you do not spend any real money.
+This is the fastest way to run Loopers in production or local development without installing Go.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/CURSED-ME/loopers-oss.git
-   cd loopers-oss
-   ```
-
-2. Start the demo using Docker:
-   ```bash
-   docker-compose -f docker-compose.demo.yml up
-   ```
-
-Check the log messages for ready to run commands that you can copy and paste.
-
-## Method 2: Docker Compose
-
-Follow these steps to set up Loopers for your own projects.
-
-### Step 1: Download the binary or image
-
-To get the latest version, you can run:
+### Step 1: Get the Docker Compose file
 
 ```bash
-docker pull ghcr.io/cursed-me/loopers:latest
+git clone https://github.com/CURSED-ME/loopers-oss.git
+cd loopers-oss
 ```
 
-### Step 2: Start the proxy
+### Step 2: Start Redis and the Proxy
 
-Start the proxy server in the background:
+Start both the proxy server and the Redis database in the background:
 
 ```bash
 docker-compose up -d
@@ -87,8 +68,9 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
   -d '{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hello Loopers"}]}'
 ```
 
-*Alternatively, for pre-built agents (like OpenClaw or AutoGPT) that don't support custom headers, you can encode the Loopers proxy key in the URL path and pass your real upstream provider key as the standard bearer token:*
+*Alternatively, use path-based auth for agents (like `opencode` or `codex`) that don't support custom headers:*
 
+**macOS / Linux:**
 ```bash
 curl -X POST http://localhost:8080/RAW_LP_KEY/openai/v1/chat/completions \
   -H "Authorization: Bearer YOUR_REAL_OPENAI_KEY" \
@@ -96,28 +78,65 @@ curl -X POST http://localhost:8080/RAW_LP_KEY/openai/v1/chat/completions \
   -d '{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hello Loopers"}]}'
 ```
 
-## Method 3: From Source Code
+**Windows (PowerShell):**
+```powershell
+Invoke-RestMethod -Method Post -Uri "http://localhost:8080/RAW_LP_KEY/openai/v1/chat/completions" `
+  -Headers @{"Authorization"="Bearer YOUR_REAL_OPENAI_KEY"; "Content-Type"="application/json"} `
+  -Body '{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hello Loopers"}]}'
+```
 
-If you prefer to compile the code yourself:
+---
 
-1. Clone the repository and navigate inside:
-   ```bash
-   git clone https://github.com/CURSED-ME/loopers-oss.git
-   cd loopers-oss
-   ```
+## Method 2: Native Installation (Go 1.25+)
 
-2. **Option A: Build locally (for testing)**
-   ```bash
-   go build -o loopers ./cmd/loopers
-   ./loopers serve
-   ```
+If you want to run the proxy natively on your machine or just use the CLI wrapper for agents (`loopers exec`).
 
-3. **Option B: Install globally (Recommended for CLI agents)**
-   To use the `loopers exec` wrapper from anywhere on your computer without paths, install it to your Go bin folder (which is usually in your system `PATH`):
-   ```bash
-   go install ./cmd/loopers
-   loopers serve
-   ```
+### Step 1: Install the CLI globally
+
+**macOS / Linux / Windows:**
+```bash
+go install github.com/CURSED-ME/loopers-oss/cmd/loopers@latest
+```
+
+### Step 2: Initialize Configuration
+
+This creates a `loopers.yaml` configuration file and a `docker-compose.yml` (for Redis) in your current directory.
+
+```bash
+loopers init
+```
+
+### Step 3: Start Redis
+
+Start only the Redis container in the background:
+
+```bash
+docker-compose up -d redis
+```
+
+> **Note:** If you already have Redis running locally (e.g. via Homebrew, apt, or a remote instance), you can skip this step. Just make sure the `redis.addr` in your `loopers.yaml` points to your existing Redis instance.
+
+### Step 4: Start the Proxy Server
+
+Start the server in development mode (without TLS):
+
+**macOS / Linux:**
+```bash
+SERVER_INSECURE_DEV=true loopers serve
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:SERVER_INSECURE_DEV="true"; loopers serve
+```
+
+### Step 5: Create a Key and Route Requests
+
+In a **new terminal window**, you can now run Loopers commands directly against your local proxy:
+
+```bash
+loopers keys create --name mykey --provider openai
+```
 
 ## Next Steps
 

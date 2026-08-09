@@ -226,8 +226,6 @@ loopers keys create \
 
 This metadata is automatically passed into the policy engine's `input.agent` block on every request made with that key.
 
-This metadata is automatically passed into the policy engine's `input.agent` block on every request made with that key.
-
 ---
 
 ## Security Events

@@ -54,9 +54,9 @@ To build and test Loopers, you will need:
    docker run -d -p 6379:6379 redis:7-alpine
    ```
 
-2. Start the proxy server in debug mode:
+2. Start the proxy server in debug mode (bypassing TLS):
    ```bash
-   ./loopers serve -v
+   SERVER_INSECURE_DEV=true ./loopers serve -v
    ```
 
 ## Pull Request Guidelines

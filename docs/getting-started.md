@@ -25,14 +25,14 @@ docker-compose up -d
 ### Method 2: From Source
 ```bash
 # Clone the repository
-git clone https://github.com/CURSED-ME/loopers-oss-oss.git
+git clone https://github.com/CURSED-ME/loopers-oss.git
 cd loopers-oss
 
 # Build the binary
 go build -o loopers ./cmd/loopers
 
-# Run the proxy server
-./loopers serve
+# Run the proxy server (bypassing TLS for local development)
+SERVER_INSECURE_DEV=true ./loopers serve
 ```
 
 ## Quick Start Configuration

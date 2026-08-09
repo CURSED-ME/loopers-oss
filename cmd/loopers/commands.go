@@ -4,7 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/exec"
 	"strconv"
@@ -35,6 +38,8 @@ var (
 	dailyLimit          string
 	weeklyLimit         string
 	monthlyLimit        string
+	execModelMap        string
+	execModelOverride   string
 )
 
 func getRedisClient() (*budget.Client, error) {
@@ -808,35 +813,78 @@ var execCmd = &cobra.Command{
 
 		provider := os.Getenv("LOOPERS_PROVIDER")
 		if provider == "" {
+			// Auto-detect provider from the CLI executable name.
+			// Note: antigravity is intentionally excluded as it does not support BYOK.
 			executable := strings.ToLower(args[0])
-			switch executable {
-			case "claude":
+			switch {
+			case executable == "claude":
 				provider = "anthropic"
-			case "codex", "opencode", "antigravity-agent", "agy":
-				provider = "openai"
+			case executable == "gemini":
+				provider = "gemini"
+			case strings.Contains(executable, "openrouter"):
+				provider = "openrouter"
 			default:
-				logging.Logger.Fatal().Msgf("Could not auto-detect provider for '%s'. Please set LOOPERS_PROVIDER environment variable.", executable)
+				// opencode, codex, cursor, and most OpenAI-compatible CLIs default to openai.
+				provider = "openai"
 			}
+			logging.Logger.Info().Msgf("LOOPERS_PROVIDER not set. Auto-detected provider '%s' from executable '%s'. Set LOOPERS_PROVIDER to override.", provider, executable)
 		}
 
-		baseURL := fmt.Sprintf("%s/%s/%s/v1", proxyURL, proxyKey, provider)
+		targetURLStr := fmt.Sprintf("%s/%s", proxyURL, provider)
+		targetURL, err := url.Parse(targetURLStr)
+		if err != nil {
+			logging.Logger.Fatal().Err(err).Msg("Invalid proxy URL")
+		}
 
-		var envBaseURL string
+		// Start a local transparent reverse proxy
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			logging.Logger.Fatal().Err(err).Msg("Failed to start local proxy listener")
+		}
+		localProxyPort := listener.Addr().(*net.TCPAddr).Port
+		localProxyURL := fmt.Sprintf("http://127.0.0.1:%d/v1", localProxyPort)
+
+		rp := &httputil.ReverseProxy{
+			Director: func(req *http.Request) {
+				req.URL.Scheme = targetURL.Scheme
+				req.URL.Host = targetURL.Host
+
+				// Ensure path is properly joined without stripping /v1,
+				// as providers like OpenRouter need /v1 in their upstream path.
+				req.URL.Path = strings.TrimSuffix(targetURL.Path, "/") + req.URL.Path
+				req.Host = targetURL.Host
+
+				authHeader := req.Header.Get("Authorization")
+				if authHeader != "" {
+					// Move agent's API key to the provider key header
+					req.Header.Set("X-Loopers-Provider-Key", strings.TrimPrefix(authHeader, "Bearer "))
+				}
+				req.Header.Set("Authorization", "Bearer "+proxyKey)
+
+				if execModelMap != "" {
+					req.Header.Set("X-Loopers-Model-Map", execModelMap)
+				}
+				if execModelOverride != "" {
+					req.Header.Set("X-Loopers-Model-Override", execModelOverride)
+				}
+			},
+		}
+
+		go func() {
+			if err := http.Serve(listener, rp); err != nil && err != http.ErrServerClosed {
+				logging.Logger.Error().Err(err).Msg("Local proxy error")
+			}
+		}()
+
 		var envAPIKey string
-
 		switch provider {
 		case "anthropic":
-			envBaseURL = "ANTHROPIC_BASE_URL"
 			envAPIKey = "ANTHROPIC_API_KEY"
 		case "gemini":
-			envBaseURL = "GEMINI_BASE_URL"
 			envAPIKey = "GEMINI_API_KEY"
 		case "openrouter":
-			envBaseURL = "OPENROUTER_BASE_URL"
 			envAPIKey = "OPENROUTER_API_KEY"
 		default:
-			// openai, groq, etc all use OPENAI_ compatible SDKs mostly
-			envBaseURL = "OPENAI_BASE_URL"
 			envAPIKey = "OPENAI_API_KEY"
 		}
 
@@ -848,10 +896,16 @@ var execCmd = &cobra.Command{
 
 		// Copy existing env and append
 		c.Env = os.Environ()
-		c.Env = append(c.Env, fmt.Sprintf("%s=%s", envBaseURL, baseURL))
-		if provider == "openrouter" {
-			c.Env = append(c.Env, fmt.Sprintf("OPENAI_BASE_URL=%s", baseURL))
-		}
+
+		// Set base URLs to point to our local transparent proxy
+		c.Env = append(c.Env, fmt.Sprintf("OPENAI_BASE_URL=%s", localProxyURL))
+		c.Env = append(c.Env, fmt.Sprintf("OPENAI_API_BASE=%s", localProxyURL))
+		c.Env = append(c.Env, fmt.Sprintf("ANTHROPIC_BASE_URL=%s", localProxyURL))
+		c.Env = append(c.Env, fmt.Sprintf("GEMINI_BASE_URL=%s", localProxyURL))
+
+		// Always inject OPENROUTER_BASE_URL regardless of provider, since some CLIs
+		// (e.g. opencode) use it as an alternative base URL resolution path.
+		c.Env = append(c.Env, fmt.Sprintf("OPENROUTER_BASE_URL=%s", localProxyURL))
 
 		// Warn if real API key is missing
 		foundRealKey := false
@@ -880,6 +934,8 @@ func init() {
 	rootCmd.AddCommand(initCmd)
 
 	// Exec command
+	execCmd.Flags().StringVar(&execModelMap, "model-map", "", "Comma-separated list of model aliases (e.g. gpt-4o=google/gemini-2.5-pro,claude=anthropic/claude-3)")
+	execCmd.Flags().StringVar(&execModelOverride, "model-override", "", "Force a specific model to be used for all requests")
 	rootCmd.AddCommand(execCmd)
 
 	// Keys commands

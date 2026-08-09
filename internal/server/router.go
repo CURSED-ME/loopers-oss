@@ -228,6 +228,30 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 		return
 	}
 
+	if override := c.GetHeader("X-Loopers-Model-Override"); override != "" {
+		mutatedBody, err = prov.RewriteModel(c.Request, mutatedBody, override)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to apply model override"})
+			return
+		}
+		model = override
+	} else if modelMapHeader := c.GetHeader("X-Loopers-Model-Map"); modelMapHeader != "" {
+		mappings := strings.Split(modelMapHeader, ",")
+		for _, mapping := range mappings {
+			parts := strings.SplitN(mapping, "=", 2)
+			if len(parts) == 2 && strings.TrimSpace(parts[0]) == model {
+				alias := strings.TrimSpace(parts[1])
+				mutatedBody, err = prov.RewriteModel(c.Request, mutatedBody, alias)
+				if err != nil {
+					c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to apply model map"})
+					return
+				}
+				model = alias
+				break
+			}
+		}
+	}
+
 	if s.otelEnabled {
 		span := trace.SpanFromContext(c.Request.Context())
 		span.SetAttributes(attribute.String("gen_ai.request.model", model))

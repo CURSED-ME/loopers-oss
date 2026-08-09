@@ -24,7 +24,7 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 
 ## 3. Tech Stack & Requirements
 
-- **Language**: Go 1.26.5
+- **Language**: Go 1.25+ (toolchain go1.26.5)
 - **Cache/Storage**: Redis 7+
 - **Proxy Engine**: `net/http/httputil.ReverseProxy`
 - **Policy Engine**: Open Policy Agent (OPA) / Rego
@@ -81,14 +81,14 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 │   └── ts/                        # TypeScript / Node.js SDK (LoopersOpenAI, onPolicyBlock callback, vitest suite)
 ├── Documentation/                 # Docusaurus documentation website & blog
 ├── docs/                          # Architectural specifications & benchmarks
-└── examples/                      # Example policies (01_model_restriction.rego, 02_tool_restriction.rego, 03_taint_tracking.rego)
+└── examples/                      # Example policies (01_allow_admin.rego, 02_deny_destructive.rego, 03_taint_tracking.rego)
 ```
 
 ---
 
 ## 5. Zero-Code Path-Based Integration (`PathAuthWrapper`)
 
-For pre-built agent frameworks (like OpenClaw, AutoGPT, or Hermes) that do not allow injecting custom HTTP headers, Loopers provides zero-code path-based authentication:
+For pre-built agent frameworks (like `opencode`, `codex`, or any OpenAI-compatible CLI tool) that do not allow injecting custom HTTP headers, Loopers provides zero-code path-based authentication:
 
 - **Usage**: Embed the Loopers proxy key in the base URL path, and pass the real provider key as the standard Bearer token:
   ```env
@@ -110,9 +110,26 @@ For pre-built agent frameworks (like OpenClaw, AutoGPT, or Hermes) that do not a
 loopers init
 ```
 
-**Run Production Server:**
+**Run Production Server (Requires TLS Config):**
 ```bash
 loopers serve
+```
+
+**Run Local Development Server (No TLS):**
+
+macOS / Linux:
+```bash
+SERVER_INSECURE_DEV=true loopers serve
+```
+
+Windows (PowerShell):
+```powershell
+$env:SERVER_INSECURE_DEV="true"; loopers serve
+```
+
+Windows (Command Prompt):
+```cmd
+set SERVER_INSECURE_DEV=true && loopers serve
 ```
 
 **Create Proxy Key with Metadata:**
@@ -140,9 +157,58 @@ loopers budget set <KEY_HASH> \
 loopers budget status <KEY_HASH>
 ```
 
+**Diagnose Configuration and Connectivity:**
+```bash
+loopers doctor
+```
+
+**Execute CLI Agent with Proxy Injection:**
+
+Required env vars:
+- `LOOPERS_PROXY_KEY` — your proxy key (`lp-xxx`)
+- `LOOPERS_PROVIDER` — upstream provider (`openai`, `anthropic`, `openrouter`, etc.). Auto-detected from executable name if omitted.
+
+Optional flags: `--model-override <model>`, `--model-map <alias=model,...>`
+
+macOS / Linux:
+```bash
+export LOOPERS_PROXY_KEY="lp-xxx"
+export LOOPERS_PROVIDER="openrouter"
+export OPENAI_API_KEY="sk-or-v1-YOUR_KEY"
+
+loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
+```
+
+Windows (PowerShell):
+```powershell
+$env:LOOPERS_PROXY_KEY="lp-xxx"
+$env:LOOPERS_PROVIDER="openrouter"
+$env:OPENAI_API_KEY="sk-or-v1-YOUR_KEY"
+
+loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
+```
+
+Windows (Command Prompt):
+```cmd
+set LOOPERS_PROXY_KEY=lp-xxx
+set LOOPERS_PROVIDER=openrouter
+set OPENAI_API_KEY=sk-or-v1-YOUR_KEY
+
+loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
+```
+
 ---
 
-## 7. SDK Usage Examples
+## 8. AI Agent Resources
+
+The following machine-readable files are available to help AI agents understand and set up this repository without browsing the documentation site:
+
+- **`llms-full.txt`** — single-file complete technical context (setup, CLI, config, headers, OPA policies, providers). Fetch this for full context in one shot: `https://docs.tryloopers.com/llms-full.txt`
+- **`llms.txt`** — structured index of all documentation pages with inline quick-reference: `https://docs.tryloopers.com/llms.txt`
+
+For local use (when docs site is not deployed), both files are in `Documentation/static/`.
+
+---
 
 ### Python SDK
 ```python
