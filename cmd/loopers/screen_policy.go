@@ -91,7 +91,7 @@ func screenPolicy() {
 				regoFiles = append(regoFiles, e.Name())
 			}
 		}
-		
+
 		fmt.Printf("\nFound %d policy files in %s:\n", len(regoFiles), policyDir)
 		for _, file := range regoFiles {
 			fmt.Printf("  - %s\n", file)

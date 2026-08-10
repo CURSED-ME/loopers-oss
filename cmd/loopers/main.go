@@ -65,7 +65,7 @@ var rootCmd = &cobra.Command{
 							Title("No loopers.yaml found. Run Quick Start Setup now?").
 							Value(&runSetup).
 							Run()
-						
+
 						if runSetup {
 							runScreen("screen_init")
 						}
@@ -83,7 +83,7 @@ var rootCmd = &cobra.Command{
 					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				}
 			}
-			
+
 			break
 		}
 	},

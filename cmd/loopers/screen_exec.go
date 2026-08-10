@@ -35,7 +35,7 @@ func screenExec() {
 			huh.NewInput().Title("Proxy Key").Value(&proxyKey).EchoMode(huh.EchoModePassword),
 			huh.NewInput().Title("Proxy URL (Recommended: http://localhost:8080)").Value(&proxyURL),
 		).Title("Proxy Configuration"),
-		
+
 		huh.NewGroup(
 			huh.NewSelect[string]().Title("Provider (Recommended: Auto-Detect)").Options(
 				huh.NewOption("Auto-Detect", "auto-detect"),
@@ -82,10 +82,10 @@ func screenExec() {
 
 	fmt.Printf("\nExecuting: %s\n", commandToRun)
 	fmt.Println(strings.Repeat("-", 40))
-	
+
 	// Execute it!
 	execCmd.Run(execCmd, args)
-	
+
 	fmt.Println(strings.Repeat("-", 40))
 	pressEnterToContinue()
 }

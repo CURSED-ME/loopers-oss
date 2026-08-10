@@ -15,14 +15,14 @@ func screenMCP() {
 	fmt.Println()
 
 	var (
-		enabled                  = true
-		maxRequestSize           = "1048576"
-		allowToolsOverride       = false
-		allowServersOverride     = false
-		cbEnabled                = true
-		cbThreshold              = "5"
-		cbWindowSeconds          = "60"
-		sanitizerMaxDesc         = "1024"
+		enabled              = true
+		maxRequestSize       = "1048576"
+		allowToolsOverride   = false
+		allowServersOverride = false
+		cbEnabled            = true
+		cbThreshold          = "5"
+		cbWindowSeconds      = "60"
+		sanitizerMaxDesc     = "1024"
 	)
 
 	// Attempt to read current loopers.yaml to pre-fill
@@ -109,7 +109,7 @@ func screenMCP() {
 			"max_description_length": parseInt(sanitizerMaxDesc),
 		},
 	}
-	
+
 	// Preserve existing servers and tool_allowlist if they exist
 	if existingMcp, ok := root["mcp"].(map[string]interface{}); ok {
 		if servers, ok := existingMcp["servers"]; ok {

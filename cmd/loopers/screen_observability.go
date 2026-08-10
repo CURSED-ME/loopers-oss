@@ -122,15 +122,15 @@ func runAlertingScreen() {
 	fmt.Println()
 
 	var (
-		webhookURL     = ""
-		webhookSecret  = ""
-		bufferSize     = "100"
-		t1Percent      = "50"
-		t1Message      = "Budget 50% consumed"
-		t2Percent      = "80"
-		t2Message      = ""
-		t3Percent      = "95"
-		t3Message      = ""
+		webhookURL    = ""
+		webhookSecret = ""
+		bufferSize    = "100"
+		t1Percent     = "50"
+		t1Message     = "Budget 50% consumed"
+		t2Percent     = "80"
+		t2Message     = ""
+		t3Percent     = "95"
+		t3Message     = ""
 	)
 
 	data, err := os.ReadFile("loopers.yaml")
@@ -144,24 +144,36 @@ func runAlertingScreen() {
 				if v, ok := aCfg["buffer_size"].(int); ok {
 					bufferSize = fmt.Sprintf("%d", v)
 				}
-				
+
 				if tCfg, ok := aCfg["thresholds"].([]interface{}); ok {
 					if len(tCfg) > 0 {
 						if m, ok := tCfg[0].(map[string]interface{}); ok {
-							if p, ok := m["percent"].(int); ok { t1Percent = fmt.Sprintf("%d", p) }
-							if msg, ok := m["message"].(string); ok { t1Message = msg }
+							if p, ok := m["percent"].(int); ok {
+								t1Percent = fmt.Sprintf("%d", p)
+							}
+							if msg, ok := m["message"].(string); ok {
+								t1Message = msg
+							}
 						}
 					}
 					if len(tCfg) > 1 {
 						if m, ok := tCfg[1].(map[string]interface{}); ok {
-							if p, ok := m["percent"].(int); ok { t2Percent = fmt.Sprintf("%d", p) }
-							if msg, ok := m["message"].(string); ok { t2Message = msg }
+							if p, ok := m["percent"].(int); ok {
+								t2Percent = fmt.Sprintf("%d", p)
+							}
+							if msg, ok := m["message"].(string); ok {
+								t2Message = msg
+							}
 						}
 					}
 					if len(tCfg) > 2 {
 						if m, ok := tCfg[2].(map[string]interface{}); ok {
-							if p, ok := m["percent"].(int); ok { t3Percent = fmt.Sprintf("%d", p) }
-							if msg, ok := m["message"].(string); ok { t3Message = msg }
+							if p, ok := m["percent"].(int); ok {
+								t3Percent = fmt.Sprintf("%d", p)
+							}
+							if msg, ok := m["message"].(string); ok {
+								t3Message = msg
+							}
 						}
 					}
 				}

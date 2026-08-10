@@ -50,7 +50,7 @@ func screenZSP() {
 			huh.NewConfirm().Title("Require JWT Verification? (Recommended: Yes)").Value(&jwtOnly),
 			huh.NewInput().Title("JWKS URL (Optional)").Value(&jwksUrl).Description("URL to fetch public keys for JWT validation"),
 		).Title("Zero-Trust Security Protocol"),
-		
+
 		huh.NewGroup(
 			huh.NewConfirm().Title("Enable Escalation Broker? (Recommended: Yes)").Description("Allow manual budget overrides via UI").Value(&escalationEnabled),
 			huh.NewInput().Title("Escalation HMAC Secret (Optional)").Value(&escalationSecret).EchoMode(huh.EchoModePassword),
@@ -76,7 +76,7 @@ func screenZSP() {
 		"jwks_url":           jwksUrl,
 		"escalation_enabled": escalationEnabled,
 	}
-	
+
 	// Keep existing secret if empty input
 	if escalationSecret != "" {
 		zspBlock["escalation_secret"] = escalationSecret
@@ -87,7 +87,7 @@ func screenZSP() {
 			}
 		}
 	}
-	
+
 	root["zsp"] = zspBlock
 
 	out, err := yaml.Marshal(&root)

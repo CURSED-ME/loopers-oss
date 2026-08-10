@@ -51,8 +51,6 @@ func screenDoctor() {
 	pressEnterToContinue()
 }
 
-
-
 func screenKeys() {
 	ui.PrintLogo()
 	var action string
@@ -107,5 +105,3 @@ func screenBudget() {
 	}
 	pressEnterToContinue()
 }
-
-

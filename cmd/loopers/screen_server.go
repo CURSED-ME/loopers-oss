@@ -36,15 +36,33 @@ func screenInit() {
 	)
 
 	// Defaults if empty
-	if redisURL == "" { redisURL = "localhost:6379" }
-	if redisDB == "" { redisDB = "0" }
-	if serverPort == "" { serverPort = "8080" }
-	if adminHost == "" { adminHost = "127.0.0.1" }
-	if adminPort == "" { adminPort = "9090" }
-	if logLevel == "" { logLevel = "info" }
-	if maxPayload == "" || maxPayload == "0" { maxPayload = "8388608" }
-	if pricingPath == "" { pricingPath = "./pricing.yaml" }
-	if sessionMaxPerKey == "" || sessionMaxPerKey == "0" { sessionMaxPerKey = "10" }
+	if redisURL == "" {
+		redisURL = "localhost:6379"
+	}
+	if redisDB == "" {
+		redisDB = "0"
+	}
+	if serverPort == "" {
+		serverPort = "8080"
+	}
+	if adminHost == "" {
+		adminHost = "127.0.0.1"
+	}
+	if adminPort == "" {
+		adminPort = "9090"
+	}
+	if logLevel == "" {
+		logLevel = "info"
+	}
+	if maxPayload == "" || maxPayload == "0" {
+		maxPayload = "8388608"
+	}
+	if pricingPath == "" {
+		pricingPath = "./pricing.yaml"
+	}
+	if sessionMaxPerKey == "" || sessionMaxPerKey == "0" {
+		sessionMaxPerKey = "10"
+	}
 
 	err := huh.NewForm(
 		// Group 1: Core Infrastructure
