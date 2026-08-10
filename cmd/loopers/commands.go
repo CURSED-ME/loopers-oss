@@ -240,8 +240,17 @@ var keysCreateCmd = &cobra.Command{
 							huh.NewOption("OpenRouter", "openrouter"),
 						).
 						Value(&keyProvider),
-				),
-			).WithTheme(ui.GetHuhTheme()).Run()
+				).Title("Identity"),
+				huh.NewGroup(
+					huh.NewInput().Title("Agent Name (Optional)").Description("Name of the agent associated with this key").Value(&keyAgentName),
+					huh.NewInput().Title("Owner (Optional)").Description("Owner/Team responsible for the key").Value(&keyOwner),
+				).Title("Metadata"),
+				huh.NewGroup(
+					huh.NewInput().Title("Allowed Tools (Optional)").Description("Comma-separated list of allowed tools").Value(&keyAllowedTools),
+					huh.NewInput().Title("Allowed Providers (Optional)").Description("Comma-separated list of allowed providers").Value(&keyAllowedProviders),
+					huh.NewInput().Title("Tags (Optional)").Description("Comma-separated key=value tags for policy").Value(&keyTags),
+				).Title("Access Control"),
+			).WithTheme(ui.GetHuhTheme()).WithKeyMap(ui.GetHuhKeyMap()).Run()
 			if err != nil {
 				return
 			}
@@ -519,7 +528,7 @@ var budgetSetCmd = &cobra.Command{
 					huh.NewInput().Title("Weekly Limit (USD)").Value(&weeklyLimit).Validate(validateFloat),
 					huh.NewInput().Title("Monthly Limit (USD)").Value(&monthlyLimit).Validate(validateFloat),
 				),
-			).WithTheme(ui.GetHuhTheme()).Run()
+			).WithTheme(ui.GetHuhTheme()).WithKeyMap(ui.GetHuhKeyMap()).Run()
 
 			if err != nil {
 				return
@@ -651,147 +660,7 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Interactively initialize Loopers configuration",
 	Run: func(cmd *cobra.Command, args []string) {
-		ui.PrintLogo()
-		ui.PrintHeader("Loopers Setup Wizard\nConfigure your AI cost firewall")
-		fmt.Println()
-
-		providersInput := "openai, anthropic"
-		dailyInput := "10.00"
-		hourlyInput := "2.00"
-		redisInput := "localhost:6379"
-
-		if ui.IsInteractive() {
-			err := huh.NewForm(
-				huh.NewGroup(
-					huh.NewInput().
-						Title("Providers").
-						Description("Available: openai, anthropic, gemini, bedrock, azure, mistral, groq, cohere, deepseek, together").
-						Value(&providersInput),
-					huh.NewInput().
-						Title("Daily Budget (USD)").
-						Description("Default daily spend limit").
-						Value(&dailyInput).
-						Validate(func(s string) error {
-							v, err := strconv.ParseFloat(s, 64)
-							if err != nil || v <= 0 {
-								return fmt.Errorf("must be a valid number > 0")
-							}
-							return nil
-						}),
-					huh.NewInput().
-						Title("Hourly Budget (USD)").
-						Description("Default hourly spend limit").
-						Value(&hourlyInput).
-						Validate(func(s string) error {
-							v, err := strconv.ParseFloat(s, 64)
-							if err != nil || v <= 0 {
-								return fmt.Errorf("must be a valid number > 0")
-							}
-							return nil
-						}),
-					huh.NewInput().
-						Title("Redis URL").
-						Description("Where is your Redis instance running?").
-						Value(&redisInput).
-						Validate(func(s string) error {
-							if !strings.Contains(s, ":") {
-								return fmt.Errorf("must match host:port format")
-							}
-							return nil
-						}),
-				),
-			).WithTheme(ui.GetHuhTheme()).Run()
-
-			if err != nil {
-				return
-			}
-		}
-
-		// Generate loopers.yaml
-		yamlContent := fmt.Sprintf(`server:
-  port: 8080
-  max_payload_bytes: 2097152
-  # admin_host: 127.0.0.1
-  # admin_port: 9090
-  # tls_cert_file: "/path/to/cert.pem"
-  # tls_key_file: "/path/to/key.pem"
-redis:
-  addr: "%s"
-  password: ""
-  db: 0
-log:
-  level: "info"
-pricing_path: "./pricing.yaml"
-
-alerting:
-  webhook_url: "https://example.com/webhook"
-  thresholds:
-    - percent: 50
-      message: "Budget 50%% consumed"
-    - percent: 80
-      message: "Budget 80%% consumed — approaching limit"
-    - percent: 95
-      message: "Budget 95%% consumed — imminent cutoff"
-`, redisInput)
-
-		err := os.WriteFile("loopers.yaml", []byte(yamlContent), 0600)
-		if err != nil {
-			ui.Error(fmt.Sprintf("Error writing loopers.yaml: %v", err))
-			return
-		}
-		ui.Success("loopers.yaml written")
-
-		// Generate docker-compose.yml
-		composeContent := `version: '3.8'
-
-services:
-  redis:
-    image: redis:8-alpine
-    container_name: loopers-redis
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-demo-pass}"]
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-demo-pass}
-    healthcheck:
-      test: ["CMD", "sh", "-c", "redis-cli -a $$REDIS_PASSWORD ping"]
-      interval: 2s
-      timeout: 2s
-      retries: 5
-    networks:
-      - loopers-net
-
-  loopers:
-    image: ghcr.io/cursed-me/loopers:latest
-    container_name: loopers-proxy
-    ports:
-      - "8080:8080"
-    environment:
-      - REDIS_ADDR=redis:6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-demo-pass}
-      - SERVER_PORT=8080
-      - SERVER_ADMIN_HOST=0.0.0.0
-      - PRICING_PATH=/app/pricing.yaml
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - loopers-net
-
-networks:
-  loopers-net:
-    driver: bridge
-`
-		err = os.WriteFile("docker-compose.yml", []byte(composeContent), 0600)
-		if err != nil {
-			ui.Error(fmt.Sprintf("Error writing docker-compose.yml: %v", err))
-			return
-		}
-		ui.Success("docker-compose.yml written")
-
-		fmt.Println()
-		fmt.Println("  Next steps:")
-		fmt.Println("    1. docker-compose up -d")
-		fmt.Println("    2. loopers keys create --name my-app --provider openai")
-		fmt.Printf("    3. loopers budget set <hash> --daily %s --hourly %s\n", dailyInput, hourlyInput)
+		screenInit()
 	},
 }
 

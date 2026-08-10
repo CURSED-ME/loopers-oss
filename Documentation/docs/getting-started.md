@@ -116,6 +116,9 @@ docker-compose up -d redis
 
 > **Note:** If you already have Redis running locally (e.g. via Homebrew, apt, or a remote instance), you can skip this step. Just make sure the `redis.addr` in your `loopers.yaml` points to your existing Redis instance.
 
+> [!WARNING]
+> The default Redis password in the generated `docker-compose.yml` was recently updated from `changeme_in_production` to `demo-pass`. If you generated your compose file in an older version, make sure the `REDIS_PASSWORD` in `docker-compose.yml` matches `redis.password` in your `loopers.yaml`.
+
 ### Step 4: Start the Proxy Server
 
 Start the server in development mode (without TLS):

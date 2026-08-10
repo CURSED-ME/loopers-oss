@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./docs/logo.jpg" alt="Loopers" width="800"/>
+  <img src="./docs/cover.png" alt="Loopers" width="800"/>
 </p>
 
 # Loopers – The firewall for the agentic era
@@ -23,7 +23,7 @@
 > Want to help make Loopers better? We love community contributions! Check out our [Contributing Guide](./CONTRIBUTING.md) to see how you can get involved.
 
 
-Loopers is a baremetal, zero-delay firewall for the agentic era. It intercepts requests across **500+ AI models natively** (across 14 providers like OpenAI, Anthropic, Gemini, Groq, Ollama, vLLM, and more), plus **any OpenAI-compatible endpoint** and **Model Context Protocol (MCP)** servers, to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
+Loopers is a baremetal, zero-delay firewall for the agentic era. It intercepts requests across **500+ AI models natively** (across 15 providers like OpenAI, Anthropic, Gemini, Groq, Ollama, vLLM, and more), plus **any OpenAI-compatible endpoint** and **Model Context Protocol (MCP)** servers, to prevent token overspending, stop runaway agent loops, and safeguard against catastrophic bill shocks like LLMjacking.
 
 ---
 
@@ -376,7 +376,7 @@ The OSS version is the full circuit-breaker engine — everything you need to se
 | Feature | OSS (Self-Hosted) | [Loopers Cloud](https://tryloopers.com) |
 |---|:---:|:---:|
 | Pre-call budget enforcement | Yes | Yes |
-| 500+ models across 14 providers + generic OpenAI endpoints | Yes | Yes |
+| 500+ models across 15 providers + generic OpenAI endpoints | Yes | Yes |
 | 5 budget windows (minute / hourly / daily / weekly / monthly) | Yes | Yes |
 | Mid-stream SSE cutoff | Yes | Yes |
 | Fail-closed Redis guarantee | Yes | Yes |

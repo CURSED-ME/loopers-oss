@@ -23,14 +23,18 @@ var menuItems = []struct {
 	label  string
 	action string
 }{
-	{"Diagnostics", "doctor"},
-	{"Init Workspace", "init"},
-	{"Create Key", "keys create"},
-	{"List Keys", "keys list"},
-	{"Revoke Key", "keys revoke"},
-	{"Set Budget", "budget set"},
-	{"Budget Status", "budget status"},
+	{"Quick Start / Init", "screen_init"},
+	{"Diagnostics", "screen_doctor"},
+	{"Keys", "screen_keys"},
+	{"Budgets", "screen_budget"},
+	{"Loop Detection", "screen_loop"},
+	{"MCP Governance", "screen_mcp"},
+	{"Policy Engine", "screen_policy"},
+	{"Security (ZSP / A2A)", "screen_zsp"},
+	{"Observability", "screen_observability"},
+	{"Execute Command", "screen_exec"},
 	{"Start Server", "serve"},
+	{"Quit", "quit"},
 }
 
 func NewApp() AppModel {
@@ -113,7 +117,6 @@ func (m AppModel) View() string {
 
 		sb.WriteString(style.Render(line))
 
-		// Hints
 		hintStyle := lipgloss.NewStyle().Foreground(colorTextSecondary)
 		if i == 0 {
 			sb.WriteString(hintStyle.Render(" enter  select"))
@@ -124,7 +127,7 @@ func (m AppModel) View() string {
 	}
 
 	sb.WriteString(lipgloss.NewStyle().Foreground(colorBorderStrong).Render("  ──────────────────────────────────────────────────────") + "\n")
-	sb.WriteString(lipgloss.NewStyle().Foreground(colorTextTertiary).Render("  LOOPERS  ·  MIT Licensed  ·  10 providers  ·  ~1-2ms") + "\n")
+	sb.WriteString(lipgloss.NewStyle().Foreground(colorTextTertiary).Render("  LOOPERS  ·  MIT Licensed  ·  15 providers  ·  ~1-2ms") + "\n")
 
 	return sb.String()
 }

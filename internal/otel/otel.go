@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -35,30 +36,40 @@ func Init(cfg Config, version string) (func(context.Context) error, error) {
 		cfg.Protocol = "grpc"
 	}
 
-	var client otlptrace.Client
-	if cfg.Protocol == "http" {
-		opts := []otlptracehttp.Option{
-			otlptracehttp.WithEndpoint(cfg.Endpoint),
-			otlptracehttp.WithHeaders(cfg.Headers),
-		}
-		if cfg.Insecure {
-			opts = append(opts, otlptracehttp.WithInsecure())
-		}
-		client = otlptracehttp.NewClient(opts...)
-	} else {
-		opts := []otlptracegrpc.Option{
-			otlptracegrpc.WithEndpoint(cfg.Endpoint),
-			otlptracegrpc.WithHeaders(cfg.Headers),
-		}
-		if cfg.Insecure {
-			opts = append(opts, otlptracegrpc.WithInsecure())
-		}
-		client = otlptracegrpc.NewClient(opts...)
-	}
+	var exporter trace.SpanExporter
+	var err error
 
-	exporter, err := otlptrace.New(context.Background(), client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create OTLP exporter: %w", err)
+	if cfg.Protocol == "stdout" {
+		exporter, err = stdouttrace.New(stdouttrace.WithPrettyPrint())
+		if err != nil {
+			return nil, fmt.Errorf("failed to create stdout exporter: %w", err)
+		}
+	} else {
+		var client otlptrace.Client
+		if cfg.Protocol == "http" {
+			opts := []otlptracehttp.Option{
+				otlptracehttp.WithEndpoint(cfg.Endpoint),
+				otlptracehttp.WithHeaders(cfg.Headers),
+			}
+			if cfg.Insecure {
+				opts = append(opts, otlptracehttp.WithInsecure())
+			}
+			client = otlptracehttp.NewClient(opts...)
+		} else {
+			opts := []otlptracegrpc.Option{
+				otlptracegrpc.WithEndpoint(cfg.Endpoint),
+				otlptracegrpc.WithHeaders(cfg.Headers),
+			}
+			if cfg.Insecure {
+				opts = append(opts, otlptracegrpc.WithInsecure())
+			}
+			client = otlptracegrpc.NewClient(opts...)
+		}
+
+		exporter, err = otlptrace.New(context.Background(), client)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create otlp exporter: %w", err)
+		}
 	}
 
 	res, err := resource.Merge(

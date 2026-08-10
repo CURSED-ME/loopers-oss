@@ -166,7 +166,7 @@ providers:
 |---|---|---|
 | enabled | false | Enable OpenTelemetry tracing (EU AI Act tracing) |
 | endpoint | "localhost:4317" | OTLP collector endpoint |
-| protocol | "grpc" | Transport protocol (`grpc` or `http`) |
+| protocol | "grpc" | Transport protocol (`grpc`, `http`, or `stdout`) |
 | sampling_rate | 1.0 | Probabilistic sampling rate for successful requests. Enforcement events are always traced at 100%. |
 
 ### mcp
