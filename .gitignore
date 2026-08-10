@@ -11,6 +11,7 @@ docs/*.md
 graphify-out/
 bin/
 *.exe
+*.exe~
 .agents/
 loopers.yaml
 docker-compose.yml
