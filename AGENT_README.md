@@ -8,7 +8,7 @@
 
 ## 1. Project Goal
 
-Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. It is written in Go and intercepts requests across 500+ AI models (14 native providers + generic OpenAI endpoints) and Model Context Protocol (MCP) servers to prevent token overspending, stop runaway agent loops, and protect against LLMjacking via a zero-storage pass-through architecture and atomic Redis transactions.
+Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. It is written in Go and intercepts requests across 500+ AI models (15 native providers + generic OpenAI endpoints) and Model Context Protocol (MCP) servers to prevent token overspending, stop runaway agent loops, and protect against LLMjacking via a zero-storage pass-through architecture and atomic Redis transactions.
 
 ---
 
@@ -54,7 +54,7 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 │   ├── otel/                      # OpenTelemetry W3C OTLP sampler & exporter (EU AI Act compliance)
 │   ├── policy/                    # Embedded OPA engine with hot-reload & stateful context (taint_flags, tools_called)
 │   ├── pricing/                   # Dynamic remote pricing fetcher & token price store
-│   ├── provider/                  # 14 AI provider implementations + Generic BYO OpenAI endpoint
+│   ├── provider/                  # 15 AI provider implementations + Generic BYO OpenAI endpoint
 │   │   ├── anthropic/             # Anthropic Messages & Text completion proxy
 │   │   ├── azure/                 # Azure OpenAI deployment proxy
 │   │   ├── bedrock/               # AWS Bedrock runtime proxy

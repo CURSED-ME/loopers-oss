@@ -306,7 +306,7 @@ rate_limit:
 otel:
   enabled: false
   endpoint: "localhost:4317"
-  protocol: "grpc"            # grpc | http
+  protocol: "grpc"            # grpc | http | stdout
   sampling_rate: 1.0
 
 providers:

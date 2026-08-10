@@ -135,6 +135,9 @@ func PrintSummary(pass bool, issues int) {
 }
 
 func PrintLogo() {
+	// Clear the primary screen buffer robustly
+	ClearScreen()
+
 	// The logo mark is a 2×2 grid with a checkerboard pattern of solid and hollow squares
 	// [Solid]  [Hollow]
 	// [Solid]  [Solid]
@@ -147,7 +150,7 @@ func PrintLogo() {
 	row2Logo := solidBlock + gap + solidBlock
 
 	title := lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true).Render("LOOPERS")
-	subtitle := lipgloss.NewStyle().Foreground(colorTextSecondary).Render("PRE-CALL AI BILLING CIRCUIT BREAKER")
+	subtitle := lipgloss.NewStyle().Foreground(colorTextSecondary).Render("PRE-CALL AI BILLING CIRCUIT BREAKER  ·  (Press Ctrl+C to go back)")
 
 	row1 := "  " + row1Logo + "   " + title
 	row2 := "  " + row2Logo + "   " + subtitle

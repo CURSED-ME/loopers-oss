@@ -8,6 +8,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/cmd/loopers/ui"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -27,35 +28,63 @@ var rootCmd = &cobra.Command{
 			return
 		}
 
-		app := ui.NewApp()
-		p := tea.NewProgram(app, tea.WithAltScreen())
-		m, err := p.Run()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error running UI: %v\n", err)
-			return
-		}
-
-		appModel, ok := m.(ui.AppModel)
-		if !ok || appModel.Action == "" {
-			return // User aborted or exited
-		}
-
-		action := appModel.Action
-
-		// Dispatch to existing commands
-		parts := strings.Split(action, " ")
-		subCmd, _, err := cmd.Find(parts)
-		if err != nil || subCmd == cmd {
-			fmt.Fprintf(os.Stderr, "unknown action: %s\n", action)
-			os.Exit(1)
-		}
-
-		if subCmd.Run != nil {
-			subCmd.Run(subCmd, []string{})
-		} else if subCmd.RunE != nil {
-			if err := subCmd.RunE(subCmd, []string{}); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		for {
+			app := ui.NewApp()
+			p := tea.NewProgram(app, tea.WithAltScreen())
+			m, err := p.Run()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error running UI: %v\n", err)
+				return
 			}
+
+			appModel, ok := m.(ui.AppModel)
+			if !ok || appModel.Action == "" || appModel.Action == "quit" {
+				return // User aborted or exited
+			}
+
+			action := appModel.Action
+
+			if strings.HasPrefix(action, "screen_") {
+				runScreen(action)
+				continue
+			}
+
+			// Dispatch to existing commands (like serve)
+			parts := strings.Split(action, " ")
+			subCmd, _, err := cmd.Find(parts)
+			if err != nil || subCmd == cmd {
+				fmt.Fprintf(os.Stderr, "unknown action: %s\n", action)
+				os.Exit(1)
+			}
+
+			if subCmd.Run != nil || subCmd.RunE != nil {
+				if action == "serve" {
+					if _, err := os.Stat("loopers.yaml"); os.IsNotExist(err) {
+						var runSetup bool
+						huh.NewConfirm().
+							Title("No loopers.yaml found. Run Quick Start Setup now?").
+							Value(&runSetup).
+							Run()
+						
+						if runSetup {
+							runScreen("screen_init")
+						}
+						continue
+					}
+				}
+			}
+
+			if subCmd.Run != nil {
+				viper.ReadInConfig()
+				subCmd.Run(subCmd, []string{})
+			} else if subCmd.RunE != nil {
+				viper.ReadInConfig()
+				if err := subCmd.RunE(subCmd, []string{}); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				}
+			}
+			
+			break
 		}
 	},
 }

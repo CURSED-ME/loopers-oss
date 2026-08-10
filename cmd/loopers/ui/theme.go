@@ -86,3 +86,9 @@ func GetHuhTheme() *huh.Theme {
 
 	return t
 }
+
+func GetHuhKeyMap() *huh.KeyMap {
+	km := huh.NewDefaultKeyMap()
+	km.Quit.SetKeys("ctrl+c", "esc")
+	return km
+}

@@ -64,5 +64,5 @@ We have officially launched native drop-in adapters for both Python and TypeScri
 Along with global provider limits, you can now define Session Budgets. This allows you to cap the exact amount of money a specific user, chat session, or autonomous agent can spend in a single run. Simply pass the `session_id` and `session_budget` headers!
 * **Learn More**: Read the deep-dive on [Session Budgets](/docs/concepts/session-budgets).
 
-## 14 Provider Integrations & Stable SDK Launch
-The initial stable release of Loopers marked the launch of our SDKs alongside native proxy support for 14 leading AI providers, including OpenAI, Anthropic, Google Gemini, Fireworks, Ollama, vLLM, and xAI. 
+## 15 Provider Integrations & Stable SDK Launch
+The initial stable release of Loopers marked the launch of our SDKs alongside native proxy support for 15 leading AI providers, including OpenAI, Anthropic, Google Gemini, Fireworks, Ollama, vLLM, and xAI. 

@@ -1,16 +1,19 @@
+version: '3.8'
 
 services:
   redis:
     image: redis:8-alpine
     container_name: loopers-redis
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-changeme_in_production}"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-demo-pass}"]
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-changeme_in_production}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-demo-pass}
     healthcheck:
       test: ["CMD", "sh", "-c", "redis-cli -a $$REDIS_PASSWORD ping"]
       interval: 2s
       timeout: 2s
       retries: 5
+    ports:
+      - "6379:6379"
     networks:
       - loopers-net
 
@@ -21,8 +24,9 @@ services:
       - "8080:8080"
     environment:
       - REDIS_ADDR=redis:6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-changeme_in_production}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-demo-pass}
       - SERVER_PORT=8080
+      - SERVER_ADMIN_HOST=0.0.0.0
       - PRICING_PATH=/app/pricing.yaml
     depends_on:
       redis:

@@ -38,7 +38,10 @@ func ListenAndServeWithGracefulShutdown(srv *http.Server, adminSrv *http.Server,
 				logging.Logger.Fatal().Err(err).Msg("Server failed to start (TLS)")
 			}
 		} else {
-			logging.Logger.Fatal().Msg("TLS is required in production. Please configure server.tls_cert_file and server.tls_key_file")
+			logging.Logger.Warn().Msg("TLS certs not configured. Falling back to plaintext HTTP. Production deployments MUST configure TLS or place Loopers behind a TLS-terminating load balancer.")
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				logging.Logger.Fatal().Err(err).Msg("Server failed to start")
+			}
 		}
 	}()
 
