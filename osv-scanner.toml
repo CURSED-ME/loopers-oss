@@ -1,0 +1,3 @@
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+reason = "govulncheck confirms this vulnerable code path is not called by the application."
