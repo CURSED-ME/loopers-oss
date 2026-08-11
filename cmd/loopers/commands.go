@@ -840,7 +840,6 @@ var execCmd = &cobra.Command{
 			}
 		}
 
-
 		if err := c.Run(); err != nil {
 			if exitError, ok := err.(*exec.ExitError); ok {
 				os.Exit(exitError.ExitCode())
