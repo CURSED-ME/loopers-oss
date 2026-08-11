@@ -166,7 +166,7 @@ loopers doctor
 
 Required env vars:
 - `LOOPERS_PROXY_KEY` — your proxy key (`lp-xxx`)
-- `LOOPERS_PROVIDER` — upstream provider (`openai`, `anthropic`, `openrouter`, etc.). Auto-detected from executable name if omitted.
+- `LOOPERS_PROVIDER` — upstream provider (`openai`, `anthropic`, `openrouter`, etc.). Auto-detected from executable name if omitted (supports `aider`, `openhands`, `pi`, `claude`, `codex`, `opencode`).
 
 Optional flags: `--model-override <model>`, `--model-map <alias=model,...>`
 

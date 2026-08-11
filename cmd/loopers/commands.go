@@ -692,6 +692,12 @@ var execCmd = &cobra.Command{
 				provider = "gemini"
 			case strings.Contains(executable, "openrouter"):
 				provider = "openrouter"
+			case executable == "aider":
+				provider = "openai"
+			case executable == "openhands":
+				provider = "openai"
+			case executable == "pi":
+				provider = "openai"
 			default:
 				// opencode, codex, cursor, and most OpenAI-compatible CLIs default to openai.
 				provider = "openai"
@@ -776,17 +782,64 @@ var execCmd = &cobra.Command{
 		// (e.g. opencode) use it as an alternative base URL resolution path.
 		c.Env = append(c.Env, fmt.Sprintf("OPENROUTER_BASE_URL=%s", localProxyURL))
 
-		// Warn if real API key is missing
-		foundRealKey := false
-		for _, e := range c.Env {
-			if strings.HasPrefix(e, envAPIKey+"=") {
-				foundRealKey = true
-				break
+		// Inject synthetic API keys if real ones are absent.
+		// This prevents harnesses like Aider from aborting on startup
+		// before making any requests. The proxy replaces the key at the
+		// HTTP layer, so this value never reaches the upstream provider.
+		syntheticKey := "loopers-managed"
+		injectIfMissing := func(envVar string) {
+			for _, e := range c.Env {
+				if strings.HasPrefix(e, envVar+"=") {
+					return // real key present; do not overwrite
+				}
+			}
+			c.Env = append(c.Env, fmt.Sprintf("%s=%s", envVar, syntheticKey))
+		}
+		injectIfMissing("OPENAI_API_KEY")
+		injectIfMissing("ANTHROPIC_API_KEY")
+		injectIfMissing("GEMINI_API_KEY")
+
+		// Inject OpenHands-specific LLM override variables.
+		// OpenHands uses LLM_BASE_URL (not OPENAI_BASE_URL) to override its endpoint.
+		if strings.ToLower(args[0]) == "openhands" {
+			c.Env = append(c.Env, fmt.Sprintf("LLM_BASE_URL=%s", localProxyURL))
+			// OpenHands strictly requires LLM_API_KEY and ignores other provider keys.
+			// We must inject the actual provider's API key into LLM_API_KEY so it sends it.
+			realKey := os.Getenv(envAPIKey)
+			if realKey != "" {
+				c.Env = append(c.Env, fmt.Sprintf("LLM_API_KEY=%s", realKey))
+			} else {
+				injectIfMissing("LLM_API_KEY")
 			}
 		}
-		if !foundRealKey {
-			logging.Logger.Warn().Msgf("Warning: %s is not set in your environment. The underlying agent command might fail if it requires an upstream key.", envAPIKey)
+
+		// Pi does not support env-var overrides; inject provider into models.json.
+		if strings.ToLower(args[0]) == "pi" {
+			cleanup, err := injectPiProvider(localProxyURL)
+			if err != nil {
+				logging.Logger.Warn().Err(err).Msg("Failed to inject Loopers provider into Pi models.json; Pi will not route through proxy")
+			} else {
+				defer cleanup()
+			}
 		}
+
+		// Warn if a real (user-supplied) API key is missing for BYOK flows.
+		// Harnesses that Loopers fully manages (aider, openhands, pi) skip this
+		// warning because they are designed to work with the synthetic key above.
+		managedHarnesses := map[string]bool{"aider": true, "openhands": true, "pi": true}
+		if !managedHarnesses[strings.ToLower(args[0])] {
+			foundRealKey := false
+			for _, e := range c.Env {
+				if strings.HasPrefix(e, envAPIKey+"=") && !strings.HasPrefix(e, envAPIKey+"="+syntheticKey) {
+					foundRealKey = true
+					break
+				}
+			}
+			if !foundRealKey {
+				logging.Logger.Warn().Msgf("Warning: %s is not set in your environment. The underlying agent command might fail if it requires an upstream key.", envAPIKey)
+			}
+		}
+
 
 		if err := c.Run(); err != nil {
 			if exitError, ok := err.(*exec.ExitError); ok {

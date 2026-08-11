@@ -6,7 +6,7 @@ sidebar_label: Agent CLI Integrations
 
 # Agent CLI Integrations
 
-Many autonomous agents and coding assistants operate as CLI tools (like Claude Code, Codex, or OpenCode). Integrating Loopers OSS with these tools ensures that even your terminal-based agents are governed by strict budget controls, policy engines, and blast-radius constraints.
+Many autonomous agents and coding assistants operate as CLI tools (like Aider, OpenHands, Pi, Claude Code, Codex, or OpenCode). Integrating Loopers OSS with these tools ensures that even your terminal-based agents are governed by strict budget controls, policy engines, and blast-radius constraints.
 
 The most seamless way to integrate Loopers with any CLI agent is using the `loopers exec` wrapper command.
 
@@ -60,7 +60,7 @@ export LOOPERS_PROXY_KEY="lp-xxx"
 loopers exec -- <agent_command>
 ```
 
-**Auto-Detection Feature:** `loopers exec` will automatically detect the provider based on the executable name (e.g. `claude` → anthropic, `codex` → openai, `opencode` → openai). For all other CLIs, or when using a non-default provider like OpenRouter, set `LOOPERS_PROVIDER` explicitly:
+**Auto-Detection Feature:** `loopers exec` will automatically detect the provider based on the executable name (e.g. `aider` → openai, `openhands` → openai, `pi` → openai, `claude` → anthropic, `codex` → openai, `opencode` → openai). For all other CLIs, or when using a non-default provider like OpenRouter, set `LOOPERS_PROVIDER` explicitly:
 
 ```bash
 # Force OpenRouter as the upstream provider for any CLI
@@ -192,3 +192,68 @@ loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
 ```
 
 > **Note:** `OPENAI_API_KEY` is the correct environment variable to use with OpenRouter when routing through Loopers. The `loopers exec` wrapper automatically injects `OPENROUTER_BASE_URL` so the CLI does not need to be specially configured.
+
+---
+
+## 5. Aider
+
+Aider is a popular command-line chat tool that lets you write code with LLMs in your local git repository.
+
+### Using `loopers exec` (Recommended)
+
+Ensure your real API key (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `OPENROUTER_API_KEY`) is set, then run:
+
+```bash
+export LOOPERS_PROXY_KEY="lp-xxx"
+# Provider is auto-detected from 'aider' as 'openai'
+loopers exec -- aider --model openrouter/meta-llama/llama-3-8b-instruct:free
+```
+
+If you are not using OpenAI, or want to override the auto-detection, explicitly set `LOOPERS_PROVIDER`:
+
+```bash
+export LOOPERS_PROXY_KEY="lp-xxx"
+export LOOPERS_PROVIDER="openrouter"
+export OPENROUTER_API_KEY="sk-or-v1-..."
+loopers exec -- aider --model openrouter/meta-llama/llama-3-8b-instruct:free
+```
+
+---
+
+## 6. OpenHands
+
+OpenHands is an agentic software development platform that runs in your terminal or as a web app.
+
+### Using `loopers exec` (Recommended)
+
+OpenHands relies strictly on `LLM_API_KEY` and `LLM_BASE_URL` when overriding LLM settings via the environment. The `loopers exec` wrapper automatically injects `LLM_BASE_URL` and copies your active provider API key (like `OPENROUTER_API_KEY` or `OPENAI_API_KEY`) into `LLM_API_KEY` for you.
+
+When running OpenHands with environment variables, you must include the `--override-with-envs` flag so it reads them.
+
+```bash
+export LLM_MODEL="openrouter/meta-llama/llama-3-8b-instruct:free"
+export OPENROUTER_API_KEY="sk-or-v1-..."
+export LOOPERS_PROXY_KEY="lp-xxx"
+export LOOPERS_PROVIDER="openrouter"
+
+loopers exec -- openhands -t "hello" --override-with-envs
+```
+
+---
+
+## 7. Pi
+
+Pi is an interactive coding assistant CLI.
+
+### Using `loopers exec` (Recommended)
+
+Pi does not support environment variable overrides for base URLs. Instead, `loopers exec` dynamically mutates Pi's local model configuration (`~/.pi/agent/models.json`) at startup to register Loopers as a custom provider, and cleanly restores your original configuration when Pi exits.
+
+```bash
+export LOOPERS_PROXY_KEY="lp-xxx"
+
+# Start Pi interactive shell
+loopers exec -- pi
+```
+
+Inside Pi, you can configure your agent to route queries through the newly registered **Loopers Proxy** provider.
