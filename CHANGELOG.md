@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.6.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.5.0...v2.6.0) (2026-08-11)
+
+
+### Features
+
+* add support for additional agent CLI integrations ([1fd85e0](https://github.com/CURSED-ME/loopers-oss/commit/1fd85e009d00d6df5f2a8eac72ba4932e90889ae))
+* add support for additional agent CLI integrations ([a4778d2](https://github.com/CURSED-ME/loopers-oss/commit/a4778d2d47de3ba59895715dbbe1de6e8ab0dbd3))
+
 ## [2.5.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.4.0...v2.5.0) (2026-08-10)
 
 
