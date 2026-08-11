@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/CURSED-ME/loopers-oss/compare/sdk-python-v2.0.4...sdk-python-v2.1.0) (2026-08-10)
+
+
+### Features
+
+* TUI enhancement ([3ae3cc9](https://github.com/CURSED-ME/loopers-oss/commit/3ae3cc9a6dbc33658d2ef97af37f160f1aabe939))
+
 ## [2.0.4](https://github.com/CURSED-ME/loopers-oss/compare/sdk-python-v2.0.3...sdk-python-v2.0.4) (2026-07-28)
 
 
