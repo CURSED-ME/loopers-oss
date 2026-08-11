@@ -303,13 +303,13 @@ For full details, see the [Python SDK documentation](./sdk/python/README.md) and
 
 ---
 
-## Agent CLI Integrations (Claude Code, OpenCode, Codex)
+## Agent CLI Integrations (Aider, OpenHands, Pi, Claude Code, OpenCode, Codex)
 
 If you use terminal-based autonomous agents, the most seamless way to secure them with Loopers is using the `loopers exec` wrapper command. This dynamically injects the correct Base URL configuration into the agent process without modifying your global shell settings.
 
 `loopers exec` requires two environment variables:
 - `LOOPERS_PROXY_KEY` — your Loopers proxy key (`lp-xxx`)
-- `LOOPERS_PROVIDER` — the upstream provider to route traffic through (e.g. `openai`, `anthropic`, `openrouter`). If not set, the provider is auto-detected from the executable name where possible.
+- `LOOPERS_PROVIDER` — the upstream provider to route traffic through (e.g. `openai`, `anthropic`, `openrouter`). If not set, the provider is auto-detected from the executable name where possible (auto-detection supports `aider`, `openhands`, `pi`, `claude`, `opencode`, and `codex`).
 
 Optional flags:
 - `--model-override <model>` — force all requests to use a specific model (e.g. `google/gemma-2-9b-it:free`)

@@ -203,7 +203,7 @@ loopers exec [--model-override string] [--model-map string] -- <command>
 
 Required environment variables:
 - `LOOPERS_PROXY_KEY` — your proxy key (`lp-xxx`)
-- `LOOPERS_PROVIDER` — upstream provider (e.g. `openai`, `anthropic`, `openrouter`). Auto-detected from executable name for `claude` (anthropic), `codex` (openai), `opencode` (openai). Must be set explicitly for all other tools.
+- `LOOPERS_PROVIDER` — upstream provider (e.g. `openai`, `anthropic`, `openrouter`). Auto-detected from executable name for `aider` (openai), `openhands` (openai), `pi` (openai), `claude` (anthropic), `codex` (openai), `opencode` (openai). Must be set explicitly for all other tools.
 
 Optional flags:
 - `--model-override <model>` — force all requests to use a specific model (e.g. `google/gemma-2-9b-it:free`)
