@@ -51,7 +51,7 @@ type SessionContext struct {
 type ActionContext struct {
 	Type          string                 `json:"type"`                     // "llm_call" | "mcp_tool_call"
 	Provider      string                 `json:"provider"`                 // "openai" | "anthropic" | "gemini" | etc.
-	Model         string                 `json:"model"`                     // e.g. "gpt-4o"
+	Model         string                 `json:"model"`                    // e.g. "gpt-4o"
 	PromptText    string                 `json:"prompt_text"`              // Concatenated prompts
 	ToolName      string                 `json:"tool_name,omitempty"`      // if tool call
 	ToolArguments map[string]interface{} `json:"tool_arguments,omitempty"` // if tool call
