@@ -296,6 +296,7 @@ alerting:
 
 policy:
   enabled: false
+  policy_file: "./policies.yaml"
   policy_dir: "./policies"
   default_action: "deny"
 
@@ -369,9 +370,11 @@ LOG_LEVEL            overrides server.log_level
 
 ---
 
-## OPA/Rego Policy Engine
+## OPA/Rego & YAML Policy Engine
 
-All `.rego` files must use `package loopers.policy`. Place them in the `policy_dir` defined in `loopers.yaml`. Loopers hot-reloads policies on file change.
+All custom `.rego` files must use `package loopers.policy` and reside in the `policy_dir` directory. Loopers hot-reloads policies on file change.
+
+Alternatively, write simple declarative security rules in a single YAML Policy Card file (e.g. `policies.yaml` configured via `policy_file`). Loopers automatically transpiles these rules into OPA commands on the fly. YAML policies support regular expression matches, custom deny reasons, and stateful sequence gating constraints (FSM sequence rules).
 
 ### Input schema for LLM calls
 ```json
