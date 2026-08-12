@@ -40,6 +40,7 @@ var (
 	monthlyLimit        string
 	execModelMap        string
 	execModelOverride   string
+	servePresets        []string
 )
 
 func getRedisClient() (*budget.Client, error) {
@@ -107,6 +108,11 @@ var serveCmd = &cobra.Command{
 		redisClient, err := getRedisClient()
 		if err != nil {
 			logging.Logger.Fatal().Err(err).Msg("Failed to connect to Redis")
+		}
+
+		if len(servePresets) > 0 {
+			viper.Set("policy.enabled", true)
+			viper.Set("policy.presets", servePresets)
 		}
 
 		budget.InitConfigCache()
@@ -851,6 +857,7 @@ var execCmd = &cobra.Command{
 
 func init() {
 	// Root flags
+	serveCmd.Flags().StringSliceVar(&servePresets, "presets", nil, "Comma-separated list of policy presets to enable (safety|pci|mcp_sandbox)")
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(initCmd)
 

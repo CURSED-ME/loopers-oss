@@ -19,6 +19,7 @@ func screenPolicy() {
 		enabled       = true
 		policyDir     = "./policies"
 		policyFile    = "./policies.yaml"
+		presets       []string
 		defaultAction = "allow"
 	)
 
@@ -37,6 +38,13 @@ func screenPolicy() {
 				if v, ok := polCfg["policy_file"].(string); ok {
 					policyFile = v
 				}
+				if v, ok := polCfg["presets"].([]interface{}); ok {
+					for _, item := range v {
+						if pStr, ok := item.(string); ok {
+							presets = append(presets, pStr)
+						}
+					}
+				}
 				if v, ok := polCfg["default_action"].(string); ok {
 					defaultAction = v
 				}
@@ -47,6 +55,11 @@ func screenPolicy() {
 	err = huh.NewForm(
 		huh.NewGroup(
 			huh.NewConfirm().Title("Enable Policy Enforcement? (Recommended: Yes)").Value(&enabled),
+			huh.NewMultiSelect[string]().Title("Enable Safety Presets (Optional)").Options(
+				huh.NewOption("Safety Guardrails (SSN, Creds, Bash injection)", "safety"),
+				huh.NewOption("PCI-DSS Compliance (Credit Cards, CVV, SQLi)", "pci"),
+				huh.NewOption("MCP Sandbox (Path traversal, FSM bash dry-run)", "mcp_sandbox"),
+			).Value(&presets),
 			huh.NewInput().Title("Policy File (YAML Guardrails Card)").Value(&policyFile),
 			huh.NewInput().Title("Policy Directory (Rego Files)").Value(&policyDir),
 			huh.NewSelect[string]().Title("Default Action (Recommended: Allow)").Options(
@@ -73,6 +86,7 @@ func screenPolicy() {
 		"enabled":        enabled,
 		"policy_dir":     policyDir,
 		"policy_file":    policyFile,
+		"presets":        presets,
 		"default_action": defaultAction,
 	}
 
@@ -125,6 +139,13 @@ func screenPolicy() {
 		}
 	} else {
 		fmt.Printf("\nNote: Rego policy directory '%s' does not exist or cannot be read.\n", policyDir)
+	}
+
+	if len(presets) > 0 {
+		fmt.Printf("\nEnabled Safety Presets:\n")
+		for _, p := range presets {
+			fmt.Printf("  - %s\n", p)
+		}
 	}
 
 	pressEnterToContinue()

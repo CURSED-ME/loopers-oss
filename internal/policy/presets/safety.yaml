@@ -1,0 +1,48 @@
+version: loopers.com/v1alpha1
+metadata:
+  name: safety-preset
+rules:
+  - name: block-pii-ssn
+    description: Prevent exfiltration of social security numbers
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+    action: deny
+    reason: "Blocked: Social Security Number (SSN) pattern detected in prompt payload."
+
+  - name: block-credentials-leak
+    description: Prevent leakage of passwords and secrets
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)(db_password|api_key|client_secret|aws_secret_access_key)\\s*[:=]\\s*[\"']?[a-zA-Z0-9_\\-\\+]{20,}"
+    action: deny
+    reason: "Blocked: Potential API key, password, or client secret pattern detected in prompt payload."
+
+  - name: block-prompt-injection
+    description: Block common prompt injection payloads and safety overrides
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)(ignore previous instructions|system prompt|override safety|forget what you were told|dan mode)"
+    action: deny
+    reason: "Blocked: Potential prompt injection or system safety override attempt detected."
+
+  - name: block-destructive-commands
+    description: Block system destructive and backconnect shell commands
+    match:
+      type: mcp_tool_call
+      tool: execute_bash
+    conditions:
+      - field: arguments.command
+        op: matches_regex
+        value: "(?i)(rm\\s+-rf|sudo|chmod\\s+777|wget|curl|nc\\s+-e)"
+    action: deny
+    reason: "Blocked: Bash command contains system-altering or untrusted network utilities (rm -rf, sudo, chmod, curl, wget, nc)."

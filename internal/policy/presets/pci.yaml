@@ -1,0 +1,36 @@
+version: loopers.com/v1alpha1
+metadata:
+  name: pci-preset
+rules:
+  - name: block-pci-credit-card
+    description: Prevent leakage of credit card numbers
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "\\b\\d{4}[- ]?\\d{4}[- ]?\\d{4}[- ]?\\d{4}\\b"
+    action: deny
+    reason: "Blocked: Credit Card Number pattern detected in prompt payload."
+
+  - name: block-pci-cvv
+    description: Prevent leakage of CVV/CVC codes
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)\\b(cvv|cvc|cid)\\b\\s*[:=]?\\s*\\b\\d{3,4}\\b"
+    action: deny
+    reason: "Blocked: CVV/CVC verification code pattern detected in prompt payload."
+
+  - name: block-sql-injection-prompt
+    description: Block SQL injection patterns in prompts
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)(UNION\\s+SELECT|DROP\\s+TABLE|INSERT\\s+INTO|UPDATE\\s+.*\\s+SET|OR\\s+\\d+=\\d+)"
+    action: deny
+    reason: "Blocked: Potential SQL injection attack signature detected in prompt payload."
