@@ -13,7 +13,14 @@ Loopers includes an embedded Open Policy Agent (OPA) engine that acts as a **Pol
 
 ## How It Works
 
-When enabled, every incoming request is evaluated against your `.rego` policy files **before** being forwarded upstream. The engine passes the **agent identity** (from key metadata) and **request context** (provider, model, tool name) into OPA, which returns an `allow` or `deny` decision.
+When enabled, every incoming request is evaluated against your policies **before** being forwarded upstream. Loopers supports two methods of defining policy rules:
+
+1. **Method A: Declarative YAML Policies & Presets (No-Code):** Best for developers who want to load out-of-the-box guardrails or define standard constraints using simple, human-readable YAML configurations without learning a new policy language.
+2. **Method B: Custom OPA/Rego Policies (Advanced):** Best for security teams who need to draft complex logic (such as dynamic role-based access, custom header parsing, or multi-attribute gating) using the full Open Policy Agent (OPA) / Rego language.
+
+The engine compiles these rules at boot and passes the **agent identity** (from key metadata) and normalized **request context** (provider, model, tool name) into the compiler, returning an `allow` or `deny` decision.
+
+---
 
 ```
 Client → Loopers Proxy → [OPA Policy Check] → Allow/Deny → Upstream Provider
@@ -33,6 +40,7 @@ policy:
   enabled: true
   policy_file: "./policies.yaml" # Path to declarative YAML Policy Card
   policy_dir: "./policies"       # Local directory containing custom Rego (.rego) files
+  presets: []                    # Safety presets to enable (safety|pci|mcp_sandbox)
   default_action: "deny"
 ```
 
@@ -41,11 +49,12 @@ policy:
 | `enabled` | `false` | Enable or disable the policy engine |
 | `policy_file` | `""` | Path to the declarative YAML Policy Card file |
 | `policy_dir` | `"./policies"` | Local directory containing custom Rego (.rego) files |
+| `presets` | `[]` | List of safety presets to enable (`"safety"`, `"pci"`, `"mcp_sandbox"`) |
 | `default_action` | `"deny"` | Default decision when no rule matches (`"allow"` or `"deny"`) |
 
 ---
 
-## Declarative YAML Policy Cards
+## Method A: Declarative YAML Policies & Presets
 
 To simplify agent governance, Loopers supports **Declarative YAML Policy Cards**. You can write simple security rules in a single `policies.yaml` file without needing to write custom OPA/Rego files. Loopers compiles these YAML policies into OPA instructions internally on the fly.
 
@@ -96,6 +105,63 @@ This is configured using the `session_sequence` condition:
         op: must_precede
         value: "dry_run_command"
 ```
+
+## Out-of-the-Box Presets & Templates
+
+Loopers-OSS includes three built-in, out-of-the-box presets designed to address the most common LLM and agentic AI vulnerabilities (including the OWASP GenAI Top 10 2026 and MCP security risks). These are compiled directly into the binary and require no custom YAML or Rego file authoring.
+
+### 1. `safety` (Standard Safety Guardrails)
+Mitigates PII leaks, credential exfiltration, prompt injections, and dangerous command executions.
+* **PII & SSN Leakage:** Blocks prompts containing Social Security Numbers matching `\b\d{3}-\d{2}-\d{4}\b`.
+* **Credentials Exfiltration:** Blocks prompts matching credential exposure keys (e.g. `api_key`, `db_password`, `aws_secret_access_key`).
+* **Prompt Injection Gating:** Blocks typical injection prompts (e.g. "ignore previous instructions", "override safety", "dan mode").
+* **Dangerous Commands Gating:** For MCP `execute_bash` calls, blocks dangerous command terms (e.g. `rm -rf`, `sudo`, `chmod 777`, `curl`, `wget`, `nc`).
+
+### 2. `pci` (Financial & Data Compliance)
+Mitigates credit card leaks, security codes exfiltration, and database queries manipulation.
+* **Credit Cards:** Blocks credit card numbers matching `\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b`.
+* **CVV Verification:** Blocks CVV verification codes matching `(?i)\b(cvv|cvc|cid)\b\s*[:=]?\s*\b\d{3,4}\b`.
+* **SQL Injection Gating:** Blocks database injection signatures (e.g. `UNION SELECT`, `DROP TABLE`, `INSERT INTO`).
+
+### 3. `mcp_sandbox` (MCP Blast Radius Prevention)
+Limits file system traversal and enforces execution sequences.
+* **Path Traversal Blocking:** Blocks MCP tool call arguments (e.g., `path`, `file`) containing parent directory traversal paths (`../` or `..\`).
+* **FSM Sequence Gating:** Restricts `execute_bash` tool calls unless preceded by a `dry_run_command` in the session history within the last 2 steps.
+
+---
+
+### Enabling Presets
+
+You can enable presets either via command-line flags or through your configuration file.
+
+#### A. CLI Flag (Recommended for Quick Dev)
+Pass a comma-separated list of preset names via the `--presets` flag on server startup:
+```bash
+loopers serve --presets safety,mcp_sandbox
+```
+*Note: Specifying `--presets` implicitly enables the policy engine (`policy.enabled = true`).*
+
+#### B. Configuration File (`loopers.yaml`)
+Enable and declare the presets in your YAML config:
+```yaml
+policy:
+  enabled: true
+  presets:
+    - safety
+    - mcp_sandbox
+```
+
+#### C. Default Presets Fallback
+If the policy engine is enabled (`policy.enabled: true` in `loopers.yaml`) but no presets, `policy_file`, or custom `.rego` files are loaded, Loopers will default to loading the `safety` preset. Loopers prints a notification info log to alert the user:
+```
+{"level":"info","message":"Policy engine enabled without custom files or presets; defaulting to 'safety' preset."}
+```
+
+> [!IMPORTANT]
+> **Additive Deny Semantics (OR Block):**
+> Preset rules and custom file rules evaluate together under additive deny logic. If you enable multiple presets or custom rules, any single rule violation across any active policy or preset will result in a request block.
+
+---
 
 ### Example `policies.yaml`
 
@@ -210,7 +276,7 @@ The `agent` block is populated from key metadata. The `session` block carries hi
 
 ---
 
-## Writing Policies
+## Method B: Custom OPA/Rego Policies (Advanced)
 
 All policies must use the package `loopers.policy` and define `allow` and/or `deny` rules.
 

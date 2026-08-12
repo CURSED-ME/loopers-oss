@@ -16,10 +16,11 @@ import (
 )
 
 type Config struct {
-	Enabled       bool   `mapstructure:"enabled"`
-	PolicyDir     string `mapstructure:"policy_dir"`
-	PolicyFile    string `mapstructure:"policy_file"`
-	DefaultAction string `mapstructure:"default_action"` // "deny" or "allow"
+	Enabled       bool     `mapstructure:"enabled"`
+	PolicyDir     string   `mapstructure:"policy_dir"`
+	PolicyFile    string   `mapstructure:"policy_file"`
+	Presets       []string `mapstructure:"presets"`
+	DefaultAction string   `mapstructure:"default_action"` // "deny" or "allow"
 }
 
 type AgentContext struct {
@@ -187,6 +188,34 @@ func (e *Engine) Reload() error {
 		} else if !os.IsNotExist(err) {
 			return fmt.Errorf("failed to stat policy file %s: %w", e.cfg.PolicyFile, err)
 		}
+	}
+
+	// If no custom policies/presets are configured or found, default to 'safety' preset
+	if len(modules) == 0 && len(e.cfg.Presets) == 0 {
+		logging.Logger.Info().Msg("Policy engine enabled without custom files or presets; defaulting to 'safety' preset.")
+		e.cfg.Presets = []string{"safety"}
+	}
+
+	// Load and transpile presets if configured
+	for _, presetName := range e.cfg.Presets {
+		data, err := GetPreset(presetName)
+		if err != nil {
+			return fmt.Errorf("failed to load preset %s: %w", presetName, err)
+		}
+		card, err := ParseYAML(data)
+		if err != nil {
+			return fmt.Errorf("failed to parse preset %s YAML: %w", presetName, err)
+		}
+		regoCode, err := TranspileToRego(card)
+		if err != nil {
+			return fmt.Errorf("failed to transpile preset %s YAML to Rego: %w", presetName, err)
+		}
+		module, err := ast.ParseModule(fmt.Sprintf("preset:%s", presetName), regoCode)
+		if err != nil {
+			return fmt.Errorf("failed to parse transpiled Rego module for preset %s: %w", presetName, err)
+		}
+		modules[fmt.Sprintf("preset:%s", presetName)] = module
+		logging.Logger.Info().Str("preset", presetName).Msg("Loaded preset Policy Card successfully")
 	}
 
 	// Compile the modules together

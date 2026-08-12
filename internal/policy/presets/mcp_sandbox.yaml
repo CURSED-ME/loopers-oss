@@ -1,0 +1,37 @@
+version: loopers.com/v1alpha1
+metadata:
+  name: mcp-sandbox-preset
+rules:
+  - name: block-path-traversal-path
+    description: Prevent path traversal via arguments.path containing relative parent directories
+    match:
+      type: mcp_tool_call
+    conditions:
+      - field: arguments.path
+        op: matches_regex
+        value: "(\\.\\.[\\/\\\\])"
+    action: deny
+    reason: "Blocked: Path traversal attempt detected (contains relative parent sequence '..')."
+
+  - name: block-path-traversal-file
+    description: Prevent path traversal via arguments.file containing relative parent directories
+    match:
+      type: mcp_tool_call
+    conditions:
+      - field: arguments.file
+        op: matches_regex
+        value: "(\\.\\.[\\/\\\\])"
+    action: deny
+    reason: "Blocked: Path traversal attempt detected (contains relative parent sequence '..')."
+
+  - name: enforce-bash-dry-run
+    description: Bash tool calls must be preceded by a dry run step within the last 2 steps
+    match:
+      type: mcp_tool_call
+      tool: execute_bash
+    session_flow:
+      requires:
+        - dry_run_command
+      within_last_steps: 2
+    action: deny
+    reason: "Blocked: Bash execution requested without a prior dry-run validation step (dry_run_command must be executed within the last 2 steps)."
