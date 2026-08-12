@@ -10,6 +10,24 @@ Many autonomous agents and coding assistants operate as CLI tools (like Aider, O
 
 The most seamless way to integrate Loopers with any CLI agent is using the `loopers exec` wrapper command.
 
+---
+
+## Zero-Code Path-Based Auth (For Pre-Built & Desktop Agents)
+
+For pre-built desktop agents, GUI clients, or developer tools that do not support custom HTTP headers (such as **OpenClaw**, **Hermes**, or **NanoClaw**), Loopers features a transparent **path-based authentication** fallback. 
+
+Instead of configuring your client to pass custom Loopers keys as headers (e.g. `X-Loopers-Provider-Key` and `Authorization`), you can embed your Loopers proxy key directly in the base URL path:
+
+```env
+# Example base URL format: http://localhost:8080/lp-<proxy_key>/<provider>/v1
+OPENAI_BASE_URL=http://localhost:8080/lp-xxx/openai/v1
+OPENAI_API_KEY=sk-proj-YOUR_REAL_OPENAI_KEY
+```
+
+When a request arrives, Loopers intercepts the request, extracts the `lp-xxx` proxy key from the path, handles header mapping behind the scenes, rewrites the URL path, and forwards the call to the upstream provider safely. This allows any OpenAI/Anthropic compatible pre-built client to route through Loopers with zero code or configuration changes.
+
+---
+
 ## Setup Instructions
 
 Before integrating your CLI agents, you need to have Loopers running and a proxy key generated. Follow these steps if you haven't already:
