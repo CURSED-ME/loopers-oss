@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/CURSED-ME/loopers-oss/cmd/loopers/ui"
+	"github.com/CURSED-ME/loopers-oss/internal/policy"
 	"github.com/charmbracelet/huh"
 	"gopkg.in/yaml.v3"
 )
@@ -17,6 +18,7 @@ func screenPolicy() {
 	var (
 		enabled       = true
 		policyDir     = "./policies"
+		policyFile    = "./policies.yaml"
 		defaultAction = "allow"
 	)
 
@@ -32,6 +34,9 @@ func screenPolicy() {
 				if v, ok := polCfg["policy_dir"].(string); ok {
 					policyDir = v
 				}
+				if v, ok := polCfg["policy_file"].(string); ok {
+					policyFile = v
+				}
 				if v, ok := polCfg["default_action"].(string); ok {
 					defaultAction = v
 				}
@@ -42,7 +47,8 @@ func screenPolicy() {
 	err = huh.NewForm(
 		huh.NewGroup(
 			huh.NewConfirm().Title("Enable Policy Enforcement? (Recommended: Yes)").Value(&enabled),
-			huh.NewInput().Title("Policy Directory (Recommended: ./policies)").Value(&policyDir),
+			huh.NewInput().Title("Policy File (YAML Guardrails Card)").Value(&policyFile),
+			huh.NewInput().Title("Policy Directory (Rego Files)").Value(&policyDir),
 			huh.NewSelect[string]().Title("Default Action (Recommended: Allow)").Options(
 				huh.NewOption("Allow", "allow"),
 				huh.NewOption("Deny", "deny"),
@@ -66,6 +72,7 @@ func screenPolicy() {
 	root["policy"] = map[string]interface{}{
 		"enabled":        enabled,
 		"policy_dir":     policyDir,
+		"policy_file":    policyFile,
 		"default_action": defaultAction,
 	}
 
@@ -82,6 +89,26 @@ func screenPolicy() {
 		}
 	}
 
+	// Check the policy file to display status
+	if policyFile != "" {
+		fileData, err := os.ReadFile(policyFile)
+		if err == nil {
+			card, err := policy.ParseYAML(fileData)
+			if err == nil {
+				fmt.Printf("\nFound YAML Policy Card '%s' with %d rules:\n", card.Metadata.Name, len(card.Rules))
+				for _, r := range card.Rules {
+					fmt.Printf("  - %s (%s)\n", r.Name, r.Match.Type)
+				}
+			} else {
+				fmt.Printf("\nFound YAML Policy File '%s', but failed to parse: %v\n", policyFile, err)
+			}
+		} else if !os.IsNotExist(err) {
+			fmt.Printf("\nError reading YAML Policy File '%s': %v\n", policyFile, err)
+		} else {
+			fmt.Printf("\nYAML Policy File '%s' does not exist.\n", policyFile)
+		}
+	}
+
 	// Check the policy directory for .rego files to display status
 	entries, err := os.ReadDir(policyDir)
 	if err == nil {
@@ -92,12 +119,12 @@ func screenPolicy() {
 			}
 		}
 
-		fmt.Printf("\nFound %d policy files in %s:\n", len(regoFiles), policyDir)
+		fmt.Printf("\nFound %d Rego policy files in %s:\n", len(regoFiles), policyDir)
 		for _, file := range regoFiles {
 			fmt.Printf("  - %s\n", file)
 		}
 	} else {
-		fmt.Printf("\nNote: Policy directory '%s' does not exist or cannot be read.\n", policyDir)
+		fmt.Printf("\nNote: Rego policy directory '%s' does not exist or cannot be read.\n", policyDir)
 	}
 
 	pressEnterToContinue()

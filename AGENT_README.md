@@ -27,7 +27,7 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 - **Language**: Go 1.25+ (toolchain go1.26.5)
 - **Cache/Storage**: Redis 7+
 - **Proxy Engine**: `net/http/httputil.ReverseProxy`
-- **Policy Engine**: Open Policy Agent (OPA) / Rego
+- **Policy Engine**: Open Policy Agent (OPA) / Rego with dynamic YAML Policy Card transpilation
 - **Auth Standards**: OIDC JWTs, DPoP (RFC 9449)
 - **Telemetry**: W3C OpenTelemetry OTLP / Prometheus
 
@@ -52,7 +52,7 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 │   ├── mcp/                       # MCP JSON-RPC 2.0 proxy, tool cost tracking, Blast Radius prevention, self-correction formatting
 │   ├── netutil/                   # Network & TLS utilities
 │   ├── otel/                      # OpenTelemetry W3C OTLP sampler & exporter (EU AI Act compliance)
-│   ├── policy/                    # Embedded OPA engine with hot-reload & stateful context (taint_flags, tools_called)
+│   ├── policy/                    # Embedded OPA engine with dynamic YAML transpiler, hot-reload, and stateful context
 │   ├── pricing/                   # Dynamic remote pricing fetcher & token price store
 │   ├── provider/                  # 15 AI provider implementations + Generic BYO OpenAI endpoint
 │   │   ├── anthropic/             # Anthropic Messages & Text completion proxy

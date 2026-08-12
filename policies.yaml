@@ -1,0 +1,42 @@
+version: loopers.com/v1alpha1
+metadata:
+  name: developer-safety-guardrails
+
+rules:
+  # Prompt injection / data leak rule
+  - name: block-leak-secret
+    description: Prevent user/agent from exfiltrating sensitive credentials
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)secret"
+    action: deny
+    reason: "Blocked: Prompts containing sensitive credentials are not allowed."
+
+  # Destructive action tool rule
+  - name: block-destructive-bash
+    description: Prevent running system destroying commands
+    match:
+      type: mcp_tool_call
+      tool: execute_bash
+    conditions:
+      - field: arguments.command
+        op: contains
+        value: "rm -rf"
+    action: deny
+    reason: "Blocked: Destructive commands containing 'rm -rf' are forbidden."
+
+  # State sequence gating rule
+  - name: validate-bash-execution
+    description: Bash command execution must be preceded by a dry run validation
+    match:
+      type: mcp_tool_call
+      tool: execute_bash
+    session_flow:
+      requires:
+        - dry_run_command
+      within_last_steps: 2
+    action: deny
+    reason: "Blocked: execute_bash is not allowed without a prior dry_run_command step."

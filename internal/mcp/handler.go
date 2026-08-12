@@ -313,8 +313,19 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 			logging.Logger.Warn().Err(hErr).Str("session_id", sessionID).Msg("mcp_failed_to_fetch_tool_history")
 		}
 	}
+	if sessionCtx.TaintFlags == nil {
+		sessionCtx.TaintFlags = make(map[string]bool)
+	}
+	if sessionCtx.ToolsCalled == nil {
+		sessionCtx.ToolsCalled = make([]string, 0)
+	}
 
 	if h.policyEngine != nil {
+		var toolArgs map[string]interface{}
+		if len(toolParams.Arguments) > 0 {
+			_ = json.Unmarshal(toolParams.Arguments, &toolArgs)
+		}
+
 		decision, err := h.policyEngine.Evaluate(c.Request.Context(), policy.EvalInput{
 			Agent: policy.AgentContext{
 				KeyHash:   keyHash,
@@ -333,6 +344,12 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 			},
 			// Populated with taint state for cross-call tracking
 			Session: sessionCtx,
+			Action: policy.ActionContext{
+				Type:          "mcp_tool_call",
+				Provider:      serverName,
+				ToolName:      toolParams.Name,
+				ToolArguments: toolArgs,
+			},
 		})
 		if err != nil {
 			logging.Logger.Error().Err(err).Msg("mcp_policy_evaluation_error")

@@ -32,8 +32,8 @@ Loopers is a Go binary that proxies AI API calls. Requests from your app go to L
 **Supported providers for `--provider` flag:**
 `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`, `ollama`, `fireworks`, `xai`, `vllm`, `openrouter`
 
-**Policy engine (OPA/Rego):**
-All policy files must use `package loopers.policy` and define `allow` and/or `deny` rules. Place `.rego` files in the `policy_dir` defined in `loopers.yaml`. Hot-reloads on file change.
+**Policy engine (OPA/Rego & YAML Cards):**
+All custom policy files must use `package loopers.policy` and define `allow`/`deny` rules in the `policy_dir` directory. Alternatively, define declarative, user-friendly security rules in a single YAML Policy Card (`policy_file: "./policies.yaml"`). Both formats support regular expressions, stateful sequence gating, and hot-reloads.
 
 ---
 

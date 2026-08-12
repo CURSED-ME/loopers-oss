@@ -18,6 +18,7 @@ import (
 type Config struct {
 	Enabled       bool   `mapstructure:"enabled"`
 	PolicyDir     string `mapstructure:"policy_dir"`
+	PolicyFile    string `mapstructure:"policy_file"`
 	DefaultAction string `mapstructure:"default_action"` // "deny" or "allow"
 }
 
@@ -43,14 +44,24 @@ type SessionContext struct {
 	ID          string          `json:"id,omitempty"`
 	Spend       float64         `json:"spend,omitempty"`
 	Steps       int             `json:"steps,omitempty"`
-	TaintFlags  map[string]bool `json:"taint_flags,omitempty"`  // Persistent taint flags for the session (e.g. "secret_accessed")
-	ToolsCalled []string        `json:"tools_called,omitempty"` // Recent tool call history (newest first, capped at 50)
+	TaintFlags  map[string]bool `json:"taint_flags"`  // Persistent taint flags for the session (e.g. "secret_accessed")
+	ToolsCalled []string        `json:"tools_called"` // Recent tool call history (newest first, capped at 50)
+}
+
+type ActionContext struct {
+	Type          string                 `json:"type"`                     // "llm_call" | "mcp_tool_call"
+	Provider      string                 `json:"provider"`                 // "openai" | "anthropic" | "gemini" | etc.
+	Model         string                 `json:"model"`                     // e.g. "gpt-4o"
+	PromptText    string                 `json:"prompt_text"`              // Concatenated prompts
+	ToolName      string                 `json:"tool_name,omitempty"`      // if tool call
+	ToolArguments map[string]interface{} `json:"tool_arguments,omitempty"` // if tool call
 }
 
 type EvalInput struct {
 	Agent   AgentContext   `json:"agent"`
 	Request RequestContext `json:"request"`
 	Session SessionContext `json:"session,omitempty"`
+	Action  ActionContext  `json:"action,omitempty"`
 }
 
 type Decision struct {
@@ -150,6 +161,32 @@ func (e *Engine) Reload() error {
 
 	if err != nil {
 		return err
+	}
+
+	// Load and transpile PolicyFile if configured
+	if e.cfg.PolicyFile != "" {
+		if _, err := os.Stat(e.cfg.PolicyFile); err == nil {
+			data, err := os.ReadFile(e.cfg.PolicyFile)
+			if err != nil {
+				return fmt.Errorf("failed to read policy file %s: %w", e.cfg.PolicyFile, err)
+			}
+			card, err := ParseYAML(data)
+			if err != nil {
+				return fmt.Errorf("failed to parse YAML policy: %w", err)
+			}
+			regoCode, err := TranspileToRego(card)
+			if err != nil {
+				return fmt.Errorf("failed to transpile YAML policy to Rego: %w", err)
+			}
+			module, err := ast.ParseModule(e.cfg.PolicyFile, regoCode)
+			if err != nil {
+				return fmt.Errorf("failed to parse transpiled Rego module: %w", err)
+			}
+			modules[e.cfg.PolicyFile] = module
+			logging.Logger.Info().Str("file", e.cfg.PolicyFile).Msg("Loaded YAML Policy Card successfully")
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to stat policy file %s: %w", e.cfg.PolicyFile, err)
+		}
 	}
 
 	// Compile the modules together

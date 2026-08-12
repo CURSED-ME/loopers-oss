@@ -26,20 +26,112 @@ Client → Loopers Proxy → [OPA Policy Check] → Allow/Deny → Upstream Prov
 
 ## Configuration
 
-Enable the policy engine in your `loopers.yaml`:
+Enable the policy engine and YAML Policy Cards in your `loopers.yaml`:
 
 ```yaml
 policy:
   enabled: true
-  policy_dir: "./policies"
+  policy_file: "./policies.yaml" # Path to declarative YAML Policy Card
+  policy_dir: "./policies"       # Local directory containing custom Rego (.rego) files
   default_action: "deny"
 ```
 
 | Key | Default | Description |
 |---|---|---|
 | `enabled` | `false` | Enable or disable the policy engine |
-| `policy_dir` | `"./policies"` | Local directory containing your `.rego` files |
+| `policy_file` | `""` | Path to the declarative YAML Policy Card file |
+| `policy_dir` | `"./policies"` | Local directory containing custom Rego (.rego) files |
 | `default_action` | `"deny"` | Default decision when no rule matches (`"allow"` or `"deny"`) |
+
+---
+
+## Declarative YAML Policy Cards
+
+To simplify agent governance, Loopers supports **Declarative YAML Policy Cards**. You can write simple security rules in a single `policies.yaml` file without needing to write custom OPA/Rego files. Loopers compiles these YAML policies into OPA instructions internally on the fly.
+
+### YAML Schema Structure
+
+A Policy Card contains a list of rules targeted at LLM calls (`llm_call`) or MCP tool calls (`mcp_tool_call`).
+
+```yaml
+metadata:
+  name: developer-safety-guardrails
+  version: 1.0.0
+rules:
+  - name: [unique-rule-name]
+    description: [brief-description]
+    match:
+      type: [llm_call | mcp_tool_call]
+    conditions:
+      - field: [prompt_text | model | provider | tool_name | arguments.[arg_name]]
+        op: [contains | matches_regex | equals | not_equals]
+        value: [expected-value]
+    action: [allow | deny]
+    reason: [custom-blocked-message-returned-to-user]
+```
+
+### Supported Match Fields & Operators
+
+*   **For `llm_call` match type**:
+    *   `prompt_text` — Evaluates normalized LLM prompt content.
+    *   `model` — Evaluates LLM model name.
+    *   `provider` — Evaluates target LLM provider.
+*   **For `mcp_tool_call` match type**:
+    *   `tool_name` — Evaluates the invoked MCP tool.
+    *   `arguments.[arg_name]` — Evaluates specific argument inputs passed to the tool.
+*   **Operators**:
+    *   `contains` — Checks if string contains substring.
+    *   `matches_regex` — Checks regular expression matching.
+    *   `equals` / `not_equals` — Direct equality checking.
+
+### Stateful Sequence Gating (FSM Gating)
+
+For advanced agent workflows, you can enforce execution order constraints to restrict high-risk tools. For example, you can prevent an agent from executing `execute_bash` unless it has first run `dry_run_command` in the current session.
+
+This is configured using the `session_sequence` condition:
+
+```yaml
+    conditions:
+      - field: session_sequence
+        op: must_precede
+        value: "dry_run_command"
+```
+
+### Example `policies.yaml`
+
+```yaml
+metadata:
+  name: safe-agent-guardrails
+  version: 1.0.0
+rules:
+  # 1. Prevent prompt exfiltration (Data Leak Policy)
+  - name: block-leak-secret
+    description: Prevent user/agent from exfiltrating sensitive credentials
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)secret"
+    action: deny
+    reason: "Blocked: Prompts containing sensitive credentials are not allowed."
+
+  # 2. Require dry-run before bash execution (FSM Sequence Gating)
+  - name: validate-bash-execution
+    description: Ensure bash execution is preceded by a dry run
+    match:
+      type: mcp_tool_call
+    conditions:
+      - field: tool_name
+        op: equals
+        value: "execute_bash"
+      - field: session_sequence
+        op: must_precede
+        value: "dry_run_command"
+    action: deny
+    reason: "Blocked: You cannot execute bash commands without first doing a dry-run in this session."
+```
+
 
 ---
 

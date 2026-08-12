@@ -277,6 +277,14 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				logging.Logger.Warn().Err(hErr).Str("session_id", earlySessionID).Msg("proxy_failed_to_fetch_tool_history")
 			}
 		}
+		if policySessionCtx.TaintFlags == nil {
+			policySessionCtx.TaintFlags = make(map[string]bool)
+		}
+		if policySessionCtx.ToolsCalled == nil {
+			policySessionCtx.ToolsCalled = make([]string, 0)
+		}
+
+		promptText, _ := proxy.MapLLMCall(providerName, mutatedBody)
 
 		decision, err := s.policyEngine.Evaluate(c.Request.Context(), policy.EvalInput{
 			Agent: policy.AgentContext{
@@ -294,6 +302,12 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				Path:     c.Request.URL.Path,
 			},
 			Session: policySessionCtx,
+			Action: policy.ActionContext{
+				Type:       "llm_call",
+				Provider:   providerName,
+				Model:      model,
+				PromptText: promptText,
+			},
 		})
 		if err != nil {
 			logging.Logger.Error().Err(err).Msg("policy_engine_evaluation_error")
