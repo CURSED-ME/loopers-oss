@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.8.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.7.0...v2.8.0) (2026-08-12)
+
+
+### Features
+
+* implement out-of-the-box presets, safety templates, and policy configuration TUI ([e278e02](https://github.com/CURSED-ME/loopers-oss/commit/e278e02d57b6c42e6140307575d463edce09c58a))
+* implement out-of-the-box presets, safety templates, and policy configuration TUI ([ba5f976](https://github.com/CURSED-ME/loopers-oss/commit/ba5f9764edccf285e5b99d351aaa5e6bb8471824))
+
 ## [2.7.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.6.0...v2.7.0) (2026-08-12)
 
 
