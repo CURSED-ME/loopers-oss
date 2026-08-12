@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.7.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.6.0...v2.7.0) (2026-08-12)
+
+
+### Features
+
+* implement declarative YAML policies (CAVA) and sequence gating ([60b5eb7](https://github.com/CURSED-ME/loopers-oss/commit/60b5eb7b23ac3e412976fbc20bda8e8995d73861))
+* implement declarative YAML policies (CAVA) and sequence gating ([4e1740e](https://github.com/CURSED-ME/loopers-oss/commit/4e1740e9168365c7e669ae37ca2197c52c738c71))
+
 ## [2.6.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.5.0...v2.6.0) (2026-08-11)
 
 
