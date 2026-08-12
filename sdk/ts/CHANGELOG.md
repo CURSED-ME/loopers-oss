@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/CURSED-ME/loopers-oss/compare/sdk-ts-v2.0.0...sdk-ts-v2.1.0) (2026-08-10)
+
+
+### Features
+
+* TUI enhancement ([3ae3cc9](https://github.com/CURSED-ME/loopers-oss/commit/3ae3cc9a6dbc33658d2ef97af37f160f1aabe939))
+
 ## [2.0.0](https://github.com/CURSED-ME/loopers-oss/compare/sdk-ts-v1.3.1...sdk-ts-v2.0.0) (2026-07-24)
 
 
