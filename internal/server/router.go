@@ -2,8 +2,8 @@ package server
 
 import (
 	"bytes"
-	"context"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"net/http"

@@ -158,4 +158,3 @@ func MapLLMResponse(provider string, body []byte) (string, error) {
 
 	return strings.Join(completions, "\n"), nil
 }
-

@@ -29,7 +29,8 @@ Every feature in Loopers is fully detailed in our documentation. Use the map bel
 | | Multi-Turn Session Cost Limits | [Session Budgets Guide](./Documentation/docs/concepts/session-budgets.md) |
 | **Agent Guardrails** | Fuzzy & Fuzzy Prompt Loop Circuit Breakers | [Agent Loop Detection](./Documentation/docs/concepts/agent-loop-detection.md) |
 | | Declarative YAML Policy Cards (CAVA) | [Policy Engine Guide](./Documentation/docs/guides/policy-engine.md) |
-| | Out-of-the-Box Security Presets (safety, pci, mcp_sandbox) | [Policy Presets Guide](./Documentation/docs/guides/policy-engine.md#out-of-the-box-presets--templates) |
+| | Transient Session Buffer (Stateful Tracing) | [Policy Engine Guide](./Documentation/docs/guides/policy-engine.md#transient-session-buffer) |
+| | Out-of-the-Box Security Presets (safety, pci, mcp_sandbox) | [Policy Engine Guide](./Documentation/docs/guides/policy-engine.md#out-of-the-box-presets--templates) |
 | | Custom ABAC Policies (Rego / OPA) | [OPA Policies Guide](./Documentation/docs/guides/policy-engine.md#method-b-custom-oparego-policies-advanced) |
 | **Integrations** | Model Context Protocol (MCP) Governance | [MCP Setup Guide](./Documentation/docs/guides/mcp-setup.md) |
 | | Zero-Code Path-Based Auth (`/lp-xxx/`) for pre-built agents (OpenClaw, Hermes, NanoClaw, Aider, Claude Code) | [Agent CLI Integrations](./Documentation/docs/guides/agent-cli-integrations.md#zero-code-path-based-auth-for-pre-built--desktop-agents) |

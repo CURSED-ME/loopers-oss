@@ -32,6 +32,7 @@ import (
 )
 
 type mcpCtxKey string
+
 const (
 	mcpSessionIDCtxKey  mcpCtxKey = "mcpSessionID"
 	mcpServerNameCtxKey mcpCtxKey = "mcpServerName"

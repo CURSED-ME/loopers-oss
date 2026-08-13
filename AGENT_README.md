@@ -14,7 +14,7 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 
 ## 2. Architecture Constraints
 
-- **Zero-Storage Pass-Through**: Provider API keys and payload data are kept in-memory ONLY during the request lifecycle. Never persist keys or payload bodies to disk or database.
+- **Zero-Storage Pass-Through**: Provider API keys and payload data are kept in-memory ONLY during the request lifecycle. Never persist keys or payload bodies to disk or database. For stateful multi-turn policies, a capped execution history (transient session buffer) is stored in-memory in Redis but never written to disk.
 - **Fail-Closed Guarantee**: If Redis or the proxy fails, it must fail closed to protect the wallet.
 - **Atomic Concurrency Control**: Budget checks and rate limiting happen via Redis Lua scripts to prevent TOCTOU (time-of-check to time-of-use) race conditions under high concurrency.
 - **Sub-150µs ZSP Token Validation**: Ephemeral Agent Delegation JWTs and DPoP (RFC 9449) proofs are verified statelessly in under 150 microseconds.
@@ -73,7 +73,7 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 │   ├── proxy/                     # Reverse proxy core, SSE streaming token counter & connection severing
 │   ├── ratelimit/                 # Per-key sliding window rate limiter (atomic Lua)
 │   ├── server/                    # HTTP server engine, ZSP OIDC JWT & DPoP middleware, PathAuthWrapper (/lp-xxx/), admin router (/metrics)
-│   └── session/                   # Redis session manager (session budget, max steps, taint flags, tool history, absolute TTL)
+│   └── session/                   # Redis session manager (session budget, max steps, taint flags, transient session trace buffer, tool history, absolute TTL)
 ├── pkg/
 │   └── api/                       # Shared API types (PolicyDeniedResponse, MCPJSONRPCErrorResponse)
 ├── sdk/
