@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/event"
 	"go.opentelemetry.io/otel"
@@ -28,6 +29,13 @@ import (
 	"github.com/CURSED-ME/loopers-oss/pkg/api"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
+)
+
+type mcpCtxKey string
+const (
+	mcpSessionIDCtxKey  mcpCtxKey = "mcpSessionID"
+	mcpServerNameCtxKey mcpCtxKey = "mcpServerName"
+	mcpToolNameCtxKey   mcpCtxKey = "mcpToolName"
 )
 
 // sensitiveTaintTools is the set of tool-name substrings that auto-set the
@@ -275,6 +283,11 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		return
 	}
 
+	var toolArgs map[string]interface{}
+	if len(toolParams.Arguments) > 0 {
+		_ = json.Unmarshal(toolParams.Arguments, &toolArgs)
+	}
+
 	if allowedTools := meta.ParseAllowedTools(); len(allowedTools) > 0 {
 		if !allowedTools[toolParams.Name] {
 			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
@@ -312,6 +325,12 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		} else {
 			logging.Logger.Warn().Err(hErr).Str("session_id", sessionID).Msg("mcp_failed_to_fetch_tool_history")
 		}
+
+		if traces, trErr := h.sessionManager.GetSessionTraces(c.Request.Context(), keyHash, sessionID); trErr == nil {
+			sessionCtx.Traces = traces
+		} else {
+			logging.Logger.Warn().Err(trErr).Str("session_id", sessionID).Msg("mcp_failed_to_fetch_session_traces")
+		}
 	}
 	if sessionCtx.TaintFlags == nil {
 		sessionCtx.TaintFlags = make(map[string]bool)
@@ -319,13 +338,11 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 	if sessionCtx.ToolsCalled == nil {
 		sessionCtx.ToolsCalled = make([]string, 0)
 	}
+	if sessionCtx.Traces == nil {
+		sessionCtx.Traces = make([]policy.SessionTrace, 0)
+	}
 
 	if h.policyEngine != nil {
-		var toolArgs map[string]interface{}
-		if len(toolParams.Arguments) > 0 {
-			_ = json.Unmarshal(toolParams.Arguments, &toolArgs)
-		}
-
 		decision, err := h.policyEngine.Evaluate(c.Request.Context(), policy.EvalInput{
 			Agent: policy.AgentContext{
 				KeyHash:   keyHash,
@@ -529,6 +546,17 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 			}
 		}()
 
+		// Record the tool call in the transient session buffer
+		go func() {
+			_ = h.sessionManager.AppendSessionTrace(context.Background(), keyHash, sessionID, policy.SessionTrace{
+				Timestamp: time.Now().Unix(),
+				Type:      "mcp_tool_call",
+				Provider:  serverName,
+				ToolName:  toolParams.Name,
+				Arguments: toolArgs,
+			})
+		}()
+
 		// Auto-taint: if this tool accesses sensitive resources, flag the session.
 		if isSensitiveTaintTool(toolParams.Name) {
 			go func() {
@@ -558,6 +586,9 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 	)
 	defer toolSpan.End()
 
+	ctx = context.WithValue(ctx, mcpSessionIDCtxKey, sessionID)
+	ctx = context.WithValue(ctx, mcpServerNameCtxKey, serverName)
+	ctx = context.WithValue(ctx, mcpToolNameCtxKey, toolParams.Name)
 	c.Request = c.Request.WithContext(ctx)
 
 	h.forward(c, targetURL, &keyHash, toolCost)
@@ -581,7 +612,34 @@ func (h *Handler) forward(c *gin.Context, targetURL string, keyHash *string, cos
 		c.Request.URL.RawPath = strings.TrimPrefix(c.Request.URL.RawPath, prefix)
 	}
 
+	sessionID, _ := ctx.Value(mcpSessionIDCtxKey).(string)
+	serverName, _ := ctx.Value(mcpServerNameCtxKey).(string)
+	toolName, _ := ctx.Value(mcpToolNameCtxKey).(string)
+
+	var w *responseBodyWriter
+	if sessionID != "" && h.sessionManager != nil && keyHash != nil {
+		w = &responseBodyWriter{body: &bytes.Buffer{}, ResponseWriter: c.Writer}
+		c.Writer = w
+	}
+
 	h.proxy.ServeHTTP(c.Writer, c.Request)
+
+	if w != nil && keyHash != nil {
+		respBody := w.body.Bytes()
+		go func() {
+			completion := parseMCPResponse(respBody)
+			if len(completion) > 512 {
+				completion = completion[:512]
+			}
+			_ = h.sessionManager.AppendSessionTrace(context.Background(), *keyHash, sessionID, policy.SessionTrace{
+				Timestamp: time.Now().Unix(),
+				Type:      "mcp_tool_response",
+				Provider:  serverName,
+				ToolName:  toolName,
+				Content:   completion,
+			})
+		}()
+	}
 }
 
 // jsonRPCIDFromBody extracts the "id" field from a raw JSON-RPC body for error responses.
@@ -603,4 +661,48 @@ func jsonRPCIDFromBody(body []byte) any {
 		return idStr
 	}
 	return nil
+}
+
+type responseBodyWriter struct {
+	gin.ResponseWriter
+	body *bytes.Buffer
+}
+
+func (w responseBodyWriter) Write(b []byte) (int, error) {
+	w.body.Write(b)
+	return w.ResponseWriter.Write(b)
+}
+
+func parseMCPResponse(body []byte) string {
+	if len(body) == 0 {
+		return ""
+	}
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		return ""
+	}
+
+	// Case 1: Success result.content
+	if result, ok := data["result"].(map[string]interface{}); ok {
+		if content, ok := result["content"].([]interface{}); ok {
+			var parts []string
+			for _, part := range content {
+				if partMap, ok := part.(map[string]interface{}); ok {
+					if text, ok := partMap["text"].(string); ok {
+						parts = append(parts, text)
+					}
+				}
+			}
+			return strings.Join(parts, "\n")
+		}
+	}
+
+	// Case 2: Error response
+	if errObj, ok := data["error"].(map[string]interface{}); ok {
+		if msg, ok := errObj["message"].(string); ok {
+			return "Error: " + msg
+		}
+	}
+
+	return ""
 }

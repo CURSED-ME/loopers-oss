@@ -41,12 +41,23 @@ type RequestContext struct {
 	Path      string `json:"path"`
 }
 
+type SessionTrace struct {
+	Timestamp int64                  `json:"timestamp"`
+	Type      string                 `json:"type"`                // "llm_call" | "llm_response" | "mcp_tool_call" | "mcp_tool_response"
+	Provider  string                 `json:"provider"`            // target provider or tool server
+	Model     string                 `json:"model,omitempty"`     // LLM model name (if applicable)
+	Content   string                 `json:"content,omitempty"`   // truncated prompt text or tool response string
+	ToolName  string                 `json:"tool_name,omitempty"` // tool name if tool call
+	Arguments map[string]interface{} `json:"arguments,omitempty"` // tool arguments if tool call
+}
+
 type SessionContext struct {
 	ID          string          `json:"id,omitempty"`
 	Spend       float64         `json:"spend,omitempty"`
 	Steps       int             `json:"steps,omitempty"`
 	TaintFlags  map[string]bool `json:"taint_flags"`  // Persistent taint flags for the session (e.g. "secret_accessed")
 	ToolsCalled []string        `json:"tools_called"` // Recent tool call history (newest first, capped at 50)
+	Traces      []SessionTrace  `json:"traces"`       // Recent request/response traces (newest first, capped at 15)
 }
 
 type ActionContext struct {

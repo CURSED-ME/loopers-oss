@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"net/http"
@@ -276,12 +277,20 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			} else {
 				logging.Logger.Warn().Err(hErr).Str("session_id", earlySessionID).Msg("proxy_failed_to_fetch_tool_history")
 			}
+			if traces, trErr := s.sessionManager.GetSessionTraces(c.Request.Context(), keyHash, earlySessionID); trErr == nil {
+				policySessionCtx.Traces = traces
+			} else {
+				logging.Logger.Warn().Err(trErr).Str("session_id", earlySessionID).Msg("proxy_failed_to_fetch_session_traces")
+			}
 		}
 		if policySessionCtx.TaintFlags == nil {
 			policySessionCtx.TaintFlags = make(map[string]bool)
 		}
 		if policySessionCtx.ToolsCalled == nil {
 			policySessionCtx.ToolsCalled = make([]string, 0)
+		}
+		if policySessionCtx.Traces == nil {
+			policySessionCtx.Traces = make([]policy.SessionTrace, 0)
 		}
 
 		promptText, _ := proxy.MapLLMCall(providerName, mutatedBody)
@@ -336,6 +345,20 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			})
 			c.AbortWithStatusJSON(http.StatusForbidden, api.NewPolicyDeniedResponse("", providerName, decision.Reason))
 			return
+		}
+
+		if earlySessionID != "" && session.IsValidID(earlySessionID) && s.sessionManager != nil {
+			truncatedPrompt := promptText
+			if len(truncatedPrompt) > 512 {
+				truncatedPrompt = truncatedPrompt[:512]
+			}
+			_ = s.sessionManager.AppendSessionTrace(c.Request.Context(), keyHash, earlySessionID, policy.SessionTrace{
+				Timestamp: time.Now().Unix(),
+				Type:      "llm_call",
+				Provider:  providerName,
+				Model:     model,
+				Content:   truncatedPrompt,
+			})
 		}
 	}
 
@@ -571,13 +594,22 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 				}
 				return false
 			},
-			func(actualCost float64, inTokens, outTokens int, forcedCut bool) {
+			func(actualCost float64, inTokens, outTokens int, completion string, forcedCut bool) {
 				s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, totalPaid, actualCost)
 				s.checkBudgetOverdrawAsync(ctx, keyHash, provName, model)
 				if sessionID != "" {
 					sessionSpendKey := fmt.Sprintf("loopers:session:{%s}:%s:spend", keyHash, sessionID)
 					if err := s.redis.GetUnderlyingClient().IncrBy(ctx, sessionSpendKey, budget.ToNano(actualCost-totalPaid)).Err(); err != nil {
 						logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
+					}
+					if s.sessionManager != nil {
+						_ = s.sessionManager.AppendSessionTrace(ctx, keyHash, sessionID, policy.SessionTrace{
+							Timestamp: time.Now().Unix(),
+							Type:      "llm_response",
+							Provider:  provName,
+							Model:     model,
+							Content:   completion,
+						})
 					}
 				}
 
@@ -610,21 +642,40 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 		if limit == 0 {
 			limit = 32 * 1024 * 1024
 		}
-		respBodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, limit))
+		var reader io.ReadCloser = resp.Body
+		isGzip := resp.Header.Get("Content-Encoding") == "gzip"
+		if isGzip {
+			gzReader, err := gzip.NewReader(resp.Body)
+			if err == nil {
+				reader = gzReader
+			}
+		}
+		respBodyBytes, err := io.ReadAll(io.LimitReader(reader, limit))
 		if err != nil {
+			reader.Close()
 			return err
 		}
+		reader.Close()
 
-		// Close original body to prevent connection and goroutine leaks in the ReverseProxy
-		resp.Body.Close()
+		if isGzip {
+			resp.Header.Del("Content-Encoding")
+			resp.Header.Del("Content-Length")
+		}
 
 		resp.Body = io.NopCloser(bytes.NewReader(respBodyBytes))
 
 		var totalInputTokens int
 		var totalOutputTokens int
 
+		var completion string
 		if prov != nil {
 			totalInputTokens, totalOutputTokens, _ = prov.ParseNonStreamResponse(respBodyBytes)
+			if compl, err := proxy.MapLLMResponse(provName, respBodyBytes); err == nil {
+				completion = compl
+				if len(completion) > 512 {
+					completion = completion[:512]
+				}
+			}
 		}
 
 		actualCost := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
@@ -640,6 +691,16 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 
 			if err := s.redis.GetUnderlyingClient().IncrBy(ctx, sessionSpendKey, budget.ToNano(actualCost-reservedCost)).Err(); err != nil {
 				logging.Logger.Warn().Err(err).Str("session_id", sessionID).Msg("failed to update session spend in redis")
+			}
+
+			if s.sessionManager != nil {
+				_ = s.sessionManager.AppendSessionTrace(ctx, keyHash, sessionID, policy.SessionTrace{
+					Timestamp: time.Now().Unix(),
+					Type:      "llm_response",
+					Provider:  provName,
+					Model:     model,
+					Content:   completion,
+				})
 			}
 
 			rdb := s.redis.GetUnderlyingClient()

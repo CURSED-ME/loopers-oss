@@ -98,3 +98,64 @@ func MapLLMCall(provider string, body []byte) (string, error) {
 
 	return strings.Join(prompts, "\n"), nil
 }
+
+// MapLLMResponse parses provider response bodies to extract completion text.
+func MapLLMResponse(provider string, body []byte) (string, error) {
+	if len(body) == 0 {
+		return "", nil
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		return "", err
+	}
+
+	var completions []string
+	provider = strings.ToLower(provider)
+	switch provider {
+	case "anthropic":
+		if content, ok := data["content"].([]interface{}); ok {
+			for _, part := range content {
+				if partMap, ok := part.(map[string]interface{}); ok {
+					if text, ok := partMap["text"].(string); ok {
+						completions = append(completions, text)
+					}
+				}
+			}
+		}
+	case "gemini":
+		if candidates, ok := data["candidates"].([]interface{}); ok {
+			for _, cand := range candidates {
+				if candMap, ok := cand.(map[string]interface{}); ok {
+					if content, ok := candMap["content"].(map[string]interface{}); ok {
+						if parts, ok := content["parts"].([]interface{}); ok {
+							for _, part := range parts {
+								if partMap, ok := part.(map[string]interface{}); ok {
+									if text, ok := partMap["text"].(string); ok {
+										completions = append(completions, text)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	default:
+		// Default to OpenAI/standard chat response
+		if choices, ok := data["choices"].([]interface{}); ok {
+			for _, choice := range choices {
+				if choiceMap, ok := choice.(map[string]interface{}); ok {
+					if msg, ok := choiceMap["message"].(map[string]interface{}); ok {
+						if content, ok := msg["content"].(string); ok {
+							completions = append(completions, content)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return strings.Join(completions, "\n"), nil
+}
+
