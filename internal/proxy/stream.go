@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	"github.com/CURSED-ME/loopers-oss/internal/provider"
@@ -30,7 +31,7 @@ type SSEStreamReader struct {
 }
 
 // NewSSEStreamReader creates a new SSEStreamReader implementing io.ReadCloser.
-func NewSSEStreamReader(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice float64, checkBudget func(float64) bool, onStreamEnd func(float64, int, int, bool)) io.ReadCloser {
+func NewSSEStreamReader(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice float64, checkBudget func(float64) bool, onStreamEnd func(float64, int, int, string, bool)) io.ReadCloser {
 	pr, pw := io.Pipe()
 
 	sr := &SSEStreamReader{
@@ -53,7 +54,7 @@ func (sr *SSEStreamReader) Close() error {
 	return sr.pipeReader.Close()
 }
 
-func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice float64, checkBudget func(float64) bool, onStreamEnd func(float64, int, int, bool)) {
+func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice float64, checkBudget func(float64) bool, onStreamEnd func(float64, int, int, string, bool)) {
 	defer original.Close()
 	defer sr.pipeWriter.Close()
 
@@ -103,12 +104,13 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 
 	var totalInputTokens int
 	var totalOutputTokens int
+	var accumulatedText string
 
 	for {
 		select {
 		case <-ctx.Done():
 			actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-			onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, false)
+			onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, accumulatedText, false)
 			return
 		case chunk, ok := <-chunks:
 			if !ok {
@@ -117,18 +119,29 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 					logging.Logger.Error().Err(err).Msg("SSE scanner error during read loop")
 				}
 				actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-				onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, false)
+				onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, accumulatedText, false)
 				return
 			}
 
 			// Re-append the double newlines to reconstruct the standard SSE protocol frame
 			outChunk := append(chunk, []byte("\n\n")...)
 
+			// Accumulate response text for transient trace logging
+			if len(accumulatedText) < 512 {
+				txt := extractTextFromChunk(chunk)
+				if txt != "" {
+					accumulatedText += txt
+					if len(accumulatedText) > 512 {
+						accumulatedText = accumulatedText[:512]
+					}
+				}
+			}
+
 			inTokens, outTokens, isDone, err := prov.ParseStreamChunk(chunk)
 			if err == nil {
 				if isDone {
 					actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-					onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, false)
+					onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, accumulatedText, false)
 					_, _ = sr.pipeWriter.Write(outChunk)
 					return
 				}
@@ -148,7 +161,7 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 						// This ensures accurate client-side tracking before we sever the connection.
 						_, _ = sr.pipeWriter.Write(outChunk)
 						_, _ = sr.pipeWriter.Write(prov.FormatBudgetExceededSSE())
-						onStreamEnd(cost, totalInputTokens, totalOutputTokens, true)
+						onStreamEnd(cost, totalInputTokens, totalOutputTokens, accumulatedText, true)
 						return
 					}
 				}
@@ -159,15 +172,16 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 	}
 }
 
-func (sr *SSEStreamReader) processBedrockStream(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice float64, checkBudget func(float64) bool, onStreamEnd func(float64, int, int, bool)) {
+func (sr *SSEStreamReader) processBedrockStream(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice float64, checkBudget func(float64) bool, onStreamEnd func(float64, int, int, string, bool)) {
 	var totalInputTokens int
 	var totalOutputTokens int
+	var accumulatedText string
 
 	for {
 		select {
 		case <-ctx.Done():
 			actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-			onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, false)
+			onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, accumulatedText, false)
 			return
 		default:
 			// Read one frame of binary event stream
@@ -175,12 +189,12 @@ func (sr *SSEStreamReader) processBedrockStream(ctx context.Context, original io
 			if err != nil {
 				if err == io.EOF {
 					actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-					onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, false)
+					onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, accumulatedText, false)
 					return
 				}
 				logging.Logger.Error().Err(err).Msg("Error reading AWS Bedrock EventStream frame")
 				actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-				onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, true)
+				onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, accumulatedText, true)
 				return
 			}
 
@@ -201,14 +215,14 @@ func (sr *SSEStreamReader) processBedrockStream(ctx context.Context, original io
 						// before writing the exception frame and stopping.
 						_, _ = sr.pipeWriter.Write(frameBytes)
 						_, _ = sr.pipeWriter.Write(prov.FormatBudgetExceededSSE())
-						onStreamEnd(cost, totalInputTokens, totalOutputTokens, true)
+						onStreamEnd(cost, totalInputTokens, totalOutputTokens, accumulatedText, true)
 						return
 					}
 				}
 
 				if isDone {
 					actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
-					onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, false)
+					onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, accumulatedText, false)
 					_, _ = sr.pipeWriter.Write(frameBytes)
 					return
 				}
@@ -240,4 +254,55 @@ func readEventStreamFrame(r io.Reader) ([]byte, error) {
 		return nil, err
 	}
 	return frameBytes, nil
+}
+
+func extractTextFromChunk(chunk []byte) string {
+	raw := bytes.TrimSpace(chunk)
+	if bytes.HasPrefix(raw, []byte("data: ")) {
+		raw = bytes.TrimPrefix(raw, []byte("data: "))
+	}
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || bytes.Equal(raw, []byte("[DONE]")) {
+		return ""
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(raw, &data); err != nil {
+		return ""
+	}
+
+	// OpenAI/Compatible: choices[0].delta.content
+	if choices, ok := data["choices"].([]interface{}); ok && len(choices) > 0 {
+		if firstChoice, ok := choices[0].(map[string]interface{}); ok {
+			if delta, ok := firstChoice["delta"].(map[string]interface{}); ok {
+				if content, ok := delta["content"].(string); ok {
+					return content
+				}
+			}
+		}
+	}
+
+	// Anthropic: delta.text
+	if delta, ok := data["delta"].(map[string]interface{}); ok {
+		if text, ok := delta["text"].(string); ok {
+			return text
+		}
+	}
+
+	// Gemini: candidates[0].content.parts[0].text
+	if candidates, ok := data["candidates"].([]interface{}); ok && len(candidates) > 0 {
+		if firstCand, ok := candidates[0].(map[string]interface{}); ok {
+			if content, ok := firstCand["content"].(map[string]interface{}); ok {
+				if parts, ok := content["parts"].([]interface{}); ok && len(parts) > 0 {
+					if firstPart, ok := parts[0].(map[string]interface{}); ok {
+						if text, ok := firstPart["text"].(string); ok {
+							return text
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return ""
 }

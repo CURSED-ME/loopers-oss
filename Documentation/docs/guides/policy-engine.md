@@ -386,6 +386,70 @@ This metadata is automatically passed into the policy engine's `input.agent` blo
 
 ---
 
+## Transient Session Buffer
+
+The **Transient Session Buffer** allows Loopers to track a lightweight execution history of actual request/response payloads in Redis per session. This history is passed to OPA/Rego and Declarative YAML policies, enabling multi-turn context rules (e.g., *"block file writes if a previous database read returned confidential customer information"*).
+
+### Redis Schema & Storage
+To protect privacy and prevent memory bloat, all text payloads (prompts, completions, tool inputs, and tool outputs) are strictly truncated to a maximum of 512 characters. The trace history is stored in Redis under the key `loopers:session:{keyHash}:sessionID:traces` and is capped at **15 entries** maximum (managed via `LPUSH` and `LTRIM`). The key is set with a TTL of 7 days.
+
+### Trace Struct Schema
+Each entry in the transient session buffer is represented as:
+
+```go
+type SessionTrace struct {
+	Timestamp int64                  `json:"timestamp"`
+	Type      string                 `json:"type"`                // "llm_call" | "llm_response" | "mcp_tool_call" | "mcp_tool_response"
+	Provider  string                 `json:"provider"`            // Upstream provider or MCP server name
+	Model     string                 `json:"model,omitempty"`     // LLM model name (if applicable)
+	Content   string                 `json:"content,omitempty"`   // Truncated prompt/response text
+	ToolName  string                 `json:"tool_name,omitempty"` // MCP tool name (if tool call/response)
+	Arguments map[string]interface{} `json:"arguments,omitempty"` // MCP tool arguments (if tool call)
+}
+```
+
+### Policy Evaluation Input
+Loopers automatically injects the list of execution traces into the OPA policy context under `input.session.traces`.
+
+#### Rego Example
+You can write Rego rules that inspect the `input.session.traces` list to verify past behavior in the same session:
+
+```rego
+package loopers.policy
+
+# Block file writes if a database read returned confidential data earlier in the session
+deny["writing files is blocked after reading confidential data"] {
+    input.request.method == "mcp_tool_call"
+    input.request.tool_name == "write_file"
+    
+    # Iterate through traces to find a matching database response
+    trace := input.session.traces[_]
+    trace.type == "mcp_tool_response"
+    trace.provider == "database"
+    regex.match("(?i)confidential", trace.content)
+}
+```
+
+#### Declarative YAML Policy Example
+You can also use declarative conditions to check the trace history:
+
+```yaml
+rules:
+  - name: block-confidential-write
+    description: Block file writes if database read returned secrets earlier in the session.
+    match:
+      type: mcp_tool_call
+      tool: write_file
+    conditions:
+      - field: session.traces
+        op: contains_matching_trace
+        value: "type: mcp_tool_response, provider: database, content_regex: (?i)confidential"
+    action: deny
+    reason: "Blocked: Cannot write files after reading confidential data."
+```
+
+---
+
 ## Security Events
 
 When a request is blocked by the policy engine, Loopers emits a structured `policy_block` security event containing the key hash, provider, model, and the deny reason from your Rego policy. These events are:

@@ -2,10 +2,12 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"time"
 
+	"github.com/CURSED-ME/loopers-oss/internal/policy"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -222,4 +224,48 @@ func (m *Manager) GetToolCallHistory(ctx context.Context, keyHash, sessionID str
 		return nil, fmt.Errorf("redis error getting tool history: %w", err)
 	}
 	return history, nil
+}
+
+// tracesKey returns the Redis key for session execution traces.
+func tracesKey(keyHash, sessionID string) string {
+	return fmt.Sprintf("loopers:session:{%s}:%s:traces", keyHash, sessionID)
+}
+
+// AppendSessionTrace serializes and prepends a trace to the session's trace list.
+// The list is capped at 15 entries (newest first) via LTRIM after each push.
+func (m *Manager) AppendSessionTrace(ctx context.Context, keyHash, sessionID string, trace policy.SessionTrace) error {
+	key := tracesKey(keyHash, sessionID)
+	data, err := json.Marshal(trace)
+	if err != nil {
+		return fmt.Errorf("failed to marshal session trace: %w", err)
+	}
+
+	pipe := m.rdb.Pipeline()
+	pipe.LPush(ctx, key, data)
+	pipe.LTrim(ctx, key, 0, 14) // Keep only the 15 most recent
+	pipe.Expire(ctx, key, sessionDataTTL)
+	_, err = pipe.Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("redis error appending session trace: %w", err)
+	}
+	return nil
+}
+
+// GetSessionTraces returns the last 15 request/response traces for the session (newest first).
+// Returns an empty slice (not nil) if none.
+func (m *Manager) GetSessionTraces(ctx context.Context, keyHash, sessionID string) ([]policy.SessionTrace, error) {
+	key := tracesKey(keyHash, sessionID)
+	history, err := m.rdb.LRange(ctx, key, 0, 14).Result()
+	if err != nil {
+		return nil, fmt.Errorf("redis error getting session traces: %w", err)
+	}
+
+	traces := make([]policy.SessionTrace, 0, len(history))
+	for _, raw := range history {
+		var t policy.SessionTrace
+		if err := json.Unmarshal([]byte(raw), &t); err == nil {
+			traces = append(traces, t)
+		}
+	}
+	return traces, nil
 }

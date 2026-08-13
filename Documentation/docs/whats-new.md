@@ -11,6 +11,12 @@ Stay up to date with the newest capabilities we've added to the Loopers cost fir
 
 ---
 
+## Transient Session Buffer (Stateful Tracing)
+Operators can now evaluate actual request and response text payloads (prompts, completions, tool inputs, and tool outputs) in OPA/Rego and Declarative YAML policies. Loopers captures execution history dynamically in Redis as JSON-serialized events under `input.session.traces`.
+
+To protect user privacy and avoid memory bloat, all stored prompt/response payloads are strictly truncated to 512 characters, and the history is capped at the 15 most recent entries (managed via Redis `LPUSH`/`LTRIM`). This enables advanced multi-turn policy enforcement (e.g., *"block file writes if a database query returned confidential customer data earlier in the session"*) while maintaining Loopers' zero-storage-on-disk guarantee.
+* **Learn More**: See the [Policy Engine Guide](/docs/guides/policy-engine#transient-session-buffer).
+
 ## Stateful Session Context (Taint Tracking)
 OPA policies can now evaluate the historical execution trace of a session. Loopers passes `input.session.taint_flags` and `input.session.tools_called` to OPA before every request. Whenever sensitive tools (such as `read_secret`, `get_credentials`, `vault_read`) are invoked, Loopers automatically sets session taint flags (e.g. `secret_accessed`). This enables cross-call data exfiltration prevention rules such as: *"if secret_accessed taint is set in step 2, block all outbound_http calls in step 5"*.
 * **Learn More**: See the [Policy Engine Guide](/docs/guides/policy-engine).

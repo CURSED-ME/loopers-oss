@@ -748,6 +748,10 @@ var execCmd = &cobra.Command{
 				if execModelOverride != "" {
 					req.Header.Set("X-Loopers-Model-Override", execModelOverride)
 				}
+				sessionID := os.Getenv("LOOPERS_SESSION_ID")
+				if sessionID != "" {
+					req.Header.Set("X-Loopers-Session-ID", sessionID)
+				}
 			},
 		}
 
