@@ -300,6 +300,10 @@ policy:
   policy_dir: "./policies"
   presets: []                    # safety | pci | mcp_sandbox
   default_action: "deny"
+  signature:
+    enabled: false
+    type: "hmac"                 # hmac | ed25519
+    secret: ""
 
 rate_limit:
   enabled: false
@@ -339,6 +343,7 @@ LOG_LEVEL            overrides server.log_level
 |---|---|---|
 | `Authorization: Bearer <KEY>` | Yes | Loopers proxy key (`lp-xxx`), or real provider key when using path-based auth |
 | `X-Loopers-Provider-Key` | Yes* | Real upstream API key (*not required for path-based auth) |
+| `X-Loopers-Signature` | No | Cryptographic signature of mutated request body |
 | `X-Loopers-Session-ID` | No | Session identifier for loop detection and session budgets |
 | `X-Loopers-Session-Budget` | No | Max USD spend for this session |
 | `X-Loopers-Session-Max-Steps` | No | Max number of AI calls for this session |
@@ -356,6 +361,7 @@ LOG_LEVEL            overrides server.log_level
 | `X-Loopers-Request-ID` | Unique request ID for debugging |
 | `X-Loopers-Policy-Block` | `"true"` when a request is blocked by OPA policy |
 | `X-Loopers-Block-Reason` | The deny reason text from the matching Rego rule |
+| `X-Loopers-Signature` | Cryptographic signature returning the action receipt back to downstream clients |
 
 ### Error Codes
 

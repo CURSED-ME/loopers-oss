@@ -41,6 +41,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/proxy"
 	"github.com/CURSED-ME/loopers-oss/internal/ratelimit"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
+	"github.com/CURSED-ME/loopers-oss/internal/signature"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/viper"
@@ -80,6 +81,7 @@ type Server struct {
 	rateLimiter      *ratelimit.Limiter
 	sessionManager   *session.Manager
 	policyEngine     *policy.Engine
+	signer           *signature.Signer
 	escalationBroker *a2a.EscalationBroker
 	jwksValidator    *keyring.JWKSValidator
 	ctx              context.Context
@@ -198,11 +200,25 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		}()
 	}
 
+	var sigSigner *signature.Signer
+	if viper.GetBool("policy.signature.enabled") {
+		sigCfg := signature.Config{
+			Enabled: true,
+			Type:    viper.GetString("policy.signature.type"),
+			Secret:  viper.GetString("policy.signature.secret"),
+		}
+		signer, err := signature.NewSigner(sigCfg)
+		if err != nil {
+			logging.Logger.Fatal().Err(err).Msg("Failed to initialize cryptographic signer")
+		}
+		sigSigner = signer
+	}
+
 	var mcpCfg mcp.Config
 	var mcpHandler *mcp.Handler
 	if err := viper.UnmarshalKey("mcp", &mcpCfg); err == nil && mcpCfg.Enabled {
 		if redisClient != nil {
-			mcpHandler = mcp.NewHandler(mcpCfg, redisClient, pricingStore, alerter, sessionManager, policyEngine)
+			mcpHandler = mcp.NewHandler(mcpCfg, redisClient, pricingStore, alerter, sessionManager, policyEngine, sigSigner)
 		} else {
 			logging.Logger.Error().Msg("MCP is enabled but Redis client is not initialized. MCP routing will be disabled.")
 		}
@@ -250,6 +266,7 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		rateLimiter:      rateLimiter,
 		sessionManager:   sessionManager,
 		policyEngine:     policyEngine,
+		signer:           sigSigner,
 		escalationBroker: escalationBroker,
 		jwksValidator:    jwksValidator,
 		ctx:              ctx,

@@ -15,6 +15,7 @@ Loopers uses headers to get settings from your application and return informatio
 |---|---|---|
 | Authorization: Bearer `<KEY>` | Yes | Your Loopers proxy key, OR your real upstream provider key if using Zero-Code Path Integration. |
 | X-Loopers-Provider-Key | Yes* | Your real AI provider API key (*Not required if using Zero-Code Path Integration) |
+| X-Loopers-Signature | No | The cryptographic signature injected by Loopers into the request forwarded to the upstream provider (when signature policy is enabled). |
 | X-Loopers-Session-ID | No | Unique name for this session (for loop detection) |
 | X-Loopers-Session-Budget | No | Maximum spending limit in USD for this session |
 | X-Loopers-Session-Max-Steps | No | Maximum AI calls allowed for this session |
@@ -36,6 +37,7 @@ All `X-Loopers-*` budget and telemetry response headers can be completely suppre
 | X-Loopers-Request-ID | A unique ID for this request to help with debugging |
 | X-Loopers-Policy-Block | Set to `"true"` when a request or MCP tool call is blocked by OPA policy |
 | X-Loopers-Block-Reason | Contains the denial reason rule text from the matching Rego policy |
+| X-Loopers-Signature | Injected back into the HTTP response headers to return the cryptographic action receipt to the downstream client. |
 
 
 ## Error Codes
