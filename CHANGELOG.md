@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.10.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.9.0...v2.10.0) (2026-08-14)
+
+
+### Features
+
+* implement cryptographic action receipts (inline signatures) and documentation ([08963bf](https://github.com/CURSED-ME/loopers-oss/commit/08963bf5c44692ba6be0f183d93a478a82431a75))
+* implement cryptographic action receipts (inline signatures) and documentation ([2724e62](https://github.com/CURSED-ME/loopers-oss/commit/2724e6284183d8e34bc5245a2bf994ae4af4e638))
+
 ## [2.9.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.8.0...v2.9.0) (2026-08-13)
 
 
