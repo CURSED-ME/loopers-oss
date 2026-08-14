@@ -24,6 +24,7 @@ const (
 	ProxyKeyHashCtx     ContextKey = "ProxyKeyHash"
 	RequestCostCtx      ContextKey = "RequestCost"
 	ModelCtx            ContextKey = "Model"
+	RequestSignatureCtx ContextKey = "RequestSignature"
 )
 
 // Proxy handles forwarding requests to upstream providers.

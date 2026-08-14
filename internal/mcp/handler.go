@@ -26,6 +26,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	proxyPkg "github.com/CURSED-ME/loopers-oss/internal/proxy"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
+	"github.com/CURSED-ME/loopers-oss/internal/signature"
 	"github.com/CURSED-ME/loopers-oss/pkg/api"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -76,12 +77,13 @@ type Handler struct {
 	circuitBreaker *CircuitBreaker
 	sessionManager *session.Manager
 	policyEngine   *policy.Engine
+	signer         *signature.Signer
 	proxy          *Proxy
 	servers        map[string]string
 	allowedMethods map[string]bool
 }
 
-func NewHandler(cfg Config, budgetClient *budget.Client, pricingStore *pricing.Store, alerter *alerting.Alerter, sessionManager *session.Manager, policyEngine *policy.Engine) *Handler {
+func NewHandler(cfg Config, budgetClient *budget.Client, pricingStore *pricing.Store, alerter *alerting.Alerter, sessionManager *session.Manager, policyEngine *policy.Engine, signer *signature.Signer) *Handler {
 	cb := NewCircuitBreaker(cfg.CircuitBreaker, budgetClient.GetUnderlyingClient())
 
 	servers := make(map[string]string)
@@ -108,6 +110,7 @@ func NewHandler(cfg Config, budgetClient *budget.Client, pricingStore *pricing.S
 		circuitBreaker: cb,
 		sessionManager: sessionManager,
 		policyEngine:   policyEngine,
+		signer:         signer,
 		servers:        servers,
 		allowedMethods: allowedMethods,
 	}
@@ -119,6 +122,11 @@ func NewHandler(cfg Config, budgetClient *budget.Client, pricingStore *pricing.S
 func (h *Handler) modifyResponse(resp *http.Response) error {
 	req := resp.Request
 	ctx := req.Context()
+
+	sigHeader, _ := ctx.Value(proxyPkg.RequestSignatureCtx).(string)
+	if sigHeader != "" {
+		resp.Header.Set("X-Loopers-Signature", sigHeader)
+	}
 	type contextKey string
 	const mcpMethodCtx contextKey = "MCPMethod"
 	const mcpServerCtx contextKey = "MCPServer"
@@ -252,6 +260,7 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 	req, err := ParseJSONRPC(body)
 	if err != nil || req == nil {
 		// Pass-through transparently if not JSON-RPC
+		h.signRequest(c, body)
 		h.forward(c, targetURL, nil, 0)
 		return
 	}
@@ -274,6 +283,7 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		}
 		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), mcpServerCtx, serverName))
 		// Pass-through transparently for allowed non-tools/call methods
+		h.signRequest(c, body)
 		h.forward(c, targetURL, nil, 0)
 		return
 	}
@@ -592,7 +602,20 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 	ctx = context.WithValue(ctx, mcpToolNameCtxKey, toolParams.Name)
 	c.Request = c.Request.WithContext(ctx)
 
+	h.signRequest(c, body)
 	h.forward(c, targetURL, &keyHash, toolCost)
+}
+
+func (h *Handler) signRequest(c *gin.Context, body []byte) {
+	if h.signer != nil && h.signer.Enabled {
+		sig, t, err := h.signer.Sign(body)
+		if err == nil {
+			sigHeader := h.signer.FormatHeader(t, sig)
+			c.Request.Header.Set("X-Loopers-Signature", sigHeader)
+			ctx := context.WithValue(c.Request.Context(), proxyPkg.RequestSignatureCtx, sigHeader)
+			c.Request = c.Request.WithContext(ctx)
+		}
+	}
 }
 
 func (h *Handler) forward(c *gin.Context, targetURL string, keyHash *string, cost float64) {

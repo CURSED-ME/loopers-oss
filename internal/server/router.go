@@ -513,6 +513,16 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 		ctx = context.WithValue(ctx, sessionBudgetCtx, sessionBudget)
 		ctx = context.WithValue(ctx, sessionMaxStepsCtx, sessionMaxSteps)
 	}
+
+	if s.signer != nil && s.signer.Enabled {
+		sig, t, err := s.signer.Sign(mutatedBody)
+		if err == nil {
+			sigHeader := s.signer.FormatHeader(t, sig)
+			c.Request.Header.Set("X-Loopers-Signature", sigHeader)
+			ctx = context.WithValue(ctx, proxy.RequestSignatureCtx, sigHeader)
+		}
+	}
+
 	c.Request = c.Request.WithContext(ctx)
 
 	// 8. Stream output using ReverseProxy
@@ -522,6 +532,11 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 func (s *Server) modifyResponse(resp *http.Response) error {
 	req := resp.Request
 	ctx := req.Context()
+
+	sigHeader, _ := ctx.Value(proxy.RequestSignatureCtx).(string)
+	if sigHeader != "" {
+		resp.Header.Set("X-Loopers-Signature", sigHeader)
+	}
 
 	startTime, _ := ctx.Value(startTimeCtx).(time.Time)
 	keyHash, _ := ctx.Value(proxy.ProxyKeyHashCtx).(string)

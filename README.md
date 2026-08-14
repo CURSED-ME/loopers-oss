@@ -34,6 +34,7 @@ Every feature in Loopers is fully detailed in our documentation. Use the map bel
 | | Custom ABAC Policies (Rego / OPA) | [OPA Policies Guide](./Documentation/docs/guides/policy-engine.md#method-b-custom-oparego-policies-advanced) |
 | **Integrations** | Model Context Protocol (MCP) Governance | [MCP Setup Guide](./Documentation/docs/guides/mcp-setup.md) |
 | | Zero-Code Path-Based Auth (`/lp-xxx/`) for pre-built agents (OpenClaw, Hermes, NanoClaw, Aider, Claude Code) | [Agent CLI Integrations](./Documentation/docs/guides/agent-cli-integrations.md#zero-code-path-based-auth-for-pre-built--desktop-agents) |
+| | Cryptographic Action Receipts (Inline signatures) | [API Headers Reference](./Documentation/docs/reference/headers.md) |
 | | Cryptographic ZSP Auth & DPoP Tokens | [Architecture Overview](./docs/architecture.md) |
 | | Agent Self-Correction JSON-RPC Formats | [Self-Correction Guide](./Documentation/docs/guides/policy-engine.md#agent-friendly-error-formats-self-correction) |
 | | CrewAI & AutoGen Adapters | [Framework Adapters](./Documentation/docs/guides/framework-adapters.md) |

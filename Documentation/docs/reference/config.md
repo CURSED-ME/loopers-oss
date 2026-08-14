@@ -80,6 +80,10 @@ policy:
   enabled: true
   policy_dir: "./policies"
   default_action: "deny"
+  signature:
+    enabled: false
+    type: "hmac"
+    secret: ""
 
 rate_limit:
   enabled: true
@@ -190,6 +194,9 @@ providers:
 | `enabled` | `false` | Enable the embedded OPA/Rego policy engine |
 | `policy_dir` | `"./policies"` | Local directory containing `.rego` policy files |
 | `default_action` | `"deny"` | Default decision when no rule matches (`"allow"` or `"deny"`) |
+| `signature.enabled` | `false` | Enable cryptographic inline signatures for outgoing request bodies |
+| `signature.type` | `"hmac"` | Signature type: `"hmac"` (HMAC-SHA256) or `"ed25519"` (Ed25519 signatures) |
+| `signature.secret` | `""` | Key filepath, PEM block, or HMAC raw secret key (or leave empty for transient key generation) |
 
 ### rate_limit
 

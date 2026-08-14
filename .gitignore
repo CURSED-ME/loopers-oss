@@ -32,3 +32,8 @@ Documentation/icon.svg
 docs/reference/test-results.md
 .aider*
 arg-research-material.md
+
+# Excluded signature test files
+internal/server/signature_integration_test.go
+internal/signature/signer_test.go
+
