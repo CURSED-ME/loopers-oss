@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.9.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.8.0...v2.9.0) (2026-08-13)
+
+
+### Features
+
+* implement transient session buffer and gzip decompression support ([f160510](https://github.com/CURSED-ME/loopers-oss/commit/f160510de54fd005ced96146666dd63114f4d6c7))
+* implement transient session buffer and gzip decompression support ([97d689f](https://github.com/CURSED-ME/loopers-oss/commit/97d689f2330e02960d90780080718f5539afafac))
+
 ## [2.8.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.7.0...v2.8.0) (2026-08-12)
 
 
