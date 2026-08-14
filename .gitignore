@@ -7,6 +7,15 @@ loopers-oom-crash-report.md
 throughput test results.md
 docs/reference/prod-testing-results.md
 docs/reference/gap-research.md
+docs/reference/test-results.md
+docs/reference/yc.md
+docs/reference/loopers_master_strategy_v2.md
+docs/reference/zsp-a2a-vulnerability.md
+docs/reference/post-fix-new-vul.md
+docs/reference/arg_*.md
+docs/reference/agent_runtime_governance_*.md
+arg-research-material.md
+final_results.md
 docs/*.md
 graphify-out/
 bin/
@@ -18,9 +27,19 @@ docker-compose.yml
 dump.rdb
 *.rdb
 
+# Test outputs, logs and local configs
+*.log
+test_output.txt
+test-config.yaml
+runs.json
+policies/
+
 # Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+*.egg
+.pytest_cache/
 
 # Node
 node_modules/
@@ -29,9 +48,7 @@ dist/
 # Excluded by user request
 raw/
 Documentation/icon.svg
-docs/reference/test-results.md
 .aider*
-arg-research-material.md
 
 # Excluded signature test files
 internal/server/signature_integration_test.go
