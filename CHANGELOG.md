@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.10.1](https://github.com/CURSED-ME/loopers-oss/compare/v2.10.0...v2.10.1) (2026-08-14)
+
+
+### Bug Fixes
+
+* **ci:** pin builder docker base image to immutable sha256 digest ([face291](https://github.com/CURSED-ME/loopers-oss/commit/face2917622d158ef772faea9c7d189b89e33f7c))
+* **ci:** pin builder docker base image to immutable sha256 digest ([0493ea4](https://github.com/CURSED-ME/loopers-oss/commit/0493ea4aa5dc493babc7ee55837864f89c3fa21a))
+
 ## [2.10.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.9.0...v2.10.0) (2026-08-14)
 
 
