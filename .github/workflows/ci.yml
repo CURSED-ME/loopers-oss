@@ -1,5 +1,8 @@
 name: CI
 
+env:
+  GOTOOLCHAIN: auto
+
 on:
   push:
     branches: [ main ]

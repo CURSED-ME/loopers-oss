@@ -1,5 +1,8 @@
 name: Pricing Validation
 
+env:
+  GOTOOLCHAIN: auto
+
 on:
   push:
     branches: [ main ]

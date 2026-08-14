@@ -1,5 +1,8 @@
 name: Release
 
+env:
+  GOTOOLCHAIN: auto
+
 on:
   push:
     tags:
