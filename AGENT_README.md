@@ -25,7 +25,7 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 
 ## 3. Tech Stack & Requirements
 
-- **Language**: Go 1.25+ (toolchain go1.26.5)
+- **Language**: Go 1.25+ (toolchain go1.26.6)
 - **Cache/Storage**: Redis 7+
 - **Proxy Engine**: `net/http/httputil.ReverseProxy`
 - **Policy Engine**: Open Policy Agent (OPA) / Rego with dynamic YAML Policy Card transpilation
