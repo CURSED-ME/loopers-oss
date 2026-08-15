@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.12.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.11.0...v2.12.0) (2026-08-15)
+
+
+### Features
+
+* implement local translation middleware for action canonicalization ([d756eed](https://github.com/CURSED-ME/loopers-oss/commit/d756eedff7f2f0652d76d7350434a8ec775b76e1))
+
 ## [2.11.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.10.1...v2.11.0) (2026-08-15)
 
 
