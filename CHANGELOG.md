@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.11.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.10.1...v2.11.0) (2026-08-15)
+
+
+### Features
+
+* implement formal trace verification (loopers verify CLI) ([207a173](https://github.com/CURSED-ME/loopers-oss/commit/207a173f9c06acab2198478e9fcf25a78ec82ae0))
+* implement formal trace verification (loopers verify CLI) ([9635981](https://github.com/CURSED-ME/loopers-oss/commit/9635981edf6f6c65131d393db342bddb256bc477))
+* implement formal trace verification and deterministic FSM gating ([7c41492](https://github.com/CURSED-ME/loopers-oss/commit/7c414926221bd4a1613d8588bf69c5500edebb5f))
+* implement formal trace verification and deterministic FSM gating ([c1f7f3a](https://github.com/CURSED-ME/loopers-oss/commit/c1f7f3a5155d5fba0d2724989a7d3dcb54732a33))
+
 ## [2.10.1](https://github.com/CURSED-ME/loopers-oss/compare/v2.10.0...v2.10.1) (2026-08-14)
 
 
