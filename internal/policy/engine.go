@@ -61,13 +61,33 @@ type SessionContext struct {
 	Traces      []SessionTrace  `json:"traces"`       // Recent request/response traces (newest first, capped at 15)
 }
 
+type CanonicalMessage struct {
+	Role    string `json:"role"`    // "system" | "user" | "assistant" | "tool"
+	Content string `json:"content"` // Text content of the message
+}
+
+type CanonicalToolDefinition struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description,omitempty"`
+	Parameters  map[string]interface{} `json:"parameters,omitempty"`
+}
+
+type CanonicalToolCall struct {
+	ID        string                 `json:"id,omitempty"`
+	Name      string                 `json:"name"`
+	Arguments map[string]interface{} `json:"arguments"`
+}
+
 type ActionContext struct {
-	Type          string                 `json:"type"`                     // "llm_call" | "mcp_tool_call"
-	Provider      string                 `json:"provider"`                 // "openai" | "anthropic" | "gemini" | etc.
-	Model         string                 `json:"model"`                    // e.g. "gpt-4o"
-	PromptText    string                 `json:"prompt_text"`              // Concatenated prompts
-	ToolName      string                 `json:"tool_name,omitempty"`      // if tool call
-	ToolArguments map[string]interface{} `json:"tool_arguments,omitempty"` // if tool call
+	Type          string                    `json:"type"`                     // "llm_call" | "mcp_tool_call"
+	Provider      string                    `json:"provider"`                 // "openai" | "anthropic" | "gemini" | etc.
+	Model         string                    `json:"model"`                    // e.g. "gpt-4o"
+	PromptText    string                    `json:"prompt_text"`              // Concatenated prompts
+	ToolName      string                    `json:"tool_name,omitempty"`      // if tool call
+	ToolArguments map[string]interface{}    `json:"tool_arguments,omitempty"` // if tool call
+	Messages      []CanonicalMessage        `json:"messages,omitempty"`       // Canonical messages
+	Tools         []CanonicalToolDefinition `json:"tools,omitempty"`          // Canonical tools defined
+	ToolCalls     []CanonicalToolCall       `json:"tool_calls,omitempty"`     // Canonical tool calls requested
 }
 
 type EvalInput struct {
