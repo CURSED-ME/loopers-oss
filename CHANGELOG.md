@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.13.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.12.0...v2.13.0) (2026-08-15)
+
+
+### Features
+
+* implement 5-outcome decision plane ([c673040](https://github.com/CURSED-ME/loopers-oss/commit/c673040e0615f91597eb097903ccb0cb30b4526d))
+
 ## [2.12.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.11.0...v2.12.0) (2026-08-15)
 
 
