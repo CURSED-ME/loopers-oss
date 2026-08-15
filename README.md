@@ -29,6 +29,7 @@ Every feature in Loopers is fully detailed in our documentation. Use the map bel
 | | Multi-Turn Session Cost Limits | [Session Budgets Guide](./Documentation/docs/concepts/session-budgets.md) |
 | **Agent Guardrails** | Fuzzy & Fuzzy Prompt Loop Circuit Breakers | [Agent Loop Detection](./Documentation/docs/concepts/agent-loop-detection.md) |
 | | Declarative YAML Policy Cards (CAVA) | [Policy Engine Guide](./Documentation/docs/guides/policy-engine.md) |
+| | Deterministic FSM Gating (Trajectory Risk Modeling) | [Policy Engine Guide](./Documentation/docs/guides/policy-engine.md#deterministic-fsm-gating-trajectory-risk-modeling) |
 | | Transient Session Buffer (Stateful Tracing) | [Policy Engine Guide](./Documentation/docs/guides/policy-engine.md#transient-session-buffer) |
 | | Out-of-the-Box Security Presets (safety, pci, mcp_sandbox) | [Policy Engine Guide](./Documentation/docs/guides/policy-engine.md#out-of-the-box-presets--templates) |
 | | Formal Trace Verification (Offline CLI verification) | [Trace Verification Guide](./Documentation/docs/guides/trace-verification.md) |

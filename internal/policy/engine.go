@@ -53,6 +53,7 @@ type SessionTrace struct {
 
 type SessionContext struct {
 	ID          string          `json:"id,omitempty"`
+	State       string          `json:"state,omitempty"`
 	Spend       float64         `json:"spend,omitempty"`
 	Steps       int             `json:"steps,omitempty"`
 	TaintFlags  map[string]bool `json:"taint_flags"`  // Persistent taint flags for the session (e.g. "secret_accessed")
@@ -88,6 +89,7 @@ type Engine struct {
 	compiler   *ast.Compiler
 	allowQuery rego.PreparedEvalQuery
 	denyQuery  rego.PreparedEvalQuery
+	fsm        *FSMConfig
 }
 
 func NewEngine(cfg Config) (*Engine, error) {
@@ -112,6 +114,8 @@ func NewEngine(cfg Config) (*Engine, error) {
 func (e *Engine) Reload() error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+
+	e.fsm = nil
 
 	modules := make(map[string]*ast.Module)
 
@@ -186,6 +190,9 @@ func (e *Engine) Reload() error {
 			if err != nil {
 				return fmt.Errorf("failed to parse YAML policy: %w", err)
 			}
+			if card.FSM != nil {
+				e.fsm = card.FSM
+			}
 			regoCode, err := TranspileToRego(card)
 			if err != nil {
 				return fmt.Errorf("failed to transpile YAML policy to Rego: %w", err)
@@ -216,6 +223,9 @@ func (e *Engine) Reload() error {
 		card, err := ParseYAML(data)
 		if err != nil {
 			return fmt.Errorf("failed to parse preset %s YAML: %w", presetName, err)
+		}
+		if card.FSM != nil && e.fsm == nil {
+			e.fsm = card.FSM
 		}
 		regoCode, err := TranspileToRego(card)
 		if err != nil {
@@ -328,4 +338,11 @@ func (e *Engine) Evaluate(ctx context.Context, input EvalInput) (Decision, error
 	}
 
 	return decision, nil
+}
+
+// FSM returns the parsed FSM configuration.
+func (e *Engine) FSM() *FSMConfig {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.fsm
 }

@@ -266,6 +266,7 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 		policySessionCtx := policy.SessionContext{
 			ID: earlySessionID,
 		}
+		var currentState string
 		if earlySessionID != "" && session.IsValidID(earlySessionID) && s.sessionManager != nil {
 			if taintFlags, tErr := s.sessionManager.GetTaintFlags(c.Request.Context(), keyHash, earlySessionID); tErr == nil {
 				policySessionCtx.TaintFlags = taintFlags
@@ -281,6 +282,16 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				policySessionCtx.Traces = traces
 			} else {
 				logging.Logger.Warn().Err(trErr).Str("session_id", earlySessionID).Msg("proxy_failed_to_fetch_session_traces")
+			}
+
+			// Fetch session FSM state if FSM is configured
+			if fsm := s.policyEngine.FSM(); fsm != nil {
+				if state, sErr := s.sessionManager.GetSessionState(c.Request.Context(), keyHash, earlySessionID, fsm.InitialState); sErr == nil {
+					currentState = state
+					policySessionCtx.State = state
+				} else {
+					logging.Logger.Warn().Err(sErr).Str("session_id", earlySessionID).Msg("proxy_failed_to_fetch_session_state")
+				}
 			}
 		}
 		if policySessionCtx.TaintFlags == nil {
@@ -359,6 +370,18 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				Model:     model,
 				Content:   truncatedPrompt,
 			})
+
+			// Handle FSM transitions if configured
+			if fsm := s.policyEngine.FSM(); fsm != nil {
+				for _, trans := range fsm.Transitions {
+					if trans.From == currentState {
+						if trans.Trigger == "llm_call" || trans.Trigger == model {
+							_ = s.sessionManager.SetSessionState(c.Request.Context(), keyHash, earlySessionID, trans.To)
+							break
+						}
+					}
+				}
+			}
 		}
 	}
 

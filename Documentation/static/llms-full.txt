@@ -394,7 +394,7 @@ LOG_LEVEL            overrides server.log_level
 
 All custom `.rego` files must use `package loopers.policy` and reside in the `policy_dir` directory. Loopers hot-reloads policies on file change.
 
-Alternatively, write simple declarative security rules in a single YAML Policy Card file (e.g. `policies.yaml` configured via `policy_file`), or enable out-of-the-box security templates/presets (`presets: ["safety", "pci", "mcp_sandbox"]` or `--presets` flag). Presets enforce SSN/PII masking, credential leak protection, prompt injections blocks, CVV, SQL Injection checks, relative path traversal prevention, and FSM sequence gating requiring `dry_run_command` prior to executing bash command tools. Loopers automatically transpiles these rules into OPA commands on the fly. YAML policies support regular expression matches, custom deny reasons, and stateful sequence gating constraints (FSM sequence rules).
+Alternatively, write simple declarative security rules in a single YAML Policy Card file (e.g. `policies.yaml` configured via `policy_file`), or enable out-of-the-box security templates/presets (`presets: ["safety", "pci", "mcp_sandbox"]` or `--presets` flag). Presets enforce SSN/PII masking, credential leak protection, prompt injections blocks, CVV, SQL Injection checks, relative path traversal prevention, and FSM sequence gating requiring `dry_run_command` prior to executing bash command tools. Loopers automatically transpiles these rules into OPA commands on the fly. YAML policies support regular expression matches, custom deny reasons, and Deterministic FSM Gating (Trajectory Risk Modeling using an `fsm` block and `session.state` condition rules).
 
 ### Input schema for LLM calls
 ```json
@@ -429,6 +429,7 @@ Alternatively, write simple declarative security rules in a single YAML Policy C
   },
   "session": {
     "id": "sess-...",
+    "state": "TRANSACTION_ACTIVE",
     "spend": 0.42,
     "steps": 5,
     "taint_flags": {"secret_accessed": true},

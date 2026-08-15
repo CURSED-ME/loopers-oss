@@ -145,6 +145,11 @@ func (v *Verifier) VerifyTrace(ctx context.Context, traceFile *SessionTraceFile)
 		taintFlags[k] = val
 	}
 
+	var currentState string
+	if fsm := v.engine.FSM(); fsm != nil {
+		currentState = fsm.InitialState
+	}
+
 	agentCtx := policy.AgentContext{
 		Name:      "offline-verifier",
 		AgentName: "trace-auditor",
@@ -189,6 +194,7 @@ func (v *Verifier) VerifyTrace(ctx context.Context, traceFile *SessionTraceFile)
 
 			sessionCtx := policy.SessionContext{
 				ID:          traceFile.SessionID,
+				State:       currentState,
 				Steps:       i,
 				TaintFlags:  copiedTaint,
 				ToolsCalled: cappedTools,
@@ -231,6 +237,18 @@ func (v *Verifier) VerifyTrace(ctx context.Context, traceFile *SessionTraceFile)
 					Action:    actionCtx,
 					Reason:    decision.Reason,
 				})
+			} else {
+				// Transition FSM state only on successful/allowed action
+				if fsm := v.engine.FSM(); fsm != nil {
+					for _, trans := range fsm.Transitions {
+						if trans.From == currentState {
+							if trans.Trigger == trace.ToolName || trans.Trigger == actionType || trans.Trigger == trace.Model {
+								currentState = trans.To
+								break
+							}
+						}
+					}
+				}
 			}
 		}
 

@@ -269,3 +269,32 @@ func (m *Manager) GetSessionTraces(ctx context.Context, keyHash, sessionID strin
 	}
 	return traces, nil
 }
+
+// stateKey returns the Redis key for session FSM state.
+func stateKey(keyHash, sessionID string) string {
+	return fmt.Sprintf("loopers:session:{%s}:%s:state", keyHash, sessionID)
+}
+
+// GetSessionState retrieves the session's current state from Redis,
+// defaulting to defaultState if it doesn't exist.
+func (m *Manager) GetSessionState(ctx context.Context, keyHash, sessionID, defaultState string) (string, error) {
+	key := stateKey(keyHash, sessionID)
+	val, err := m.rdb.Get(ctx, key).Result()
+	if err == redis.Nil {
+		return defaultState, nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("redis error getting session state: %w", err)
+	}
+	return val, nil
+}
+
+// SetSessionState sets the session's current state in Redis.
+func (m *Manager) SetSessionState(ctx context.Context, keyHash, sessionID, state string) error {
+	key := stateKey(keyHash, sessionID)
+	err := m.rdb.Set(ctx, key, state, sessionDataTTL).Err()
+	if err != nil {
+		return fmt.Errorf("redis error setting session state: %w", err)
+	}
+	return nil
+}

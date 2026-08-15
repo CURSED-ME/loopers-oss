@@ -33,12 +33,24 @@ type MatchFilter struct {
 	Tool string `yaml:"tool,omitempty"`
 }
 
+type FSMTransition struct {
+	From    string `yaml:"from"`
+	To      string `yaml:"to"`
+	Trigger string `yaml:"trigger"`
+}
+
+type FSMConfig struct {
+	InitialState string          `yaml:"initial_state"`
+	Transitions  []FSMTransition `yaml:"transitions"`
+}
+
 type PolicyCard struct {
 	Version  string `yaml:"version"`
 	Metadata struct {
 		Name string `yaml:"name"`
 	} `yaml:"metadata"`
-	Rules []Rule `yaml:"rules"`
+	FSM   *FSMConfig `yaml:"fsm,omitempty"`
+	Rules []Rule     `yaml:"rules"`
 }
 
 func ParseYAML(data []byte) (*PolicyCard, error) {
@@ -152,6 +164,9 @@ func mapFieldToRego(field string) (string, error) {
 			return "", fmt.Errorf("invalid arguments field pattern")
 		}
 		return fmt.Sprintf("input.action.tool_arguments.%s", argName), nil
+	}
+	if field == "session.state" {
+		return "input.session.state", nil
 	}
 	if strings.HasPrefix(field, "session.taint_flags.") {
 		flagName := field[len("session.taint_flags."):]

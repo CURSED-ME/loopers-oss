@@ -324,6 +324,7 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 	sessionCtx := policy.SessionContext{
 		ID: sessionID,
 	}
+	var currentState string
 	if sessionID != "" && h.sessionManager != nil {
 		if taintFlags, tErr := h.sessionManager.GetTaintFlags(c.Request.Context(), keyHash, sessionID); tErr == nil {
 			sessionCtx.TaintFlags = taintFlags
@@ -341,6 +342,18 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 			sessionCtx.Traces = traces
 		} else {
 			logging.Logger.Warn().Err(trErr).Str("session_id", sessionID).Msg("mcp_failed_to_fetch_session_traces")
+		}
+
+		// Fetch session FSM state if FSM is configured
+		if h.policyEngine != nil {
+			if fsm := h.policyEngine.FSM(); fsm != nil {
+				if state, sErr := h.sessionManager.GetSessionState(c.Request.Context(), keyHash, sessionID, fsm.InitialState); sErr == nil {
+					currentState = state
+					sessionCtx.State = state
+				} else {
+					logging.Logger.Warn().Err(sErr).Str("session_id", sessionID).Msg("mcp_failed_to_fetch_session_state")
+				}
+			}
 		}
 	}
 	if sessionCtx.TaintFlags == nil {
@@ -580,6 +593,22 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 					Str("taint_flag", "secret_accessed").
 					Msg("mcp_taint_flag_set")
 			}()
+		}
+
+		// Handle FSM transitions if configured
+		if h.policyEngine != nil {
+			if fsm := h.policyEngine.FSM(); fsm != nil {
+				go func() {
+					for _, trans := range fsm.Transitions {
+						if trans.From == currentState {
+							if trans.Trigger == toolParams.Name || trans.Trigger == "mcp_tool_call" {
+								_ = h.sessionManager.SetSessionState(context.Background(), keyHash, sessionID, trans.To)
+								break
+							}
+						}
+					}
+				}()
+			}
 		}
 	}
 
