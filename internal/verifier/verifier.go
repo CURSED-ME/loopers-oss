@@ -38,13 +38,13 @@ type Violation struct {
 
 // VerificationReport contains the complete compliance audit results for a trace.
 type VerificationReport struct {
-	SessionID       string        `json:"session_id,omitempty"`
-	TotalSteps      int           `json:"total_steps"`
-	ActionsAudited  int           `json:"actions_audited"`
-	ViolationsCount int           `json:"violations_count"`
-	Status          string        `json:"status"` // "PASSED" | "FAILED"
-	Violations      []Violation   `json:"violations"`
-	DurationMs      int64         `json:"duration_ms"`
+	SessionID       string      `json:"session_id,omitempty"`
+	TotalSteps      int         `json:"total_steps"`
+	ActionsAudited  int         `json:"actions_audited"`
+	ViolationsCount int         `json:"violations_count"`
+	Status          string      `json:"status"` // "PASSED" | "FAILED"
+	Violations      []Violation `json:"violations"`
+	DurationMs      int64       `json:"duration_ms"`
 }
 
 // Verifier wraps the policy engine for offline trace validation.
