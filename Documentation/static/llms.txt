@@ -34,7 +34,7 @@ Loopers is a Go binary that proxies AI API calls. Requests from your app go to L
 `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`, `ollama`, `fireworks`, `xai`, `vllm`, `openrouter`
 
 **Policy engine (OPA/Rego, YAML Cards & Presets):**
-All custom policy files must use `package loopers.policy` and define `allow`/`deny` rules in the `policy_dir` directory. Alternatively, define declarative, user-friendly security rules in a single YAML Policy Card (`policy_file: "./policies.yaml"`), or enable out-of-the-box templates/presets (`presets: ["safety", "pci", "mcp_sandbox"]` or `--presets` flag). All formats support regular expressions, Deterministic FSM Gating (Trajectory Risk Modeling with `session.state` conditions and transition triggers), and hot-reloads.
+All custom policy files must use `package loopers.policy` and define `allow`/`deny` rules in the `policy_dir` directory. Alternatively, define declarative, user-friendly security rules in a single YAML Policy Card (`policy_file: "./policies.yaml"`), or enable out-of-the-box templates/presets (`presets: ["safety", "pci", "mcp_sandbox"]` or `--presets` flag). All requests across 15+ providers (and generic OpenAI endpoints) are mapped to a unified canonical schema by the Local Translation Middleware before policy evaluation. All formats support regular expressions, Deterministic FSM Gating (Trajectory Risk Modeling with `session.state` conditions and transition triggers), and hot-reloads.
 
 ---
 

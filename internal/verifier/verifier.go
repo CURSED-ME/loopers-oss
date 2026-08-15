@@ -209,6 +209,14 @@ func (v *Verifier) VerifyTrace(ctx context.Context, traceFile *SessionTraceFile)
 				ToolName:      trace.ToolName,
 				ToolArguments: trace.Arguments,
 			}
+			if actionType == "llm_call" && trace.Content != "" {
+				actionCtx.Messages = []policy.CanonicalMessage{
+					{
+						Role:    "user",
+						Content: trace.Content,
+					},
+				}
+			}
 
 			reqCtx := policy.RequestContext{
 				Provider:  trace.Provider,

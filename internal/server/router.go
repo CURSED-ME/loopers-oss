@@ -304,7 +304,12 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			policySessionCtx.Traces = make([]policy.SessionTrace, 0)
 		}
 
-		promptText, _ := proxy.MapLLMCall(providerName, mutatedBody)
+		actionCtx, _ := proxy.MapLLMRequestToContext(providerName, mutatedBody)
+		actionCtx.Type = "llm_call"
+		actionCtx.Provider = providerName
+		if actionCtx.Model == "" {
+			actionCtx.Model = model
+		}
 
 		decision, err := s.policyEngine.Evaluate(c.Request.Context(), policy.EvalInput{
 			Agent: policy.AgentContext{
@@ -322,12 +327,7 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				Path:     c.Request.URL.Path,
 			},
 			Session: policySessionCtx,
-			Action: policy.ActionContext{
-				Type:       "llm_call",
-				Provider:   providerName,
-				Model:      model,
-				PromptText: promptText,
-			},
+			Action:  actionCtx,
 		})
 		if err != nil {
 			logging.Logger.Error().Err(err).Msg("policy_engine_evaluation_error")
@@ -359,7 +359,7 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 		}
 
 		if earlySessionID != "" && session.IsValidID(earlySessionID) && s.sessionManager != nil {
-			truncatedPrompt := promptText
+			truncatedPrompt := actionCtx.PromptText
 			if len(truncatedPrompt) > 512 {
 				truncatedPrompt = truncatedPrompt[:512]
 			}
