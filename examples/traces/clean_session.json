@@ -1,0 +1,50 @@
+{
+  "version": "loopers.com/v1alpha1",
+  "session_id": "8a7c2b3d-e4f5-4a1b-9c2d-3e4f5a6b7c8d",
+  "agent": {
+    "key_hash": "k_sec_dev_01",
+    "name": "developer-assistant",
+    "agent_name": "code-refactorer",
+    "owner": "platform-engineering",
+    "tags": {
+      "env": "production",
+      "team": "core"
+    }
+  },
+  "traces": [
+    {
+      "timestamp": 1723719000,
+      "type": "llm_call",
+      "provider": "openai",
+      "model": "gpt-4o",
+      "content": "Please review the PR diff and check for edge cases.",
+      "arguments": {}
+    },
+    {
+      "timestamp": 1723719003,
+      "type": "llm_response",
+      "provider": "openai",
+      "model": "gpt-4o",
+      "content": "The PR looks good, but let's run test verification first.",
+      "arguments": {}
+    },
+    {
+      "timestamp": 1723719005,
+      "type": "mcp_tool_call",
+      "provider": "system",
+      "tool_name": "dry_run_command",
+      "arguments": {
+        "command": "go test ./..."
+      }
+    },
+    {
+      "timestamp": 1723719008,
+      "type": "mcp_tool_call",
+      "provider": "system",
+      "tool_name": "execute_bash",
+      "arguments": {
+        "command": "go test ./..."
+      }
+    }
+  ]
+}
