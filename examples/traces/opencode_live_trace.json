@@ -1,0 +1,48 @@
+﻿{
+    "agent":  {
+                  "tags":  {
+                               "provider":  "openrouter",
+                               "env":  "development"
+                           },
+                  "name":  "opencode",
+                  "key_hash":  "be6c5ccf3b31a87b",
+                  "agent_name":  "code-assistant",
+                  "owner":  "varad"
+              },
+    "traces":  [
+                   {
+                       "content":  "Generate a single safe bash command to run go tests.",
+                       "provider":  "openrouter",
+                       "timestamp":  1786786507,
+                       "model":  "nvidia/nemotron-3.5-lightning:free",
+                       "type":  "llm_call"
+                   },
+                   {
+                       "content":  "`go test ./...`",
+                       "provider":  "openrouter",
+                       "timestamp":  1786786509,
+                       "model":  "nvidia/nemotron-3.5-lightning:free",
+                       "type":  "llm_response"
+                   },
+                   {
+                       "provider":  "system",
+                       "timestamp":  1786786512,
+                       "arguments":  {
+                                         "command":  "go test ./..."
+                                     },
+                       "tool_name":  "dry_run_command",
+                       "type":  "mcp_tool_call"
+                   },
+                   {
+                       "provider":  "system",
+                       "timestamp":  1786786515,
+                       "arguments":  {
+                                         "command":  "go test ./..."
+                                     },
+                       "tool_name":  "execute_bash",
+                       "type":  "mcp_tool_call"
+                   }
+               ],
+    "session_id":  "opencode-live-session-001",
+    "version":  "loopers.com/v1alpha1"
+}

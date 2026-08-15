@@ -28,6 +28,7 @@ Loopers is a Go binary that proxies AI API calls. Requests from your app go to L
 - `loopers budget set <hash> [--minute] [--hourly] [--daily] [--weekly] [--monthly]` — sets spending limits in USD
 - `loopers budget status <hash>` — shows current spend vs limits
 - `loopers exec -- <command>` — wraps a CLI agent process, injecting proxy env vars; supports `--model-override` and `--model-map`. Auto-detects aider, openhands, pi, claude, codex, opencode.
+- `loopers verify --trace <path>` — audits session JSON execution traces offline against Policy Cards, presets, or Rego rules.
 
 **Supported providers for `--provider` flag:**
 `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`, `ollama`, `fireworks`, `xai`, `vllm`, `openrouter`
@@ -57,6 +58,7 @@ All custom policy files must use `package loopers.policy` and define `allow`/`de
 ## Guides & Integrations
 
 - [Agent CLI Integrations](/docs/guides/agent-cli-integrations): How to wrap `aider`, `openhands`, `pi`, `claude`, `codex`, `opencode`, and other CLI agents using `loopers exec`. Includes `LOOPERS_PROVIDER`, `--model-override`, and `--model-map` flag documentation with Windows, macOS, and Linux examples.
+- [Trace Verification](/docs/guides/trace-verification): Offline compliance and regression auditing of AI agent execution traces using the loopers verify CLI.
 - [Policy Engine (OPA/Rego)](/docs/guides/policy-engine): Complete OPA input schema, example Rego policies (allow by owner, deny by taint flag, restrict models by team), and agent-friendly error format for self-correction.
 - [Framework Adapters](/docs/guides/framework-adapters): Native adapters for CrewAI and Microsoft AutoGen to route framework LLM traffic through Loopers.
 - [MCP Setup](/docs/guides/mcp-setup): How to proxy MCP (Model Context Protocol) tool calls through Loopers for per-tool cost tracking and blast-radius prevention.

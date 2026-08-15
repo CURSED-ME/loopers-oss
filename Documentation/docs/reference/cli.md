@@ -15,6 +15,7 @@ The loopers command line application allows you to manage keys, budgets, and the
 |---|---|
 | loopers init | Interactive setup wizard that generates loopers.yaml and docker-compose.yml |
 | loopers serve | Start the proxy server |
+| loopers verify | Audit JSON execution traces against OPA policies and Policy Cards |
 | loopers doctor | Diagnose Loopers configuration and connectivity |
 | loopers version | Print version information |
 
@@ -189,3 +190,31 @@ $env:OPENAI_API_KEY="sk-or-v1-YOUR_KEY"
 
 loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
 ```
+
+---
+
+## verify
+
+```bash
+loopers verify --trace <path-to-trace.json> [flags]
+```
+
+Audits and replays recorded execution traces (`.json`) against declarative YAML Policy Cards and OPA Rego policies to validate compliance offline.
+
+**Flags:**
+
+| Flag | Shorthand | Type | Default | Description |
+|---|---|---|---|---|
+| `--trace` | `-t` | string | `""` | **Required.** Path to session trace JSON file to verify |
+| `--policy-file` | `-f` | string | `""` | Path to declarative YAML Policy Card (e.g., `policies.yaml`) |
+| `--policy-dir` | `-d` | string | `""` | Path to directory containing custom Rego (`.rego`) policy files |
+| `--presets` | `-p` | string slice | `[]` | Comma-separated list of built-in security presets (`safety`, `pci`, `mcp_sandbox`) |
+| `--default-action` | | string | `"allow"` | Default decision when no policy rule matches (`allow` or `deny`) |
+| `--format` | | string | `"pretty"` | Output format: `"pretty"` (terminal table) or `"json"` |
+| `--fail-on-violation` | | bool | `true` | Exit with non-zero exit code (`1`) on detected policy violations |
+
+**Example:**
+```bash
+loopers verify --trace ./traces/session.json --presets safety,mcp_sandbox
+```
+

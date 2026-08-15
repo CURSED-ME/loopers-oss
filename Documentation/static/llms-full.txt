@@ -227,6 +227,19 @@ $env:LOOPERS_PROVIDER="openrouter"
 loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
 ```
 
+### loopers verify
+Audits and replays recorded session execution traces offline against declarative YAML Policy Cards and custom OPA Rego rules to check compliance.
+```bash
+loopers verify --trace <path-to-trace.json> [flags]
+```
+Flags:
+- `--trace string` (required) — path to execution trace JSON file to verify
+- `--policy-file string` — path to declarative YAML Policy Card
+- `--policy-dir string` — directory containing custom Rego files
+- `--presets strings` — built-in templates to enable (`safety`, `pci`, `mcp_sandbox`)
+- `--format string` — output format: `pretty` (terminal table) or `json`
+- `--fail-on-violation` — exit with code 1 if violations are found (default: true)
+
 ---
 
 ## Configuration File (loopers.yaml)

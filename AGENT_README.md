@@ -75,7 +75,8 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 │   ├── ratelimit/                 # Per-key sliding window rate limiter (atomic Lua)
 │   ├── server/                    # HTTP server engine, ZSP OIDC JWT & DPoP middleware, PathAuthWrapper (/lp-xxx/), admin router (/metrics)
 │   ├── session/                   # Redis session manager (session budget, max steps, taint flags, transient session trace buffer, tool history, absolute TTL)
-│   └── signature/                 # Asymmetric Ed25519 & HMAC inline signing package
+│   ├── signature/                 # Asymmetric Ed25519 & HMAC inline signing package
+│   └── verifier/                  # Offline trace verification and sequential replay engine
 ├── pkg/
 │   └── api/                       # Shared API types (PolicyDeniedResponse, MCPJSONRPCErrorResponse)
 ├── sdk/
@@ -198,6 +199,18 @@ set OPENAI_API_KEY=sk-or-v1-YOUR_KEY
 
 loopers exec --model-override "google/gemma-2-9b-it:free" -- opencode
 ```
+
+**Verify Session Trace Compliance:**
+```bash
+loopers verify --trace <path-to-trace.json> [flags]
+```
+Flags:
+- `--trace string` (required) — path to execution trace JSON file to verify
+- `--policy-file string` — path to declarative YAML Policy Card (e.g. policies.yaml)
+- `--policy-dir string` — directory containing custom Rego files
+- `--presets strings` — built-in templates to enable (`safety`, `pci`, `mcp_sandbox`)
+- `--format string` — output format: `pretty` or `json`
+- `--fail-on-violation` — exit with code 1 if violations are found (default: true)
 
 ---
 
