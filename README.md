@@ -31,6 +31,7 @@ Every feature in Loopers is fully detailed in our documentation. Use the map bel
 | | Declarative YAML Policy Cards (CAVA) | [Policy Engine Guide](./Documentation/docs/guides/policy-engine.md) |
 | | Deterministic FSM Gating (Trajectory Risk Modeling) | [Policy Engine Guide](./Documentation/docs/guides/policy-engine.md#deterministic-fsm-gating-trajectory-risk-modeling) |
 | | Transient Session Buffer (Stateful Tracing) | [Policy Engine Guide](./Documentation/docs/guides/policy-engine.md#transient-session-buffer) |
+| | Local Translation Middleware (Action Canonicalization) | [Policy Engine Guide](./Documentation/docs/guides/policy-engine.md#local-translation-middleware) |
 | | Out-of-the-Box Security Presets (safety, pci, mcp_sandbox) | [Policy Engine Guide](./Documentation/docs/guides/policy-engine.md#out-of-the-box-presets--templates) |
 | | Formal Trace Verification (Offline CLI verification) | [Trace Verification Guide](./Documentation/docs/guides/trace-verification.md) |
 | | Custom ABAC Policies (Rego / OPA) | [OPA Policies Guide](./Documentation/docs/guides/policy-engine.md#method-b-custom-oparego-policies-advanced) |
