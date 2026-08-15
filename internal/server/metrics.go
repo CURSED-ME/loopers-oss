@@ -81,4 +81,19 @@ var (
 		Name: "loopers_escalations_timeout_total",
 		Help: "Total ZSP escalations timed out",
 	}, []string{"reason"})
+
+	policyEscalationsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "loopers_policy_escalations_total",
+		Help: "Total requests escalated to human or SaaS control plane by policy",
+	}, []string{"provider", "escalate_to"})
+
+	policyQuarantinesTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "loopers_policy_quarantines_total",
+		Help: "Total agent keyHashes quarantined by policy decision",
+	}, []string{"provider", "severity"})
+
+	policyTransformsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "loopers_policy_transforms_total",
+		Help: "Total requests where payload was mutated (transform) by policy",
+	}, []string{"provider", "operation"})
 )

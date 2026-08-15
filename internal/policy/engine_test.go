@@ -83,8 +83,8 @@ deny {
 			if err != nil {
 				t.Fatalf("evaluation failed: %v", err)
 			}
-			if decision.Allowed != tt.expectAllowed {
-				t.Errorf("expected allowed=%v, got %v (reason: %s)", tt.expectAllowed, decision.Allowed, decision.Reason)
+			if decision.IsAllowed() != tt.expectAllowed {
+				t.Errorf("expected allowed=%v, got action=%s (reason: %s)", tt.expectAllowed, decision.Action, decision.Reason)
 			}
 		})
 	}
@@ -113,7 +113,7 @@ func TestEngine_EmptyDir(t *testing.T) {
 		t.Fatalf("evaluation failed: %v", err)
 	}
 
-	if decision.Allowed {
+	if decision.IsAllowed() {
 		t.Errorf("expected default deny with empty policies")
 	}
 }
@@ -189,8 +189,8 @@ deny {
 	if err != nil {
 		t.Fatalf("eval failed: %v", err)
 	}
-	if !d1.Allowed {
-		t.Errorf("expected allowed=true, got false")
+	if !d1.IsAllowed() {
+		t.Errorf("expected allowed=true, got action=%s", d1.Action)
 	}
 
 	// 2. Denied by system message content
@@ -207,7 +207,7 @@ deny {
 	if err != nil {
 		t.Fatalf("eval failed: %v", err)
 	}
-	if d2.Allowed {
+	if d2.IsAllowed() {
 		t.Errorf("expected allowed=false for forbidden system message")
 	}
 
@@ -225,7 +225,7 @@ deny {
 	if err != nil {
 		t.Fatalf("eval failed: %v", err)
 	}
-	if d3.Allowed {
+	if d3.IsAllowed() {
 		t.Errorf("expected allowed=false for forbidden tool definition")
 	}
 
@@ -248,7 +248,85 @@ deny {
 	if err != nil {
 		t.Fatalf("eval failed: %v", err)
 	}
-	if d4.Allowed {
+	if d4.IsAllowed() {
 		t.Errorf("expected allowed=false for dangerous tool call argument")
+	}
+}
+
+func TestEngine_PrecedenceResolution(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "loopers-policy-precedence-test")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	policyFile := filepath.Join(tempDir, "precedence.rego")
+	policyContent := `package loopers.policy
+
+default allow = true
+
+decisions[d] {
+	input.action.tool_name == "multi_conflict"
+	d := {
+		"action": "escalate",
+		"reason": "Escalation requested",
+		"severity": "warn",
+		"escalate_to": "human",
+		"evidence": ["rule_escalate"]
+	}
+}
+
+decisions[d] {
+	input.action.tool_name == "multi_conflict"
+	d := {
+		"action": "quarantine",
+		"reason": "Quarantine requested",
+		"severity": "critical",
+		"quarantine_for": "2h",
+		"evidence": ["rule_quarantine"]
+	}
+}
+
+decisions[d] {
+	input.action.tool_name == "multi_conflict"
+	d := {
+		"action": "transform",
+		"reason": "Transform applied",
+		"transforms": [{"field": "secret", "operation": "mask"}],
+		"evidence": ["rule_transform"]
+	}
+}
+`
+	if err := os.WriteFile(policyFile, []byte(policyContent), 0644); err != nil {
+		t.Fatalf("failed to write policy file: %v", err)
+	}
+
+	engine, err := NewEngine(Config{
+		Enabled:       true,
+		PolicyDir:     tempDir,
+		DefaultAction: "allow",
+	})
+	if err != nil {
+		t.Fatalf("failed to create engine: %v", err)
+	}
+
+	// Quarantine (rank 4) should override Escalate (rank 3) and Transform (rank 2)
+	d, err := engine.Evaluate(context.Background(), EvalInput{
+		Action: ActionContext{
+			ToolName: "multi_conflict",
+		},
+	})
+	if err != nil {
+		t.Fatalf("evaluation failed: %v", err)
+	}
+
+	if d.Action != "quarantine" {
+		t.Errorf("expected winning action to be quarantine, got %s", d.Action)
+	}
+	if d.QuarantineFor != "2h" {
+		t.Errorf("expected quarantine_for to be 2h, got %s", d.QuarantineFor)
+	}
+	if len(d.Evidence) != 1 || d.Evidence[0] != "rule_quarantine" {
+		t.Errorf("expected evidence [rule_quarantine], got %v", d.Evidence)
 	}
 }

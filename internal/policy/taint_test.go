@@ -64,7 +64,7 @@ deny["outbound HTTP blocked after secret access"] {
 	if err != nil {
 		t.Fatalf("evaluation error (case 1): %v", err)
 	}
-	if !decision.Allowed {
+	if !decision.IsAllowed() {
 		t.Errorf("case 1: expected outbound_http to be allowed with no taint, got denied: %s", decision.Reason)
 	}
 
@@ -90,7 +90,7 @@ deny["outbound HTTP blocked after secret access"] {
 	if err != nil {
 		t.Fatalf("evaluation error (case 2): %v", err)
 	}
-	if decision.Allowed {
+	if decision.IsAllowed() {
 		t.Errorf("case 2: expected outbound_http to be DENIED when secret_accessed taint is set, got allowed")
 	}
 	if decision.Reason == "" {
@@ -119,7 +119,7 @@ deny["outbound HTTP blocked after secret access"] {
 	if err != nil {
 		t.Fatalf("evaluation error (case 3): %v", err)
 	}
-	if !decision.Allowed {
+	if !decision.IsAllowed() {
 		t.Errorf("case 3: expected read_file to be allowed even with taint, got denied: %s", decision.Reason)
 	}
 }
@@ -177,7 +177,7 @@ deny["session has invoked too many distinct tool calls"] {
 	if err != nil {
 		t.Fatalf("evaluation error: %v", err)
 	}
-	if !d.Allowed {
+	if !d.IsAllowed() {
 		t.Errorf("case 1: expected allowed with 3 tools_called, got denied: %s", d.Reason)
 	}
 
@@ -190,7 +190,7 @@ deny["session has invoked too many distinct tool calls"] {
 	if err != nil {
 		t.Fatalf("evaluation error: %v", err)
 	}
-	if d.Allowed {
+	if d.IsAllowed() {
 		t.Errorf("case 2: expected denied with 4 tools_called, got allowed")
 	}
 }

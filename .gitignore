@@ -58,3 +58,4 @@ Documentation/icon.svg
 internal/server/signature_integration_test.go
 internal/signature/signer_test.go
 
+firewall-research-deepseek.md

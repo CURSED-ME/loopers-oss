@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -103,6 +104,24 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			go s.alerter.TriggerAuthFail(detachedTraceContext(c.Request.Context()), reqID, "Key revoked")
 		}
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key has been revoked"})
+		return
+	}
+
+	// Quarantine Check: enforce at auth layer before any policy evaluation
+	quarantineKey := "loopers:quarantine:" + keyHash
+	if exists, _ := s.redis.GetUnderlyingClient().Exists(c.Request.Context(), quarantineKey).Result(); exists > 0 {
+		event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
+			EventType: "quarantine_active",
+			KeyHash:   keyHash,
+			Provider:  providerName,
+			Reason:    "quarantine_active",
+			Detail:    "Agent is under active policy quarantine",
+			RequestID: reqID,
+		})
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"error": "Agent is currently quarantined by security policy",
+			"type":  "quarantine_active",
+		})
 		return
 	}
 
@@ -345,7 +364,12 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			})
 			return
 		}
-		if !decision.Allowed {
+
+		switch decision.Action {
+		case "allow":
+			// Proceed to trace appending and proxying
+
+		case "deny":
 			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
 				EventType: "policy_block",
 				KeyHash:   keyHash,
@@ -353,6 +377,90 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				Model:     model,
 				Reason:    "policy_denied",
 				Detail:    decision.Reason,
+				RequestID: reqID,
+			})
+			c.AbortWithStatusJSON(http.StatusForbidden, api.NewPolicyDeniedResponse("", providerName, decision.Reason))
+			return
+
+		case "quarantine":
+			dur, _ := time.ParseDuration(decision.QuarantineFor)
+			if dur <= 0 {
+				dur = 1 * time.Hour
+			}
+			_ = s.redis.GetUnderlyingClient().Set(c.Request.Context(), "loopers:quarantine:"+keyHash, "1", dur).Err()
+			event.EmitQuarantineEvent(c.Request.Context(), event.QuarantineEvent{
+				KeyHash:       keyHash,
+				Reason:        decision.Reason,
+				QuarantineFor: decision.QuarantineFor,
+				Evidence:      decision.Evidence,
+				RequestID:     reqID,
+			})
+			policyQuarantinesTotal.WithLabelValues(providerName, decision.Severity).Inc()
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error":    "Request blocked: agent quarantined by security policy",
+				"type":     "quarantine",
+				"reason":   decision.Reason,
+				"duration": decision.QuarantineFor,
+			})
+			return
+
+		case "escalate":
+			if s.escalationBroker == nil {
+				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
+					"error": "Escalation required but broker is not configured",
+					"type":  "escalation_unavailable",
+				})
+				return
+			}
+			event.EmitEscalationEvent(c.Request.Context(), event.EscalationEvent{
+				KeyHash:    keyHash,
+				Provider:   providerName,
+				SessionID:  earlySessionID,
+				Reason:     decision.Reason,
+				EscalateTo: decision.EscalateTo,
+				Evidence:   decision.Evidence,
+				RequestID:  reqID,
+			})
+			policyEscalationsTotal.WithLabelValues(providerName, decision.EscalateTo).Inc()
+			escalationTimeout := 60 * time.Second
+			if to := viper.GetDuration("escalation.timeout"); to > 0 {
+				escalationTimeout = to
+			}
+			resp, err := s.escalationBroker.RequestEscalationFromDecision(
+				c.Request.Context(), earlySessionID, meta.AgentName, decision, escalationTimeout,
+			)
+			if err != nil || resp == nil || !resp.Approved {
+				escalationsTimeoutTotal.WithLabelValues(decision.Reason).Inc()
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+					"error": "Request blocked: escalation denied or timed out",
+					"type":  "escalation_denied",
+				})
+				return
+			}
+			escalationsApprovedTotal.WithLabelValues(decision.Reason).Inc()
+			// Approved! Proceed.
+
+		case "transform":
+			if len(decision.Transforms) > 0 {
+				mutatedBody = applyPromptTransforms(mutatedBody, decision.Transforms)
+				for _, tr := range decision.Transforms {
+					op := tr.Operation
+					if op == "" {
+						op = "mask"
+					}
+					policyTransformsTotal.WithLabelValues(providerName, op).Inc()
+				}
+			}
+
+		default:
+			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
+				EventType: "policy_block",
+				KeyHash:   keyHash,
+				Provider:  providerName,
+				Model:     model,
+				Reason:    "unknown_policy_action",
+				Detail:    fmt.Sprintf("Unknown action: %s", decision.Action),
+				RequestID: reqID,
 			})
 			c.AbortWithStatusJSON(http.StatusForbidden, api.NewPolicyDeniedResponse("", providerName, decision.Reason))
 			return
@@ -809,4 +917,61 @@ func (s *Server) checkBudgetOverdrawAsync(ctx context.Context, keyHash, provider
 			}
 		}
 	}()
+}
+
+func applyPromptTransforms(body []byte, transforms []policy.TransformRule) []byte {
+	if len(transforms) == 0 {
+		return body
+	}
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		return body
+	}
+	mutated := false
+	for _, tr := range transforms {
+		// Handle top-level "prompt" field (non-chat completions format)
+		if tr.Field == "prompt_text" || tr.Field == "prompt" {
+			if _, ok := data["prompt"].(string); ok {
+				switch tr.Operation {
+				case "mask":
+					data["prompt"] = "***"
+					mutated = true
+				case "redact":
+					delete(data, "prompt")
+					mutated = true
+				}
+			}
+		}
+		// Handle chat completions messages array
+		// When field is prompt_text/prompt, mask the "content" key inside each message.
+		// When field is another key (e.g. "role"), mask that specific key.
+		if msgs, ok := data["messages"].([]interface{}); ok {
+			targetKey := tr.Field
+			if tr.Field == "prompt_text" || tr.Field == "prompt" {
+				targetKey = "content"
+			}
+			for _, m := range msgs {
+				if msgMap, ok := m.(map[string]interface{}); ok {
+					switch tr.Operation {
+					case "mask":
+						if _, hasField := msgMap[targetKey]; hasField {
+							msgMap[targetKey] = "***"
+							mutated = true
+						}
+					case "redact":
+						if _, hasField := msgMap[targetKey]; hasField {
+							delete(msgMap, targetKey)
+							mutated = true
+						}
+					}
+				}
+			}
+		}
+	}
+	if mutated {
+		if updated, err := json.Marshal(data); err == nil {
+			return updated
+		}
+	}
+	return body
 }

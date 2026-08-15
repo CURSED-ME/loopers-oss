@@ -111,7 +111,7 @@ func screenPolicy() {
 			if err == nil {
 				fmt.Printf("\nFound YAML Policy Card '%s' with %d rules:\n", card.Metadata.Name, len(card.Rules))
 				for _, r := range card.Rules {
-					fmt.Printf("  - %s (%s)\n", r.Name, r.Match.Type)
+					fmt.Printf("  - %s (%s -> %s)\n", r.Name, r.Match.Type, r.Action)
 				}
 			} else {
 				fmt.Printf("\nFound YAML Policy File '%s', but failed to parse: %v\n", policyFile, err)

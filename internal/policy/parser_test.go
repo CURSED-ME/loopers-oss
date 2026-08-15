@@ -150,3 +150,56 @@ func TestTranspileToRego_SessionFlow(t *testing.T) {
 	assert.Contains(t, regoCode, "tools[i] == \"dry_run_command\"")
 	assert.Contains(t, regoCode, "i < 2")
 }
+
+func TestTranspileToRego_NewActions(t *testing.T) {
+	card := &PolicyCard{
+		Version: "loopers.com/v1alpha1",
+		Rules: []Rule{
+			{
+				Name: "escalate-high-risk",
+				Match: MatchFilter{
+					Type: "mcp_tool_call",
+					Tool: "drop_db",
+				},
+				Action:     "escalate",
+				EscalateTo: "human",
+				Severity:   "critical",
+				Reason:     "Destructive DB drop needs approval",
+			},
+			{
+				Name: "quarantine-threat",
+				Match: MatchFilter{
+					Type: "mcp_tool_call",
+					Tool: "exfiltrate",
+				},
+				Action:        "quarantine",
+				QuarantineFor: "30m",
+				Severity:      "critical",
+				Reason:        "Malicious exfiltration detected",
+			},
+			{
+				Name: "transform-password",
+				Match: MatchFilter{
+					Type: "mcp_tool_call",
+					Tool: "auth_tool",
+				},
+				Action:   "transform",
+				Severity: "info",
+				Transforms: []TransformRule{
+					{Field: "password", Operation: "mask"},
+				},
+			},
+		},
+	}
+
+	regoCode, err := TranspileToRego(card)
+	assert.NoError(t, err)
+
+	assert.Contains(t, regoCode, `"action": "escalate"`)
+	assert.Contains(t, regoCode, `"escalate_to": "human"`)
+	assert.Contains(t, regoCode, `"action": "quarantine"`)
+	assert.Contains(t, regoCode, `"quarantine_for": "30m"`)
+	assert.Contains(t, regoCode, `"action": "transform"`)
+	assert.Contains(t, regoCode, `"field": "password"`)
+	assert.Contains(t, regoCode, `"operation": "mask"`)
+}

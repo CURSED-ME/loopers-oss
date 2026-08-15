@@ -34,6 +34,9 @@ type Violation struct {
 	Timestamp int64                `json:"timestamp"`
 	Action    policy.ActionContext `json:"action"`
 	Reason    string               `json:"reason"`
+	Verdict   string               `json:"verdict,omitempty"` // "deny" | "quarantine" | "escalate"
+	Severity  string               `json:"severity,omitempty"`
+	Evidence  []string             `json:"evidence,omitempty"`
 }
 
 // VerificationReport contains the complete compliance audit results for a trace.
@@ -238,12 +241,15 @@ func (v *Verifier) VerifyTrace(ctx context.Context, traceFile *SessionTraceFile)
 				return nil, fmt.Errorf("evaluation error at step %d: %w", i, err)
 			}
 
-			if !decision.Allowed {
+			if decision.Action != "allow" && decision.Action != "transform" {
 				report.Violations = append(report.Violations, Violation{
 					StepIndex: i,
 					Timestamp: trace.Timestamp,
 					Action:    actionCtx,
 					Reason:    decision.Reason,
+					Verdict:   decision.Action,
+					Severity:  decision.Severity,
+					Evidence:  decision.Evidence,
 				})
 			} else {
 				// Transition FSM state only on successful/allowed action

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/CURSED-ME/loopers-oss/internal/policy"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -95,4 +96,24 @@ func (b *EscalationBroker) RequestEscalation(ctx context.Context, req Escalation
 
 		return &resp, nil
 	}
+}
+
+// RequestEscalationFromDecision is a convenience wrapper that constructs an
+// EscalationRequest directly from a policy.Decision with Action == "escalate".
+// If sessionID is empty or not a valid UUID, a synthetic one-shot UUID is generated
+// so that escalation can proceed even when no X-Loopers-Session-ID header was sent.
+func (b *EscalationBroker) RequestEscalationFromDecision(
+	ctx context.Context,
+	sessionID, agentName string,
+	d policy.Decision,
+	timeout time.Duration,
+) (*EscalationResponse, error) {
+	if !session.IsValidID(sessionID) {
+		sessionID = uuid.NewString()
+	}
+	return b.RequestEscalation(ctx, EscalationRequest{
+		SessionID: sessionID,
+		AgentName: agentName,
+		Reason:    d.Reason,
+	}, timeout)
 }
