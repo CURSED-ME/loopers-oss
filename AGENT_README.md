@@ -14,7 +14,8 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 
 ## 2. Architecture Constraints
 
-- **Zero-Storage Pass-Through**: Provider API keys and payload data are kept in-memory ONLY during the request lifecycle. Never persist keys or payload bodies to disk or database. For stateful multi-turn policies, a capped execution history (transient session buffer) is stored in-memory in Redis but never written to disk.
+- **Zero-Storage Pass-Through**: Provider API keys and payload data are kept in-memory ONLY during the request lifecycle. Never persist keys or payload bodies to disk or database. For stateful multi-turn policies, a capped execution history (transient session buffer) and active FSM state are stored in-memory in Redis but never written to disk.
+- **Deterministic FSM Gating**: Define Finite State Machines in YAML Policy Cards to enforce state-dependent tool calling sequences (e.g. `UNAUTHENTICATED -> AUTHENTICATED -> TRANSACTION_ACTIVE`), automatically transitioning state in Redis on allowed actions and gating actions by `session.state`.
 - **Fail-Closed Guarantee**: If Redis or the proxy fails, it must fail closed to protect the wallet.
 - **Atomic Concurrency Control**: Budget checks and rate limiting happen via Redis Lua scripts to prevent TOCTOU (time-of-check to time-of-use) race conditions under high concurrency.
 - **Cryptographic Action Receipts**: Outgoing mutated request bodies are cryptographically signed using either symmetric HMAC-SHA256 or asymmetric Ed25519 keys, injecting `X-Loopers-Signature: t=<timestamp>; sig=<hex>; type=<type>` into the headers of both the upstream requests and the downstream client responses.
@@ -53,7 +54,7 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 │   ├── mcp/                       # MCP JSON-RPC 2.0 proxy, tool cost tracking, Blast Radius prevention, self-correction formatting
 │   ├── netutil/                   # Network & TLS utilities
 │   ├── otel/                      # OpenTelemetry W3C OTLP sampler & exporter (EU AI Act compliance)
-│   ├── policy/                    # Embedded OPA engine with dynamic YAML transpiler, hot-reload, and stateful context
+│   ├── policy/                    # Embedded OPA engine with dynamic YAML transpiler, Deterministic FSM Gating, hot-reload, and stateful context
 │   ├── pricing/                   # Dynamic remote pricing fetcher & token price store
 │   ├── provider/                  # 15 AI provider implementations + Generic BYO OpenAI endpoint
 │   │   ├── anthropic/             # Anthropic Messages & Text completion proxy
@@ -74,9 +75,9 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 │   ├── proxy/                     # Reverse proxy core, SSE streaming token counter & connection severing
 │   ├── ratelimit/                 # Per-key sliding window rate limiter (atomic Lua)
 │   ├── server/                    # HTTP server engine, ZSP OIDC JWT & DPoP middleware, PathAuthWrapper (/lp-xxx/), admin router (/metrics)
-│   ├── session/                   # Redis session manager (session budget, max steps, taint flags, transient session trace buffer, tool history, absolute TTL)
+│   ├── session/                   # Redis session manager (session budget, max steps, taint flags, transient session trace buffer, FSM state tracking, tool history, absolute TTL)
 │   ├── signature/                 # Asymmetric Ed25519 & HMAC inline signing package
-│   └── verifier/                  # Offline trace verification and sequential replay engine
+│   └── verifier/                  # Offline trace verification, sequential replay engine, and FSM trajectory simulation
 ├── pkg/
 │   └── api/                       # Shared API types (PolicyDeniedResponse, MCPJSONRPCErrorResponse)
 ├── sdk/

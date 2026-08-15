@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/budget"
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
@@ -297,5 +298,263 @@ tool_costs:
 		r.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Equal(t, 2, mcpServerCallCount)
+	}
+}
+
+func TestYAMLPolicyFSMIntegration(t *testing.T) {
+	viper.Set("testing.allow_private_urls", true)
+	t.Cleanup(func() { viper.Reset() })
+
+	// 1. Write temp policies.yaml with FSM configuration
+	tmpPolicyFile, err := os.CreateTemp("", "policies*.yaml")
+	if err != nil {
+		t.Fatalf("failed to create temp policy file: %v", err)
+	}
+	defer os.Remove(tmpPolicyFile.Name())
+
+	yamlContent := []byte(`
+version: loopers.com/v1alpha1
+metadata:
+  name: integration-fsm-policy
+fsm:
+  initial_state: UNAUTHENTICATED
+  transitions:
+    - from: UNAUTHENTICATED
+      to: AUTHENTICATED
+      trigger: login
+    - from: AUTHENTICATED
+      to: TRANSACTION_ACTIVE
+      trigger: start_transaction
+rules:
+  - name: block-unauthorized-db-query
+    match:
+      type: mcp_tool_call
+      tool: database_query
+    conditions:
+      - field: session.state
+        op: not_equals
+        value: TRANSACTION_ACTIVE
+    action: deny
+    reason: "Blocked: Database queries are only allowed in TRANSACTION_ACTIVE state."
+`)
+	if _, err := tmpPolicyFile.Write(yamlContent); err != nil {
+		t.Fatalf("failed to write YAML policy content: %v", err)
+	}
+	tmpPolicyFile.Close()
+
+	// 2. Setup mock upstream MCP server
+	mcpServerCallCount := 0
+	mcpUpstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mcpServerCallCount++
+		var req map[string]interface{}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		resp := map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      req["id"],
+			"result": map[string]interface{}{
+				"content": []map[string]interface{}{
+					{"type": "text", "text": "Success from filesystem server"},
+				},
+			},
+		}
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer mcpUpstream.Close()
+
+	// 3. Configure viper
+	viper.Set("policy.enabled", true)
+	viper.Set("policy.policy_file", tmpPolicyFile.Name())
+	viper.Set("policy.policy_dir", t.TempDir())
+	viper.Set("policy.default_action", "allow")
+
+	viper.Set("mcp", map[string]interface{}{
+		"enabled": true,
+		"servers": []map[string]interface{}{
+			{"name": "filesystem", "url": mcpUpstream.URL},
+		},
+	})
+
+	// 4. Setup Loopers Server with miniredis
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	defer mr.Close()
+
+	redisClient, err := budget.NewClient(mr.Addr(), "", 0)
+	if err != nil {
+		t.Fatalf("failed to create redis client: %v", err)
+	}
+	defer redisClient.Close()
+
+	tmpPricing, _ := os.CreateTemp("", "pricing*.yaml")
+	defer os.Remove(tmpPricing.Name())
+	tmpPricing.Write([]byte(`
+model_costs:
+  openai:
+    gpt-4o:
+      input_cost_per_token: 0.000005
+      output_cost_per_token: 0.000015
+tool_costs:
+  defaults:
+    unknown_tool: 0.01
+`))
+	tmpPricing.Close()
+
+	pricingStore, _ := pricing.LoadStore(tmpPricing.Name())
+
+	s := NewServer(redisClient, pricingStore)
+	defer s.Shutdown()
+	r := s.GetRouter()
+
+	// 5. Register Key in keyring
+	rawKey, _ := keyring.GenerateRawKey()
+	keyHash := keyring.HashKey(rawKey)
+	ctx := context.Background()
+	rdb := redisClient.GetUnderlyingClient()
+
+	rdb.HSet(ctx, "loopers:key:"+keyHash, map[string]interface{}{
+		"name":     "test-key",
+		"provider": "mock",
+		"active":   "true",
+	})
+	defer rdb.Del(ctx, "loopers:key:"+keyHash)
+
+	configKey := "loopers:budget:{" + keyHash + "}:config"
+	rdb.HSet(ctx, configKey, "daily", "100.00")
+	defer rdb.Del(ctx, configKey)
+
+	sessionID := "12345678-1234-1234-1234-1234567890ab"
+
+	// Integration Step 1: Call database_query (should be blocked because initial state is UNAUTHENTICATED, not TRANSACTION_ACTIVE)
+	{
+		reqBody := []byte(`{
+			"jsonrpc": "2.0",
+			"id": 1,
+			"method": "tools/call",
+			"params": {
+				"name": "database_query",
+				"arguments": {}
+			}
+		}`)
+		req, _ := http.NewRequest("POST", "/mcp/filesystem/tools/call", bytes.NewReader(reqBody))
+		req.Header.Set("Authorization", "Bearer "+rawKey)
+		req.Header.Set("X-Loopers-Provider-Key", "dummy")
+		req.Header.Set("X-Loopers-Session-ID", sessionID)
+		w := newCloseNotifierRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var resp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		errVal, ok := resp["error"]
+		assert.True(t, ok)
+		assert.NotNil(t, errVal)
+		errObj := errVal.(map[string]interface{})
+		assert.Contains(t, errObj["message"].(string), "Blocked: Database queries are only allowed in TRANSACTION_ACTIVE state.")
+		assert.Equal(t, 0, mcpServerCallCount)
+	}
+
+	// Integration Step 2: Call login (should succeed and transition state to AUTHENTICATED)
+	{
+		reqBody := []byte(`{
+			"jsonrpc": "2.0",
+			"id": 2,
+			"method": "tools/call",
+			"params": {
+				"name": "login",
+				"arguments": {}
+			}
+		}`)
+		req, _ := http.NewRequest("POST", "/mcp/filesystem/tools/call", bytes.NewReader(reqBody))
+		req.Header.Set("Authorization", "Bearer "+rawKey)
+		req.Header.Set("X-Loopers-Provider-Key", "dummy")
+		req.Header.Set("X-Loopers-Session-ID", sessionID)
+		w := newCloseNotifierRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, 1, mcpServerCallCount)
+	}
+
+	// Give async transition goroutine a moment to write to Redis
+	time.Sleep(10 * time.Millisecond)
+
+	// Integration Step 3: Call database_query again (should STILL be blocked because state is AUTHENTICATED, not TRANSACTION_ACTIVE)
+	{
+		reqBody := []byte(`{
+			"jsonrpc": "2.0",
+			"id": 3,
+			"method": "tools/call",
+			"params": {
+				"name": "database_query",
+				"arguments": {}
+			}
+		}`)
+		req, _ := http.NewRequest("POST", "/mcp/filesystem/tools/call", bytes.NewReader(reqBody))
+		req.Header.Set("Authorization", "Bearer "+rawKey)
+		req.Header.Set("X-Loopers-Provider-Key", "dummy")
+		req.Header.Set("X-Loopers-Session-ID", sessionID)
+		w := newCloseNotifierRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var resp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		errVal, ok := resp["error"]
+		assert.True(t, ok)
+		assert.NotNil(t, errVal)
+		errObj := errVal.(map[string]interface{})
+		assert.Contains(t, errObj["message"].(string), "Blocked: Database queries are only allowed in TRANSACTION_ACTIVE state.")
+		assert.Equal(t, 1, mcpServerCallCount)
+	}
+
+	// Integration Step 4: Call start_transaction (should succeed and transition state to TRANSACTION_ACTIVE)
+	{
+		reqBody := []byte(`{
+			"jsonrpc": "2.0",
+			"id": 4,
+			"method": "tools/call",
+			"params": {
+				"name": "start_transaction",
+				"arguments": {}
+			}
+		}`)
+		req, _ := http.NewRequest("POST", "/mcp/filesystem/tools/call", bytes.NewReader(reqBody))
+		req.Header.Set("Authorization", "Bearer "+rawKey)
+		req.Header.Set("X-Loopers-Provider-Key", "dummy")
+		req.Header.Set("X-Loopers-Session-ID", sessionID)
+		w := newCloseNotifierRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, 2, mcpServerCallCount)
+	}
+
+	// Give async transition goroutine a moment to write to Redis
+	time.Sleep(10 * time.Millisecond)
+
+	// Integration Step 5: Call database_query again (should now succeed because state is TRANSACTION_ACTIVE)
+	{
+		reqBody := []byte(`{
+			"jsonrpc": "2.0",
+			"id": 5,
+			"method": "tools/call",
+			"params": {
+				"name": "database_query",
+				"arguments": {}
+			}
+		}`)
+		req, _ := http.NewRequest("POST", "/mcp/filesystem/tools/call", bytes.NewReader(reqBody))
+		req.Header.Set("Authorization", "Bearer "+rawKey)
+		req.Header.Set("X-Loopers-Provider-Key", "dummy")
+		req.Header.Set("X-Loopers-Session-ID", sessionID)
+		w := newCloseNotifierRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, 3, mcpServerCallCount)
 	}
 }

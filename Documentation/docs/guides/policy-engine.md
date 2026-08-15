@@ -93,18 +93,52 @@ rules:
     *   `matches_regex` — Checks regular expression matching.
     *   `equals` / `not_equals` — Direct equality checking.
 
-### Stateful Sequence Gating (FSM Gating)
+### Deterministic FSM Gating (Trajectory Risk Modeling)
 
-For advanced agent workflows, you can enforce execution order constraints to restrict high-risk tools. For example, you can prevent an agent from executing `execute_bash` unless it has first run `dry_run_command` in the current session.
+For multi-step agent trajectories, Loopers allows you to define a **Finite State Machine (FSM)** directly inside your Policy Card. This restricts sensitive tools or operations to specific states, preventing unauthorized actions or trajectory drift.
 
-This is configured using the `session_sequence` condition:
+#### 1. Defining FSM States & Transitions
+
+Declare an `fsm` block with an `initial_state` and a list of valid state transitions:
 
 ```yaml
-    conditions:
-      - field: session_sequence
-        op: must_precede
-        value: "dry_run_command"
+version: loopers.com/v1alpha1
+metadata:
+  name: trajectory-guardrails
+
+fsm:
+  initial_state: UNAUTHENTICATED
+  transitions:
+    - from: UNAUTHENTICATED
+      to: AUTHENTICATED
+      trigger: login
+    - from: AUTHENTICATED
+      to: TRANSACTION_ACTIVE
+      trigger: start_transaction
 ```
+
+#### 2. Gating Rules by Session State
+
+Use `session.state` in your rule conditions to enforce state-dependent access:
+
+```yaml
+rules:
+  - name: block-unauthorized-db-access
+    match:
+      type: mcp_tool_call
+      tool: database_query
+    conditions:
+      - field: session.state
+        op: not_equals
+        value: TRANSACTION_ACTIVE
+    action: deny
+    reason: "Blocked by FSM: database_query is only permitted when session state is TRANSACTION_ACTIVE."
+```
+
+#### 3. Execution & Transition Lifecycle
+
+* **Automatic State Updates:** When an allowed LLM call or MCP tool matches a defined `trigger` (tool name or action type), Loopers automatically updates the session's active FSM state in Redis with zero disk storage overhead.
+* **Offline Verification:** The `loopers verify` CLI sequentially simulates FSM state transitions when auditing recorded session trace JSON files.
 
 ## Out-of-the-Box Presets & Templates
 
