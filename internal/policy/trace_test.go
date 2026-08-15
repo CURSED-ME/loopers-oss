@@ -78,8 +78,8 @@ deny["write blocked because database query returned credentials earlier"] {
 	if err != nil {
 		t.Fatalf("evaluation error (case 1): %v", err)
 	}
-	if !decision.Allowed {
-		t.Errorf("case 1: expected write_file to be allowed, got denied: %s", decision.Reason)
+	if !decision.IsAllowed() {
+		t.Errorf("case 1: expected write_file to be allowed, got action=%s: %s", decision.Action, decision.Reason)
 	}
 
 	// Case 2: Database response trace contains "credentials" -> write_file should be DENIED
@@ -115,8 +115,8 @@ deny["write blocked because database query returned credentials earlier"] {
 	if err != nil {
 		t.Fatalf("evaluation error (case 2): %v", err)
 	}
-	if decision.Allowed {
-		t.Errorf("case 2: expected write_file to be DENIED when database trace returns credentials, got allowed")
+	if decision.IsAllowed() {
+		t.Errorf("case 2: expected write_file to be DENIED when database trace returns credentials, got allowed (action=%s)", decision.Action)
 	}
 	if decision.Reason == "" {
 		t.Errorf("case 2: expected non-empty denial reason")

@@ -249,6 +249,9 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		}
 		if redisClient != nil {
 			escalationBroker = a2a.NewEscalationBroker(redisClient.GetUnderlyingClient(), viper.GetString("zsp.escalation_secret"))
+			if mcpHandler != nil {
+				mcpHandler.SetEscalationBroker(escalationBroker)
+			}
 		}
 	}
 

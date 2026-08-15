@@ -12,13 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/event"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-
+	"github.com/CURSED-ME/loopers-oss/internal/a2a"
 	"github.com/CURSED-ME/loopers-oss/internal/alerting"
 	"github.com/CURSED-ME/loopers-oss/internal/budget"
+	"github.com/CURSED-ME/loopers-oss/internal/event"
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	"github.com/CURSED-ME/loopers-oss/internal/netutil"
@@ -30,6 +27,9 @@ import (
 	"github.com/CURSED-ME/loopers-oss/pkg/api"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type mcpCtxKey string
@@ -70,17 +70,22 @@ func isSensitiveTaintTool(toolName string) bool {
 }
 
 type Handler struct {
-	cfg            Config
-	budgetClient   *budget.Client
-	pricingStore   *pricing.Store
-	alerter        *alerting.Alerter
-	circuitBreaker *CircuitBreaker
-	sessionManager *session.Manager
-	policyEngine   *policy.Engine
-	signer         *signature.Signer
-	proxy          *Proxy
-	servers        map[string]string
-	allowedMethods map[string]bool
+	cfg              Config
+	budgetClient     *budget.Client
+	pricingStore     *pricing.Store
+	alerter          *alerting.Alerter
+	circuitBreaker   *CircuitBreaker
+	sessionManager   *session.Manager
+	policyEngine     *policy.Engine
+	signer           *signature.Signer
+	escalationBroker *a2a.EscalationBroker
+	proxy            *Proxy
+	servers          map[string]string
+	allowedMethods   map[string]bool
+}
+
+func (h *Handler) SetEscalationBroker(broker *a2a.EscalationBroker) {
+	h.escalationBroker = broker
 }
 
 func NewHandler(cfg Config, budgetClient *budget.Client, pricingStore *pricing.Store, alerter *alerting.Alerter, sessionManager *session.Manager, policyEngine *policy.Engine, signer *signature.Signer) *Handler {
@@ -238,6 +243,23 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 
 	if !strings.EqualFold(meta.Active, "true") {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: key has been revoked"})
+		return
+	}
+
+	// Quarantine Check: enforce at auth layer before any policy evaluation
+	quarantineKey := "loopers:quarantine:" + keyHash
+	if exists, _ := h.budgetClient.GetUnderlyingClient().Exists(c.Request.Context(), quarantineKey).Result(); exists > 0 {
+		event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
+			EventType: "quarantine_active",
+			KeyHash:   keyHash,
+			Provider:  serverName,
+			Reason:    "quarantine_active",
+			Detail:    "Agent is under active policy quarantine",
+		})
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"error": "Agent is currently quarantined by security policy",
+			"type":  "quarantine_active",
+		})
 		return
 	}
 
@@ -408,7 +430,11 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 			})
 			return
 		}
-		if !decision.Allowed {
+		switch decision.Action {
+		case "allow":
+			// Proceed
+
+		case "deny":
 			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
 				EventType: "policy_block",
 				KeyHash:   keyHash,
@@ -417,18 +443,90 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 				Reason:    "policy_denied",
 				Detail:    decision.Reason,
 			})
-
 			logging.Logger.Warn().
 				Str("tool_name", toolParams.Name).
 				Str("server", serverName).
 				Str("session_id", sessionID).
 				Str("reason", decision.Reason).
 				Msg("mcp_policy_block_agent_friendly")
-
-			// Return a JSON-RPC 2.0 error (HTTP 200) instead of a raw 403.
-			// This allows LLM orchestrators to read the denial as a tool failure
-			// message and adapt their plan, rather than crash or retry-loop.
 			abortWithMCPPolicyDenied(c, req, toolParams.Name, decision.Reason)
+			return
+
+		case "quarantine":
+			dur, _ := time.ParseDuration(decision.QuarantineFor)
+			if dur <= 0 {
+				dur = 1 * time.Hour
+			}
+			_ = h.budgetClient.GetUnderlyingClient().Set(c.Request.Context(), "loopers:quarantine:"+keyHash, "1", dur).Err()
+			event.EmitQuarantineEvent(c.Request.Context(), event.QuarantineEvent{
+				KeyHash:       keyHash,
+				Reason:        decision.Reason,
+				QuarantineFor: decision.QuarantineFor,
+				Evidence:      decision.Evidence,
+			})
+			logging.Logger.Warn().
+				Str("tool_name", toolParams.Name).
+				Str("server", serverName).
+				Str("session_id", sessionID).
+				Str("quarantine_for", decision.QuarantineFor).
+				Msg("mcp_quarantine_agent")
+			abortWithMCPPolicyDenied(c, req, toolParams.Name, "Agent quarantined: "+decision.Reason)
+			return
+
+		case "escalate":
+			if h.escalationBroker == nil {
+				abortWithMCPPolicyDenied(c, req, toolParams.Name, "Escalation required but broker not configured")
+				return
+			}
+			event.EmitEscalationEvent(c.Request.Context(), event.EscalationEvent{
+				KeyHash:    keyHash,
+				Provider:   serverName,
+				SessionID:  sessionID,
+				ToolName:   toolParams.Name,
+				Reason:     decision.Reason,
+				EscalateTo: decision.EscalateTo,
+				Evidence:   decision.Evidence,
+			})
+			escalationTimeout := 60 * time.Second
+			if to := viper.GetDuration("escalation.timeout"); to > 0 {
+				escalationTimeout = to
+			}
+			resp, err := h.escalationBroker.RequestEscalationFromDecision(
+				c.Request.Context(), sessionID, meta.AgentName, decision, escalationTimeout,
+			)
+			if err != nil || resp == nil || !resp.Approved {
+				abortWithMCPPolicyDenied(c, req, toolParams.Name, "Escalation denied or timed out: "+decision.Reason)
+				return
+			}
+			// Approved! Proceed.
+
+		case "transform":
+			if len(decision.Transforms) > 0 {
+				for _, t := range decision.Transforms {
+					switch t.Operation {
+					case "mask":
+						if _, exists := toolArgs[t.Field]; exists {
+							toolArgs[t.Field] = "***"
+						}
+					case "redact":
+						delete(toolArgs, t.Field)
+					}
+				}
+				// Re-encode toolArgs back into toolParams.Arguments and req.Params
+				if mutatedArgs, err := json.Marshal(toolArgs); err == nil {
+					toolParams.Arguments = mutatedArgs
+					if mutatedParams, err := json.Marshal(toolParams); err == nil {
+						req.Params = mutatedParams
+						if mutatedBody, err := json.Marshal(req); err == nil {
+							body = mutatedBody
+							c.Set("RequestBody", body)
+						}
+					}
+				}
+			}
+
+		default:
+			abortWithMCPPolicyDenied(c, req, toolParams.Name, "Unknown policy action: "+decision.Action)
 			return
 		}
 	}

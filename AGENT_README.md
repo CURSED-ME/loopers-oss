@@ -216,6 +216,77 @@ Flags:
 
 ---
 
+## 7. 5-Outcome Decision Plane Policy Engine
+
+The Loopers decision plane evaluates policies against incoming LLM/MCP requests. Instead of a binary `allow / deny` verdict, it resolves to one of five actions:
+
+1. **`allow`**: The request is approved and forwarded to the upstream provider unchanged.
+2. **`deny`**: The request is immediately rejected. The client receives an HTTP 403 (HTTP proxy) or an HTTP 200 JSON-RPC error (MCP proxy) containing a policy block payload.
+3. **`escalate`**: The request is suspended, and an approval ticket is published to Redis Pub/Sub. The proxy polls for approval up to a configurable timeout (defaults to 60s). If approved, it forwards to upstream; if denied or timed out, it fails closed.
+4. **`quarantine`**: The matching agent's key is temporarily locked out in Redis for the duration specified (e.g. `quarantine_for: "5m"`). Subsequent requests from this key bypass policy evaluation and are blocked at the auth layer in <2ms.
+5. **`transform`**: Sensitive payload fields are mutated on the fly before forwarding upstream. Supports `mask` (replace with `***`) and `redact` (delete field) operations on prompt text, chat completion messages, or MCP tool arguments.
+
+### Precedence Resolution Engine
+When multiple rules match a request, Loopers resolves conflicts using the following precedence:
+```
+deny (5) > quarantine (4) > escalate (3) > transform (2) > allow (1)
+```
+- Within the same action tier, the highest `severity` (`critical` > `warn` > `info`) wins.
+- If multiple `transform` rules match, all field-level transformations are accumulated and applied sequentially.
+- If multiple `quarantine` rules match, the longest `quarantine_for` duration is selected.
+- All matching rule names are aggregated into the `evidence` field in logs and traces.
+
+### Declarative YAML Policy Schema
+```yaml
+version: "1"
+metadata:
+  name: security-policy-card
+rules:
+  - name: block-credentials
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)secret_key"
+    action: deny
+    reason: "Access denied: credentials leaked"
+    severity: critical
+
+  - name: quarantine-threat-agent
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: contains
+        value: "exploit-payload"
+    action: quarantine
+    quarantine_for: "15m"
+    reason: "Malicious injection attempt"
+
+  - name: escalate-privileged-tools
+    match:
+      type: mcp_tool_call
+      tool: drop_database
+    action: escalate
+    escalate_to: human
+    reason: "Database drop requires human review"
+
+  - name: mask-api-keys
+    match:
+      type: mcp_tool_call
+    conditions:
+      - field: arguments.api_key
+        op: not_equals
+        value: ""
+    action: transform
+    transforms:
+      - field: api_key
+        operation: mask
+```
+
+---
+
 ## 8. AI Agent Resources
 
 The following machine-readable files are available to help AI agents understand and set up this repository without browsing the documentation site:

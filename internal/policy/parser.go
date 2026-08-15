@@ -19,13 +19,17 @@ type SessionFlow struct {
 }
 
 type Rule struct {
-	Name        string       `yaml:"name"`
-	Description string       `yaml:"description,omitempty"`
-	Match       MatchFilter  `yaml:"match"`
-	Conditions  []Condition  `yaml:"conditions,omitempty"`
-	SessionFlow *SessionFlow `yaml:"session_flow,omitempty"`
-	Action      string       `yaml:"action"` // "allow" | "deny"
-	Reason      string       `yaml:"reason,omitempty"`
+	Name          string          `yaml:"name"`
+	Description   string          `yaml:"description,omitempty"`
+	Match         MatchFilter     `yaml:"match"`
+	Conditions    []Condition     `yaml:"conditions,omitempty"`
+	SessionFlow   *SessionFlow    `yaml:"session_flow,omitempty"`
+	Action        string          `yaml:"action"` // "allow" | "deny" | "escalate" | "quarantine" | "transform"
+	Reason        string          `yaml:"reason,omitempty"`
+	Severity      string          `yaml:"severity,omitempty"`       // "info" | "warn" | "critical"
+	Transforms    []TransformRule `yaml:"transforms,omitempty"`     // Used when action == "transform"
+	EscalateTo    string          `yaml:"escalate_to,omitempty"`    // Used when action == "escalate"
+	QuarantineFor string          `yaml:"quarantine_for,omitempty"` // Used when action == "quarantine"
 }
 
 type MatchFilter struct {
@@ -67,57 +71,90 @@ func TranspileToRego(card *PolicyCard) (string, error) {
 
 	for _, rule := range card.Rules {
 		action := strings.ToLower(rule.Action)
-		if action != "allow" && action != "deny" {
-			return "", fmt.Errorf("invalid action %q in rule %q; must be 'allow' or 'deny'", rule.Action, rule.Name)
+		validActions := map[string]bool{
+			"allow":      true,
+			"deny":       true,
+			"escalate":   true,
+			"quarantine": true,
+			"transform":  true,
+		}
+		if !validActions[action] {
+			return "", fmt.Errorf("invalid action %q in rule %q; must be one of: 'allow', 'deny', 'escalate', 'quarantine', 'transform'", rule.Action, rule.Name)
 		}
 
 		reason := rule.Reason
 		if reason == "" {
-			reason = fmt.Sprintf("Blocked by rule: %s", rule.Name)
-		}
-		// Escape double quotes in reason
-		reason = strings.ReplaceAll(reason, "\"", "\\\"")
-
-		if action == "deny" {
-			sb.WriteString(fmt.Sprintf("# Rule: %s\ndeny[%q] {\n", rule.Name, reason))
-		} else {
-			sb.WriteString(fmt.Sprintf("# Rule: %s\nallow {\n", rule.Name))
-		}
-
-		// Apply Match Filters
-		if rule.Match.Type != "" {
-			sb.WriteString(fmt.Sprintf("    input.action.type == %q\n", rule.Match.Type))
-		}
-		if rule.Match.Tool != "" {
-			sb.WriteString(fmt.Sprintf("    input.action.tool_name == %q\n", rule.Match.Tool))
-		}
-
-		// Apply Conditions
-		for _, cond := range rule.Conditions {
-			regoField, err := mapFieldToRego(cond.Field)
-			if err != nil {
-				return "", fmt.Errorf("rule %q: %w", rule.Name, err)
-			}
-
-			// Handle different operators
-			switch strings.ToLower(cond.Op) {
-			case "contains":
-				sb.WriteString(fmt.Sprintf("    contains(%s, %q)\n", regoField, cond.Value))
-			case "matches_regex":
-				sb.WriteString(fmt.Sprintf("    re_match(%q, %s)\n", cond.Value, regoField))
-			case "equals":
-				sb.WriteString(fmt.Sprintf("    %s == %q\n", regoField, cond.Value))
-			case "not_equals":
-				sb.WriteString(fmt.Sprintf("    %s != %q\n", regoField, cond.Value))
+			switch action {
+			case "deny":
+				reason = fmt.Sprintf("Blocked by rule: %s", rule.Name)
+			case "escalate":
+				reason = fmt.Sprintf("Escalation required by rule: %s", rule.Name)
+			case "quarantine":
+				reason = fmt.Sprintf("Quarantine triggered by rule: %s", rule.Name)
+			case "transform":
+				reason = fmt.Sprintf("Transform applied by rule: %s", rule.Name)
 			default:
-				return "", fmt.Errorf("rule %q: unsupported operator %q", rule.Name, cond.Op)
+				reason = fmt.Sprintf("Matched rule: %s", rule.Name)
 			}
 		}
+		// Escape double quotes in strings
+		escapedReason := strings.ReplaceAll(reason, "\"", "\\\"")
+		escapedName := strings.ReplaceAll(rule.Name, "\"", "\\\"")
 
-		// Apply SessionFlow Sequence Checks
-		if rule.SessionFlow != nil && len(rule.SessionFlow.Requires) > 0 {
-			cleanRuleName := strings.ReplaceAll(rule.Name, "-", "_")
-			sb.WriteString(fmt.Sprintf("    not satisfied_requires_%s(input.session.tools_called)\n", cleanRuleName))
+		severity := rule.Severity
+		if severity == "" {
+			if action == "deny" || action == "quarantine" {
+				severity = "critical"
+			} else if action == "escalate" {
+				severity = "warn"
+			} else {
+				severity = "info"
+			}
+		}
+		escapedSeverity := strings.ReplaceAll(severity, "\"", "\\\"")
+
+		// 1. For backward compatibility with legacy allow/deny queries
+		if action == "deny" {
+			sb.WriteString(fmt.Sprintf("# Rule (legacy deny): %s\ndeny[%q] {\n", rule.Name, escapedReason))
+			writeRuleConditions(&sb, rule)
+			sb.WriteString("}\n\n")
+		} else if action == "allow" {
+			sb.WriteString(fmt.Sprintf("# Rule (legacy allow): %s\nallow {\n", rule.Name))
+			writeRuleConditions(&sb, rule)
+			sb.WriteString("}\n\n")
+		}
+
+		// 2. Structured decision output in data.loopers.policy.decisions
+		sb.WriteString(fmt.Sprintf("# Rule (structured decision): %s\ndecisions[decision] {\n", rule.Name))
+		writeRuleConditions(&sb, rule)
+
+		switch action {
+		case "escalate":
+			escalateTo := rule.EscalateTo
+			if escalateTo == "" {
+				escalateTo = "human"
+			}
+			escapedEscalateTo := strings.ReplaceAll(escalateTo, "\"", "\\\"")
+			sb.WriteString(fmt.Sprintf("    decision := {\n        \"action\": %q,\n        \"reason\": %q,\n        \"severity\": %q,\n        \"escalate_to\": %q,\n        \"evidence\": [%q]\n    }\n", action, escapedReason, escapedSeverity, escapedEscalateTo, escapedName))
+
+		case "quarantine":
+			quarantineFor := rule.QuarantineFor
+			if quarantineFor == "" {
+				quarantineFor = "1h"
+			}
+			escapedQuarantineFor := strings.ReplaceAll(quarantineFor, "\"", "\\\"")
+			sb.WriteString(fmt.Sprintf("    decision := {\n        \"action\": %q,\n        \"reason\": %q,\n        \"severity\": %q,\n        \"quarantine_for\": %q,\n        \"evidence\": [%q]\n    }\n", action, escapedReason, escapedSeverity, escapedQuarantineFor, escapedName))
+
+		case "transform":
+			sb.WriteString("    transforms := [\n")
+			for _, tr := range rule.Transforms {
+				sb.WriteString(fmt.Sprintf("        {\"field\": %q, \"operation\": %q},\n", strings.ReplaceAll(tr.Field, "\"", "\\\""), strings.ReplaceAll(tr.Operation, "\"", "\\\"")))
+			}
+			sb.WriteString("    ]\n")
+			sb.WriteString(fmt.Sprintf("    decision := {\n        \"action\": %q,\n        \"reason\": %q,\n        \"severity\": %q,\n        \"transforms\": transforms,\n        \"evidence\": [%q]\n    }\n", action, escapedReason, escapedSeverity, escapedName))
+
+		default: // "allow" or "deny"
+			sb.WriteString(fmt.Sprintf("    decision := {\n        \"action\": %q,\n        \"reason\": %q,\n        \"severity\": %q,\n        \"evidence\": [%q]\n    }\n", action, escapedReason, escapedSeverity, escapedName))
 		}
 
 		sb.WriteString("}\n\n")
@@ -142,6 +179,42 @@ func TranspileToRego(card *PolicyCard) (string, error) {
 	}
 
 	return sb.String(), nil
+}
+
+func writeRuleConditions(sb *strings.Builder, rule Rule) {
+	// Apply Match Filters
+	if rule.Match.Type != "" {
+		sb.WriteString(fmt.Sprintf("    input.action.type == %q\n", rule.Match.Type))
+	}
+	if rule.Match.Tool != "" {
+		sb.WriteString(fmt.Sprintf("    input.action.tool_name == %q\n", rule.Match.Tool))
+	}
+
+	// Apply Conditions
+	for _, cond := range rule.Conditions {
+		regoField, err := mapFieldToRego(cond.Field)
+		if err != nil {
+			continue
+		}
+
+		// Handle different operators
+		switch strings.ToLower(cond.Op) {
+		case "contains":
+			sb.WriteString(fmt.Sprintf("    contains(%s, %q)\n", regoField, cond.Value))
+		case "matches_regex":
+			sb.WriteString(fmt.Sprintf("    re_match(%q, %s)\n", cond.Value, regoField))
+		case "equals":
+			sb.WriteString(fmt.Sprintf("    %s == %q\n", regoField, cond.Value))
+		case "not_equals":
+			sb.WriteString(fmt.Sprintf("    %s != %q\n", regoField, cond.Value))
+		}
+	}
+
+	// Apply SessionFlow Sequence Checks
+	if rule.SessionFlow != nil && len(rule.SessionFlow.Requires) > 0 {
+		cleanRuleName := strings.ReplaceAll(rule.Name, "-", "_")
+		sb.WriteString(fmt.Sprintf("    not satisfied_requires_%s(input.session.tools_called)\n", cleanRuleName))
+	}
 }
 
 func mapFieldToRego(field string) (string, error) {

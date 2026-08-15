@@ -34,7 +34,16 @@ Loopers is a Go binary that proxies AI API calls. Requests from your app go to L
 `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`, `ollama`, `fireworks`, `xai`, `vllm`, `openrouter`
 
 **Policy engine (OPA/Rego, YAML Cards & Presets):**
-All custom policy files must use `package loopers.policy` and define `allow`/`deny` rules in the `policy_dir` directory. Alternatively, define declarative, user-friendly security rules in a single YAML Policy Card (`policy_file: "./policies.yaml"`), or enable out-of-the-box templates/presets (`presets: ["safety", "pci", "mcp_sandbox"]` or `--presets` flag). All requests across 15+ providers (and generic OpenAI endpoints) are mapped to a unified canonical schema by the Local Translation Middleware before policy evaluation. All formats support regular expressions, Deterministic FSM Gating (Trajectory Risk Modeling with `session.state` conditions and transition triggers), and hot-reloads.
+All custom policy files must use `package loopers.policy` and define rules evaluated across a 5-outcome decision plane:
+- `allow`: Approved & forwarded to upstream.
+- `deny`: Immediately rejected. Returns HTTP 403 or JSON-RPC tool error.
+- `escalate`: Suspends request to wait for human approval over Redis Pub/Sub (fails closed on timeout).
+- `quarantine`: Places key in Redis lockout for a duration (e.g. `quarantine_for: "5m"`), bypassing policy check on subsequent calls.
+- `transform`: Mutates prompts, messages, or MCP tool arguments using `mask` or `redact` operations.
+
+*Precedence Resolution:* `deny (5) > quarantine (4) > escalate (3) > transform (2) > allow (1)`. Severity (`critical > warn > info`) resolves ties. Multiple transform rules accumulate field mutations.
+
+Define these security rules in Rego or a single YAML Policy Card (`policy_file: "./policies.yaml"`), or load presets (`presets: ["safety", "pci", "mcp_sandbox"]`). All requests across 15+ providers (and generic OpenAI endpoints) are mapped to a unified canonical schema before evaluation. All formats support regular expressions, Deterministic FSM Gating (Trajectory Risk Modeling via `session.state` and transition triggers), and hot-reloads.
 
 ---
 

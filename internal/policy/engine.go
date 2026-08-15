@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	"github.com/open-policy-agent/opa/ast"
@@ -97,19 +98,35 @@ type EvalInput struct {
 	Action  ActionContext  `json:"action,omitempty"`
 }
 
+type TransformRule struct {
+	Field     string `json:"field" yaml:"field"`
+	Operation string `json:"operation" yaml:"operation"` // "mask" | "redact"
+}
+
 type Decision struct {
-	Allowed bool   `json:"allowed"`
-	Reason  string `json:"reason,omitempty"`
+	Action        string          `json:"action"` // "allow" | "deny" | "escalate" | "quarantine" | "transform"
+	Reason        string          `json:"reason,omitempty"`
+	Severity      string          `json:"severity,omitempty"`       // "info" | "warn" | "critical"
+	Transforms    []TransformRule `json:"transforms,omitempty"`     // Only relevant when Action == "transform"
+	EscalateTo    string          `json:"escalate_to,omitempty"`    // "human" | "saas_control_plane"
+	QuarantineFor string          `json:"quarantine_for,omitempty"` // Go duration string e.g. "1h", "30m"
+	Evidence      []string        `json:"evidence,omitempty"`       // Rule names that triggered this verdict
+}
+
+// IsAllowed returns true if the action is allow.
+func (d Decision) IsAllowed() bool {
+	return d.Action == "allow"
 }
 
 type Engine struct {
-	cfg        Config
-	mu         sync.RWMutex
-	modules    map[string]*ast.Module
-	compiler   *ast.Compiler
-	allowQuery rego.PreparedEvalQuery
-	denyQuery  rego.PreparedEvalQuery
-	fsm        *FSMConfig
+	cfg            Config
+	mu             sync.RWMutex
+	modules        map[string]*ast.Module
+	compiler       *ast.Compiler
+	allowQuery     rego.PreparedEvalQuery
+	denyQuery      rego.PreparedEvalQuery
+	decisionsQuery rego.PreparedEvalQuery
+	fsm            *FSMConfig
 }
 
 func NewEngine(cfg Config) (*Engine, error) {
@@ -283,45 +300,142 @@ func (e *Engine) Reload() error {
 		return fmt.Errorf("failed to prepare deny query: %w", err)
 	}
 
+	decisionsQuery, err := rego.New(
+		rego.Query("data.loopers.policy.decisions"),
+		rego.Compiler(compiler),
+	).PrepareForEval(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to prepare decisions query: %w", err)
+	}
+
 	e.modules = modules
 	e.compiler = compiler
 	e.allowQuery = allowQuery
 	e.denyQuery = denyQuery
+	e.decisionsQuery = decisionsQuery
 
 	logging.Logger.Info().Int("modules", len(modules)).Str("policy_dir", e.cfg.PolicyDir).Msg("Policies reloaded successfully")
 	return nil
+}
+
+func actionRank(action string) int {
+	switch strings.ToLower(action) {
+	case "deny":
+		return 5
+	case "quarantine":
+		return 4
+	case "escalate":
+		return 3
+	case "transform":
+		return 2
+	case "allow":
+		return 1
+	default:
+		return 0
+	}
+}
+
+func severityRank(severity string) int {
+	switch strings.ToLower(severity) {
+	case "critical":
+		return 3
+	case "warn":
+		return 2
+	case "info":
+		return 1
+	default:
+		return 0
+	}
+}
+
+func parseDecisionFromMap(m map[string]interface{}) Decision {
+	var d Decision
+	if act, ok := m["action"].(string); ok {
+		d.Action = strings.ToLower(act)
+	}
+	if r, ok := m["reason"].(string); ok {
+		d.Reason = r
+	}
+	if s, ok := m["severity"].(string); ok {
+		d.Severity = s
+	}
+	if esc, ok := m["escalate_to"].(string); ok {
+		d.EscalateTo = esc
+	}
+	if q, ok := m["quarantine_for"].(string); ok {
+		d.QuarantineFor = q
+	}
+	if ev, ok := m["evidence"].([]interface{}); ok {
+		for _, e := range ev {
+			if es, ok := e.(string); ok {
+				d.Evidence = append(d.Evidence, es)
+			}
+		}
+	} else if evStr, ok := m["evidence"].(string); ok {
+		d.Evidence = append(d.Evidence, evStr)
+	}
+	if tr, ok := m["transforms"].([]interface{}); ok {
+		for _, t := range tr {
+			if tm, ok := t.(map[string]interface{}); ok {
+				var rule TransformRule
+				if f, ok := tm["field"].(string); ok {
+					rule.Field = f
+				}
+				if op, ok := tm["operation"].(string); ok {
+					rule.Operation = op
+				}
+				if rule.Field != "" {
+					d.Transforms = append(d.Transforms, rule)
+				}
+			}
+		}
+	}
+	return d
 }
 
 func (e *Engine) Evaluate(ctx context.Context, input EvalInput) (Decision, error) {
 	e.mu.RLock()
 	allowQuery := e.allowQuery
 	denyQuery := e.denyQuery
+	decisionsQuery := e.decisionsQuery
 	hasCompiler := e.compiler != nil
 	e.mu.RUnlock()
 
+	defaultAction := strings.ToLower(e.cfg.DefaultAction)
+	if defaultAction == "" {
+		defaultAction = "deny"
+	}
+
 	decision := Decision{
-		Allowed: e.cfg.DefaultAction == "allow",
-		Reason:  fmt.Sprintf("default %s", e.cfg.DefaultAction),
+		Action: defaultAction,
+		Reason: fmt.Sprintf("default %s", defaultAction),
 	}
 
 	if !hasCompiler {
 		return decision, nil
 	}
 
-	rs, err := allowQuery.Eval(ctx, rego.EvalInput(input))
+	var candidates []Decision
+
+	// 1. Run legacy allow query
+	rsAllow, err := allowQuery.Eval(ctx, rego.EvalInput(input))
 	if err != nil {
 		return Decision{}, fmt.Errorf("failed to evaluate allow rule: %w", err)
 	}
 
-	if len(rs) > 0 && len(rs[0].Expressions) > 0 {
-		if allowed, ok := rs[0].Expressions[0].Value.(bool); ok && allowed {
-			decision.Allowed = true
-			decision.Reason = "explicitly allowed by policy"
+	legacyAllowed := false
+	if len(rsAllow) > 0 && len(rsAllow[0].Expressions) > 0 {
+		if allowed, ok := rsAllow[0].Expressions[0].Value.(bool); ok && allowed {
+			legacyAllowed = true
+			candidates = append(candidates, Decision{
+				Action: "allow",
+				Reason: "explicitly allowed by policy",
+			})
 		}
 	}
 
-	// Check deny rules if it's currently allowed (deny overrides allow)
-	if decision.Allowed {
+	// 2. Run legacy deny query if allow passed or if default action is allow
+	if legacyAllowed || defaultAction == "allow" {
 		rsDeny, err := denyQuery.Eval(ctx, rego.EvalInput(input))
 		if err != nil {
 			return Decision{}, fmt.Errorf("failed to evaluate deny rule: %w", err)
@@ -329,8 +443,6 @@ func (e *Engine) Evaluate(ctx context.Context, input EvalInput) (Decision, error
 
 		if len(rsDeny) > 0 && len(rsDeny[0].Expressions) > 0 {
 			val := rsDeny[0].Expressions[0].Value
-
-			// Handle sets (multiple deny reasons) or string/bool
 			denyReasons := []string{}
 
 			switch v := val.(type) {
@@ -349,15 +461,115 @@ func (e *Engine) Evaluate(ctx context.Context, input EvalInput) (Decision, error
 			}
 
 			if len(denyReasons) > 0 {
-				decision.Allowed = false
-				decision.Reason = strings.Join(denyReasons, ", ")
+				candidates = append(candidates, Decision{
+					Action:   "deny",
+					Reason:   strings.Join(denyReasons, ", "),
+					Severity: "critical",
+				})
 			}
 		}
-	} else {
-		decision.Reason = "no allow rule matched (default deny)"
 	}
 
-	return decision, nil
+	// 3. Run structured decisions query
+	rsDecisions, err := decisionsQuery.Eval(ctx, rego.EvalInput(input))
+	if err == nil && len(rsDecisions) > 0 && len(rsDecisions[0].Expressions) > 0 {
+		val := rsDecisions[0].Expressions[0].Value
+		if decSlice, ok := val.([]interface{}); ok {
+			for _, decItem := range decSlice {
+				if decMap, ok := decItem.(map[string]interface{}); ok {
+					candidates = append(candidates, parseDecisionFromMap(decMap))
+				}
+			}
+		}
+	}
+
+	// If no rules matched, return default action verdict
+	if len(candidates) == 0 {
+		if defaultAction == "deny" {
+			decision.Reason = "no allow rule matched (default deny)"
+		}
+		return decision, nil
+	}
+
+	// 4. Precedence Resolution across candidates:
+	// Priority: deny > quarantine > escalate > transform > allow
+	maxRank := 0
+	for _, c := range candidates {
+		rank := actionRank(c.Action)
+		if rank > maxRank {
+			maxRank = rank
+		}
+	}
+
+	var matchingRankDecisions []Decision
+	for _, c := range candidates {
+		if actionRank(c.Action) == maxRank {
+			matchingRankDecisions = append(matchingRankDecisions, c)
+		}
+	}
+
+	// Resolve winner amongst matching highest rank
+	topAction := matchingRankDecisions[0].Action
+	resolvedDecision := Decision{
+		Action: topAction,
+	}
+
+	var allReasons []string
+	var allEvidence []string
+	maxSevRank := 0
+	topSeverity := ""
+	longestQuarantineDur := time.Duration(0)
+	var longestQuarantineStr string
+	topEscalateTo := "human"
+	var allTransforms []TransformRule
+
+	for _, d := range matchingRankDecisions {
+		if d.Reason != "" {
+			allReasons = append(allReasons, d.Reason)
+		}
+		if len(d.Evidence) > 0 {
+			allEvidence = append(allEvidence, d.Evidence...)
+		}
+		sevRank := severityRank(d.Severity)
+		if sevRank > maxSevRank {
+			maxSevRank = sevRank
+			topSeverity = d.Severity
+		}
+		if d.EscalateTo != "" {
+			topEscalateTo = d.EscalateTo
+		}
+		if d.QuarantineFor != "" {
+			if dur, parseErr := time.ParseDuration(d.QuarantineFor); parseErr == nil {
+				if dur > longestQuarantineDur {
+					longestQuarantineDur = dur
+					longestQuarantineStr = d.QuarantineFor
+				}
+			} else if longestQuarantineStr == "" {
+				longestQuarantineStr = d.QuarantineFor
+			}
+		}
+		if len(d.Transforms) > 0 {
+			allTransforms = append(allTransforms, d.Transforms...)
+		}
+	}
+
+	resolvedDecision.Reason = strings.Join(allReasons, ", ")
+	resolvedDecision.Severity = topSeverity
+	resolvedDecision.Evidence = allEvidence
+
+	switch topAction {
+	case "escalate":
+		resolvedDecision.EscalateTo = topEscalateTo
+	case "quarantine":
+		if longestQuarantineStr == "" {
+			longestQuarantineStr = "1h"
+		}
+		resolvedDecision.QuarantineFor = longestQuarantineStr
+	case "transform":
+		resolvedDecision.Transforms = allTransforms
+	}
+
+	return resolvedDecision, nil
 }
 
 // FSM returns the parsed FSM configuration.
