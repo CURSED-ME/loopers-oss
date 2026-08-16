@@ -207,6 +207,16 @@ func writeRuleConditions(sb *strings.Builder, rule Rule) {
 			sb.WriteString(fmt.Sprintf("    %s == %q\n", regoField, cond.Value))
 		case "not_equals":
 			sb.WriteString(fmt.Sprintf("    %s != %q\n", regoField, cond.Value))
+		case "greater_than", ">":
+			sb.WriteString(fmt.Sprintf("    %s > %s\n", regoField, cond.Value))
+		case "greater_than_or_equals", ">=":
+			sb.WriteString(fmt.Sprintf("    %s >= %s\n", regoField, cond.Value))
+		case "less_than", "<":
+			sb.WriteString(fmt.Sprintf("    %s < %s\n", regoField, cond.Value))
+		case "less_than_or_equals", "<=":
+			sb.WriteString(fmt.Sprintf("    %s <= %s\n", regoField, cond.Value))
+		case "contains_element":
+			sb.WriteString(fmt.Sprintf("    %s[_] == %q\n", regoField, cond.Value))
 		}
 	}
 
@@ -250,6 +260,13 @@ func mapFieldToRego(field string) (string, error) {
 	}
 	if field == "session.tools_called_count" {
 		return "count(input.session.tools_called)", nil
+	}
+	if strings.HasPrefix(field, "agent_risk.") {
+		subField := field[len("agent_risk."):]
+		if subField == "" {
+			return "", fmt.Errorf("invalid agent_risk field pattern")
+		}
+		return fmt.Sprintf("input.agent_risk.%s", subField), nil
 	}
 
 	return "", fmt.Errorf("unsupported field %q", field)

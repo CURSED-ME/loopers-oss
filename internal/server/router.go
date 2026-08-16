@@ -21,6 +21,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	"github.com/CURSED-ME/loopers-oss/internal/provider"
 	"github.com/CURSED-ME/loopers-oss/internal/proxy"
+	"github.com/CURSED-ME/loopers-oss/internal/riskprofile"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
 	"github.com/CURSED-ME/loopers-oss/pkg/api"
 	"github.com/gin-gonic/gin"
@@ -123,6 +124,45 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			"type":  "quarantine_active",
 		})
 		return
+	}
+
+	// Risk Profile Check: enforce behavioral thresholds before any policy evaluation
+	var rp *riskprofile.AgentRiskProfile
+	if s.riskProfileCfg.Enabled && s.redis != nil {
+		loaded, rpErr := riskprofile.GetProfile(c.Request.Context(), s.redis.GetUnderlyingClient(), keyHash)
+		if rpErr == nil && loaded != nil {
+			rp = loaded
+			if rp.RiskScore > s.riskProfileCfg.PermanentBlockThreshold {
+				event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
+					EventType: "agent_risk_blocked",
+					KeyHash:   keyHash,
+					Provider:  providerName,
+					Reason:    "agent_risk_blocked",
+					Detail:    fmt.Sprintf("Agent risk score %d exceeds permanent block threshold %d", rp.RiskScore, s.riskProfileCfg.PermanentBlockThreshold),
+					RequestID: reqID,
+				})
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+					"error": "Agent permanently blocked due to high behavioral risk",
+					"type":  "agent_risk_blocked",
+				})
+				return
+			}
+			if rp.RiskScore > s.riskProfileCfg.AutoQuarantineThreshold {
+				dur := 1 * time.Hour
+				_ = s.redis.GetUnderlyingClient().Set(c.Request.Context(), "loopers:quarantine:"+keyHash, "1", dur).Err()
+				event.EmitQuarantineEvent(c.Request.Context(), event.QuarantineEvent{
+					KeyHash:       keyHash,
+					Reason:        fmt.Sprintf("Agent risk score %d exceeded auto-quarantine threshold %d", rp.RiskScore, s.riskProfileCfg.AutoQuarantineThreshold),
+					QuarantineFor: "1h",
+					RequestID:     reqID,
+				})
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+					"error": "Agent is currently quarantined by security policy",
+					"type":  "quarantine_active",
+				})
+				return
+			}
+		}
 	}
 
 	if meta.Provider != providerName {
@@ -330,6 +370,19 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			actionCtx.Model = model
 		}
 
+		var agentRiskCtx policy.AgentRiskContext
+		if rp != nil {
+			agentRiskCtx = policy.AgentRiskContext{
+				RiskScore:            rp.RiskScore,
+				TotalPolicyBlocks:    rp.TotalPolicyBlocks,
+				TotalEscalations:     rp.TotalEscalations,
+				TotalSpend:           rp.TotalSpend,
+				PersistentTaintFlags: rp.PersistentTaintFlags,
+				SessionCount:         rp.SessionCount,
+				QuarantineActive:     time.Now().Before(rp.QuarantineUntil),
+			}
+		}
+
 		decision, err := s.policyEngine.Evaluate(c.Request.Context(), policy.EvalInput{
 			Agent: policy.AgentContext{
 				KeyHash:   keyHash,
@@ -345,8 +398,9 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 				Method:   "llm_call",
 				Path:     c.Request.URL.Path,
 			},
-			Session: policySessionCtx,
-			Action:  actionCtx,
+			Session:   policySessionCtx,
+			AgentRisk: agentRiskCtx,
+			Action:    actionCtx,
 		})
 		if err != nil {
 			logging.Logger.Error().Err(err).Msg("policy_engine_evaluation_error")
@@ -370,6 +424,11 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			// Proceed to trace appending and proxying
 
 		case "deny":
+			if rp != nil && s.redis != nil {
+				go func() {
+					_, _ = riskprofile.UpdateRiskScore(context.Background(), s.redis.GetUnderlyingClient(), keyHash, 10, false, "policy_block")
+				}()
+			}
 			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
 				EventType: "policy_block",
 				KeyHash:   keyHash,
@@ -383,6 +442,11 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			return
 
 		case "quarantine":
+			if rp != nil && s.redis != nil {
+				go func() {
+					_, _ = riskprofile.UpdateRiskScore(context.Background(), s.redis.GetUnderlyingClient(), keyHash, 25, true, "quarantine")
+				}()
+			}
 			dur, _ := time.ParseDuration(decision.QuarantineFor)
 			if dur <= 0 {
 				dur = 1 * time.Hour
@@ -405,6 +469,11 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			return
 
 		case "escalate":
+			if rp != nil && s.redis != nil {
+				go func() {
+					_, _ = riskprofile.UpdateRiskScore(context.Background(), s.redis.GetUnderlyingClient(), keyHash, 15, false, "escalate")
+				}()
+			}
 			if s.escalationBroker == nil {
 				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
 					"error": "Escalation required but broker is not configured",
@@ -551,6 +620,14 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 					"type":  "session_limit_exceeded",
 				})
 				return
+			}
+			if s.riskProfileCfg.Enabled && s.redis != nil {
+				go func() {
+					seenKey := fmt.Sprintf("loopers:session:{%s}:%s:risk_seen", keyHash, sessionID)
+					if set, _ := s.redis.GetUnderlyingClient().SetNX(context.Background(), seenKey, "1", 7*24*time.Hour).Result(); set {
+						_ = riskprofile.IncrementSessionCount(context.Background(), s.redis.GetUnderlyingClient(), keyHash)
+					}
+				}()
 			}
 		}
 
@@ -759,6 +836,12 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 					}
 				}
 
+				if s.riskProfileCfg.Enabled && s.redis != nil && keyHash != "" && actualCost > 0 {
+					go func() {
+						_ = riskprofile.AddLifetimeSpend(context.Background(), s.redis.GetUnderlyingClient(), keyHash, actualCost)
+					}()
+				}
+
 				// Instrument stream metrics upon completion
 				latency := time.Since(startTime)
 				requestDuration.WithLabelValues(provName).Observe(latency.Seconds())
@@ -863,6 +946,12 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 			if !viper.GetBool("server.strip_budget_headers") {
 				resp.Header.Set("X-Loopers-Session-Steps", fmt.Sprintf("%d", stepsVal))
 			}
+		}
+
+		if s.riskProfileCfg.Enabled && s.redis != nil && keyHash != "" && actualCost > 0 {
+			go func() {
+				_ = riskprofile.AddLifetimeSpend(context.Background(), s.redis.GetUnderlyingClient(), keyHash, actualCost)
+			}()
 		}
 
 		// Record non-stream metrics

@@ -91,11 +91,22 @@ type ActionContext struct {
 	ToolCalls     []CanonicalToolCall       `json:"tool_calls,omitempty"`     // Canonical tool calls requested
 }
 
+type AgentRiskContext struct {
+	RiskScore            int      `json:"risk_score"`
+	TotalPolicyBlocks    int64    `json:"total_policy_blocks"`
+	TotalEscalations     int64    `json:"total_escalations"`
+	TotalSpend           float64  `json:"total_spend"`
+	PersistentTaintFlags []string `json:"persistent_taint_flags"`
+	SessionCount         int64    `json:"session_count"`
+	QuarantineActive     bool     `json:"quarantine_active"`
+}
+
 type EvalInput struct {
-	Agent   AgentContext   `json:"agent"`
-	Request RequestContext `json:"request"`
-	Session SessionContext `json:"session,omitempty"`
-	Action  ActionContext  `json:"action,omitempty"`
+	Agent     AgentContext     `json:"agent"`
+	Request   RequestContext   `json:"request"`
+	Session   SessionContext   `json:"session,omitempty"`
+	Action    ActionContext    `json:"action,omitempty"`
+	AgentRisk AgentRiskContext `json:"agent_risk,omitempty"`
 }
 
 type TransformRule struct {

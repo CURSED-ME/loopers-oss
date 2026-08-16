@@ -297,9 +297,16 @@ mcp:
     enabled: true
     threshold: 5
     window_seconds: 60
-  sanitizer:
-    max_description_length: 512
-    tool_allowlist: []
+  inspector:
+    enabled: true
+    quarantine_duration: "1h"
+    custom_injection_patterns: []
+
+risk_profile:
+  enabled: true
+  ttl: "0"                       # "0" = permanent / no-expiry
+  auto_quarantine_threshold: 75
+  permanent_block_threshold: 90
 
 alerting:
   webhook_url: ""
@@ -311,7 +318,7 @@ policy:
   enabled: false
   policy_file: "./policies.yaml"
   policy_dir: "./policies"
-  presets: []                    # safety | pci | mcp_sandbox
+  presets: []                    # safety | pci | mcp_sandbox | zero_trust
   default_action: "deny"
   signature:
     enabled: false
@@ -434,6 +441,15 @@ Alternatively, write simple declarative security rules in a single YAML Policy C
     "steps": 5,
     "taint_flags": {"secret_accessed": true},
     "tools_called": ["read_file", "read_secret"]
+  },
+  "agent_risk": {
+    "risk_score": 10,
+    "total_policy_blocks": 1,
+    "total_escalations": 0,
+    "total_spend": 1.25,
+    "persistent_taint_flags": ["secret_accessed"],
+    "session_count": 3,
+    "quarantine_active": false
   }
 }
 ```
@@ -473,6 +489,37 @@ deny["only ML team can use Claude"] {
 ```
 
 When an MCP tool call is denied, Loopers returns HTTP 200 with a JSON-RPC 2.0 error (`code: -32001`) so the LLM agent can read the denial reason and self-correct its plan.
+
+---
+
+## Tool Response Inspection (Capability 2)
+
+When `mcp.inspector.enabled: true` in `loopers.yaml`, Loopers intercepts and inspects outbound `tools/call` response payloads before delivering them downstream:
+
+1. **Indirect Prompt Injection & Traversal:** Scans for jailbreak strings (e.g. `ignore previous instructions`) and path traversal markers (`../../`). Matches are redacted inline to `[Content removed: security policy]`, tagged with header `X-Loopers-Response-Redacted: true`, and emitted as security audit events.
+2. **Secret Leakage Prevention:** Scans for AWS keys, OpenAI keys, JWT tokens, Slack tokens, and private keys. Matches mask the secret with `***`, write a quarantine lockout `loopers:quarantine:<keyHash>` in Redis (default `1h`), increment persistent risk score by `+30`, and return an agent-friendly error payload with header `X-Loopers-Policy-Block: true`.
+
+---
+
+## Persistent Agent Identity & Behavioral Risk (Capability 3)
+
+Loopers maintains a cross-session behavioral risk profile anchored to the agent's key hash in Redis (`loopers:risk_profile:{keyHash}`).
+
+### Deterministic Risk Scoring (0–100)
+- **`+10`**: Policy block (`deny`)
+- **`+25`**: Quarantine action triggered (`quarantine`)
+- **`+15`**: Escalation action triggered (`escalate`)
+- **`+5`**: Sensitive taint flag added (e.g. `secret_accessed`)
+- **`+30`**: Secret exfiltration pattern detected in tool response
+- **`-5`**: Decay per 24 hours of clean inactivity (lazy evaluated on read, min clamp 0)
+
+### Automated Gateway Thresholds
+- **Score > 75 (`auto_quarantine_threshold`)**: Agent is automatically placed under a 1-hour quarantine lockout in Redis, fast-failing at the edge (<2ms) with `403 Forbidden`.
+- **Score > 90 (`permanent_block_threshold`)**: Agent is permanently blocked at the gateway (`403 Forbidden` with reason `agent_risk_blocked`).
+
+### Built-In Preset: `zero_trust`
+Enable with `presets: ["zero_trust"]` in `loopers.yaml` or `--presets zero_trust` via CLI. Restricts high-privilege actions for agents with `risk_score > 50` or active `secret_accessed` taint flags.
+
 
 ---
 

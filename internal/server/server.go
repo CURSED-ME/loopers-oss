@@ -40,6 +40,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/provider/xai"
 	"github.com/CURSED-ME/loopers-oss/internal/proxy"
 	"github.com/CURSED-ME/loopers-oss/internal/ratelimit"
+	"github.com/CURSED-ME/loopers-oss/internal/riskprofile"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
 	"github.com/CURSED-ME/loopers-oss/internal/signature"
 	"github.com/gin-gonic/gin"
@@ -78,6 +79,7 @@ type Server struct {
 	otelEnabled      bool
 	otelShutdown     func(context.Context) error
 	mcpHandler       *mcp.Handler
+	riskProfileCfg   riskprofile.Config
 	rateLimiter      *ratelimit.Limiter
 	sessionManager   *session.Manager
 	policyEngine     *policy.Engine
@@ -214,11 +216,16 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		sigSigner = signer
 	}
 
+	var riskProfileCfg riskprofile.Config = riskprofile.DefaultConfig()
+	if redisClient != nil {
+		_ = viper.UnmarshalKey("risk_profile", &riskProfileCfg)
+	}
+
 	var mcpCfg mcp.Config
 	var mcpHandler *mcp.Handler
 	if err := viper.UnmarshalKey("mcp", &mcpCfg); err == nil && mcpCfg.Enabled {
 		if redisClient != nil {
-			mcpHandler = mcp.NewHandler(mcpCfg, redisClient, pricingStore, alerter, sessionManager, policyEngine, sigSigner)
+			mcpHandler = mcp.NewHandler(mcpCfg, riskProfileCfg, redisClient, pricingStore, alerter, sessionManager, policyEngine, sigSigner)
 		} else {
 			logging.Logger.Error().Msg("MCP is enabled but Redis client is not initialized. MCP routing will be disabled.")
 		}
@@ -266,6 +273,7 @@ func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server 
 		otelEnabled:      otelEnabled,
 		otelShutdown:     otelShutdown,
 		mcpHandler:       mcpHandler,
+		riskProfileCfg:   riskProfileCfg,
 		rateLimiter:      rateLimiter,
 		sessionManager:   sessionManager,
 		policyEngine:     policyEngine,

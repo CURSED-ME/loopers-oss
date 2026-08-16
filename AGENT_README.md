@@ -75,6 +75,7 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 │   │   └── xai/                   # xAI Grok API proxy
 │   ├── proxy/                     # Reverse proxy core, SSE streaming token counter & connection severing
 │   ├── ratelimit/                 # Per-key sliding window rate limiter (atomic Lua)
+│   ├── riskprofile/               # Persistent cross-session agent behavioral risk engine (0-100 scoring, auto-quarantine, permanent block, lazy decay)
 │   ├── server/                    # HTTP server engine, ZSP OIDC JWT & DPoP middleware, PathAuthWrapper (/lp-xxx/), admin router (/metrics)
 │   ├── session/                   # Redis session manager (session budget, max steps, taint flags, transient session trace buffer, FSM state tracking, tool history, absolute TTL)
 │   ├── signature/                 # Asymmetric Ed25519 & HMAC inline signing package
@@ -294,7 +295,46 @@ For outbound Model Context Protocol (MCP) tool execution responses (`tools/call`
    - If matched, replaces string values in the JSON-RPC response with `[Content removed: security policy]`, emits a `BlockEvent` with type `response_injection_redacted`, and appends header `X-Loopers-Response-Redacted: true`.
 2. **Secret Leakage Prevention (Quarantine Tier):**
    - Scans tool response fields using regular expressions in `inspector.SecretRegexes` (AWS Access Key ID, OpenAI key prefixes, generic JWTs, Slack bot tokens, GitHub PATs, and PEM private keys).
-   - If matched, masks the credentials with `***` in-place, writes quarantine flag `loopers:quarantine:<keyHash>` in Redis with the duration set in `mcp.inspector.quarantine_duration`, emits a `QuarantineEvent`, and returns an agent-friendly JSON-RPC error response payload (`api.NewMCPPolicyDeniedResponse`) with header `X-Loopers-Policy-Block: true` at HTTP 200 to allow self-correction.
+   - If matched, masks the credentials with `***` in-place, writes quarantine flag `loopers:quarantine:<keyHash>` in Redis with the duration set in `mcp.inspector.quarantine_duration`, emits a `QuarantineEvent`, increments persistent risk score by +30, and returns an agent-friendly JSON-RPC error response payload (`api.NewMCPPolicyDeniedResponse`) with header `X-Loopers-Policy-Block: true` at HTTP 200 to allow self-correction.
+
+### Persistent Agent Identity & Behavioral Risk (Capability 3)
+
+Loopers maintains a persistent, cross-session behavioral memory (`AgentRiskProfile`) anchored to the agent's `keyHash` in Redis. This prevents malicious agents from escaping security history by simply rotating session IDs.
+
+```
+Redis Key: loopers:risk_profile:{keyHash}
+```
+
+#### Deterministic Risk Scoring
+Risk scores range from 0 to 100 and are updated atomically via Redis Lua scripts:
+- **`+10`**: Policy block (`deny`)
+- **`+25`**: Quarantine action triggered (`quarantine`)
+- **`+15`**: Escalation action triggered (`escalate`)
+- **`+5`**: Sensitive taint flag set (e.g., `secret_accessed`)
+- **`+30`**: Secret exfiltration pattern detected in tool response (Capability 2 -> 3 Bridge)
+- **`-5`**: Decay per 24 hours of clean inactivity (lazy evaluated on read, min clamp 0)
+
+#### Automated Lockout Thresholds
+- **Score > 75 (`auto_quarantine_threshold`)**: Agent is automatically placed under a 1-hour quarantine lockout in Redis.
+- **Score > 90 (`permanent_block_threshold`)**: Agent is permanently blocked with HTTP 403 `agent_risk_blocked`, requiring manual administrator review.
+
+#### OPA Policy Integration (`input.agent_risk`)
+OPA policies can directly evaluate the persistent risk profile:
+```rego
+# Block agents with elevated risk scores
+deny if {
+    input.agent_risk.risk_score > 75
+}
+
+# Escalate sensitive actions from agents with a history of accessing secrets
+escalate if {
+    input.agent_risk.persistent_taint_flags[_] == "secret_accessed"
+    input.action.type == "mcp_tool_call"
+    input.action.tool_name == "send_email"
+}
+```
+
+Built-in preset `zero_trust` can be enabled in `policy.presets: ["zero_trust"]`.
 
 ---
 

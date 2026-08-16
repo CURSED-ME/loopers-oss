@@ -74,6 +74,12 @@ mcp:
     quarantine_duration: "1h"
     custom_injection_patterns: []
 
+risk_profile:
+  enabled: true
+  ttl: "0"                           # "0" = permanent (no expiry). E.g. "720h" = 30 days.
+  auto_quarantine_threshold: 75      # Score above this triggers 1-hour auto-quarantine.
+  permanent_block_threshold: 90      # Score above this blocks the agent permanently.
+
 alerting:
   webhook_url: "https://example.com/webhook"
   thresholds:
@@ -193,6 +199,15 @@ providers:
 | `inspector.enabled` | `false` | Enable synchronous tool response inspection (indirect prompt injection and secret leakage protection) |
 | `inspector.quarantine_duration` | `"1h"` | Duration to quarantine an agent key if secrets are detected in a tool response |
 | `inspector.custom_injection_patterns` | `[]` | Operator-defined plain-string patterns to flag as injection attempts |
+
+### risk_profile
+
+| Key | Default | Description |
+|---|---|---|
+| `enabled` | `true` | Enable persistent cross-session agent behavioral risk profiles |
+| `ttl` | `"0"` | Profile TTL in Redis (`"0"` for permanent/no-expiry, e.g. `"720h"` for 30 days) |
+| `auto_quarantine_threshold` | `75` | Risk score above which agent is automatically placed in 1-hour quarantine lockout |
+| `permanent_block_threshold` | `90` | Risk score above which agent is permanently blocked until manual administrative review |
 
 ### policy
 
