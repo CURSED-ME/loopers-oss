@@ -105,11 +105,41 @@ curl -X POST http://localhost:8080/mcp/github/ \
   }'
 ```
 
+And that's it! Your MCP servers are now protected by Loopers.
+
+---
+
+## 5. Tool Response Inspection (Indirect Prompt Injection Wall)
+
+Loopers doesn't just inspect outgoing requests—it also inspects the **outputs/responses** returned by MCP tools in real-time. This protects your agent from two critical risks before a tool's response is returned to the client:
+
+1. **Indirect Prompt Injection Defense (Transform):** If a tool retrieves external content (like reading a webpage or file) that contains malicious instructions designed to override agent directives (e.g., *"ignore previous instructions"*), Loopers sanitizes the text, replaces the content with `[Content removed: security policy]`, and injects the `X-Loopers-Response-Redacted: true` header.
+2. **Secret Leakage Protection (Quarantine):** If a tool response leaks system credentials, API keys, or private keys (e.g., AWS, OpenAI, GitHub tokens, JWTs, PEM private key blocks), Loopers intercepts the payload, blocks the response with a self-correcting JSON-RPC error containing `X-Loopers-Policy-Block: true`, and **quarantines the agent's proxy key** in Redis for a configurable duration (default: `1h`), immediately blocking all subsequent requests.
+
+### Configuration
+
+Add the `inspector:` configuration block under the `mcp:` section in your `loopers.yaml` file:
+
+```yaml
+mcp:
+  enabled: true
+  servers:
+    - name: "filesystem"
+      url: "http://localhost:3001"
+  
+  # Tool Response Inspection
+  inspector:
+    enabled: true
+    quarantine_duration: "1h"
+    custom_injection_patterns: []
+    #  - "ignore system directive"
+```
+
 ### What Happens Behind the Scenes?
 
 1. **Passthrough**: If the method is `tools/list` or `ping`, Loopers passes it straight to the MCP server securely.
 2. **Blast Radius Tracking**: Loopers parses the `X-Loopers-Session-Max-Servers: 2` header. If `session-123` later attempts to touch a 3rd distinct server (e.g., Snowflake), Loopers instantly blocks the lateral movement with a `403 Forbidden`.
 3. **Circuit Breaking**: If the agent sends the exact same `github_api` call 5 times in a row within 60 seconds, Loopers intercepts the 5th call and returns a `429 Too Many Requests` error, breaking the loop.
 4. **Budget Deduction**: Loopers checks `pricing.yaml`, finds that `github_api` costs `$0.001`, and atomically deducts it from the `lp-abc123` key's budget.
+5. **Response Inspection**: For `tools/call` response payloads, Loopers buffers the response and runs a stateless pattern scanner. If an injection is found, it transforms the body; if a secret is found, it writes a quarantine lockout to Redis and returns a policy block error response.
 
-And that's it! Your MCP servers are now protected by Loopers.

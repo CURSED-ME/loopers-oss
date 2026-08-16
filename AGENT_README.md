@@ -285,6 +285,17 @@ rules:
         operation: mask
 ```
 
+### Tool Response Inspection (Indirect Prompt Injection Wall)
+
+For outbound Model Context Protocol (MCP) tool execution responses (`tools/call`), Loopers synchronously buffers and intercepts the payload before it reaches the client. This provides two inline guardrails:
+
+1. **Prompt Injection & Path Traversal (Transform Tier):**
+   - Normalizes text (NFKC + zero-width characters stripped) and scans against `inspector.InjectionPatterns` (e.g. `ignore previous instructions`, `forget your instructions`) and `inspector.TraversalPatterns` (e.g. `../../`, `/etc/passwd`).
+   - If matched, replaces string values in the JSON-RPC response with `[Content removed: security policy]`, emits a `BlockEvent` with type `response_injection_redacted`, and appends header `X-Loopers-Response-Redacted: true`.
+2. **Secret Leakage Prevention (Quarantine Tier):**
+   - Scans tool response fields using regular expressions in `inspector.SecretRegexes` (AWS Access Key ID, OpenAI key prefixes, generic JWTs, Slack bot tokens, GitHub PATs, and PEM private keys).
+   - If matched, masks the credentials with `***` in-place, writes quarantine flag `loopers:quarantine:<keyHash>` in Redis with the duration set in `mcp.inspector.quarantine_duration`, emits a `QuarantineEvent`, and returns an agent-friendly JSON-RPC error response payload (`api.NewMCPPolicyDeniedResponse`) with header `X-Loopers-Policy-Block: true` at HTTP 200 to allow self-correction.
+
 ---
 
 ## 8. AI Agent Resources

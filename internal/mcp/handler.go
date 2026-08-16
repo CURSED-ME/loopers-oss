@@ -16,6 +16,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/alerting"
 	"github.com/CURSED-ME/loopers-oss/internal/budget"
 	"github.com/CURSED-ME/loopers-oss/internal/event"
+	"github.com/CURSED-ME/loopers-oss/internal/inspector"
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	"github.com/CURSED-ME/loopers-oss/internal/netutil"
@@ -38,6 +39,8 @@ const (
 	mcpSessionIDCtxKey  mcpCtxKey = "mcpSessionID"
 	mcpServerNameCtxKey mcpCtxKey = "mcpServerName"
 	mcpToolNameCtxKey   mcpCtxKey = "mcpToolName"
+	mcpMethodCtxKey     mcpCtxKey = "mcpMethod"
+	mcpServerCtxKey     mcpCtxKey = "mcpServer"
 )
 
 // sensitiveTaintTools is the set of tool-name substrings that auto-set the
@@ -132,12 +135,9 @@ func (h *Handler) modifyResponse(resp *http.Response) error {
 	if sigHeader != "" {
 		resp.Header.Set("X-Loopers-Signature", sigHeader)
 	}
-	type contextKey string
-	const mcpMethodCtx contextKey = "MCPMethod"
-	const mcpServerCtx contextKey = "MCPServer"
 
-	mcpMethod, _ := ctx.Value(mcpMethodCtx).(string)
-	serverName, _ := ctx.Value(mcpServerCtx).(string)
+	mcpMethod, _ := ctx.Value(mcpMethodCtxKey).(string)
+	serverName, _ := ctx.Value(mcpServerCtxKey).(string)
 	if mcpMethod == "tools/list" && resp.StatusCode == http.StatusOK {
 		limit := viper.GetInt64("server.max_response_bytes")
 		if limit == 0 {
@@ -157,6 +157,56 @@ func (h *Handler) modifyResponse(resp *http.Response) error {
 
 	reservedCost, hasCost := ctx.Value(proxyPkg.RequestCostCtx).(float64)
 	keyHash, hasKey := ctx.Value(proxyPkg.ProxyKeyHashCtx).(string)
+
+	// Tool Response Inspection (Capability 2: Indirect Prompt Injection Wall)
+	if mcpMethod == "tools/call" && resp.StatusCode == http.StatusOK && h.cfg.Inspector.Enabled && hasKey {
+		limit := viper.GetInt64("server.max_response_bytes")
+		if limit == 0 {
+			limit = 10 * 1024 * 1024 // 10MB default
+		}
+		body, err := io.ReadAll(io.LimitReader(resp.Body, limit))
+		resp.Body.Close()
+		if err == nil {
+			result := inspector.InspectToolResponse(body, h.cfg.Inspector.CustomInjectionPatterns)
+			switch result.Action {
+			case "quarantine":
+				dur, _ := time.ParseDuration(h.cfg.Inspector.QuarantineDuration)
+				if dur <= 0 {
+					dur = 1 * time.Hour
+				}
+				_ = h.budgetClient.GetUnderlyingClient().Set(req.Context(), "loopers:quarantine:"+keyHash, "1", dur).Err()
+				event.EmitQuarantineEvent(req.Context(), event.QuarantineEvent{
+					KeyHash:       keyHash,
+					Reason:        result.Reason,
+					QuarantineFor: h.cfg.Inspector.QuarantineDuration,
+				})
+				toolName, _ := ctx.Value(mcpToolNameCtxKey).(string)
+				denial, _ := json.Marshal(api.NewMCPPolicyDeniedResponse(jsonRPCIDFromBody(body), toolName, result.Reason))
+				resp.Body = io.NopCloser(bytes.NewReader(denial))
+				resp.ContentLength = int64(len(denial))
+				resp.Header.Set("Content-Length", strconv.Itoa(len(denial)))
+				resp.Header.Set("X-Loopers-Policy-Block", "true")
+				resp.Header.Set("X-Loopers-Block-Reason", result.Reason)
+			case "transform":
+				event.EmitBlockEvent(req.Context(), event.BlockEvent{
+					EventType: "response_injection_redacted",
+					KeyHash:   keyHash,
+					Provider:  serverName,
+					Reason:    result.Reason,
+					Detail:    "Malicious content redacted from tool response",
+				})
+				resp.Body = io.NopCloser(bytes.NewReader(result.NewBody))
+				resp.ContentLength = int64(len(result.NewBody))
+				resp.Header.Set("Content-Length", strconv.Itoa(len(result.NewBody)))
+				resp.Header.Set("X-Loopers-Response-Redacted", "true")
+			default:
+				// allow - restore body
+				resp.Body = io.NopCloser(bytes.NewReader(body))
+			}
+		} else {
+			resp.Body = io.NopCloser(bytes.NewReader([]byte{}))
+		}
+	}
 
 	if hasCost && hasKey {
 		if resp.StatusCode != http.StatusOK {
@@ -295,15 +345,13 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		return
 	}
 
-	type contextKey string
-	const mcpMethodCtx contextKey = "MCPMethod"
-	const mcpServerCtx contextKey = "MCPServer"
-
 	if req.Method != "tools/call" {
 		if req.Method == "tools/list" {
-			c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), mcpMethodCtx, "tools/list"))
+			c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), mcpMethodCtxKey, "tools/list"))
+		} else {
+			c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), mcpMethodCtxKey, req.Method))
 		}
-		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), mcpServerCtx, serverName))
+		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), mcpServerCtxKey, serverName))
 		// Pass-through transparently for allowed non-tools/call methods
 		h.signRequest(c, body)
 		h.forward(c, targetURL, nil, 0)
@@ -727,6 +775,8 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 	ctx = context.WithValue(ctx, mcpSessionIDCtxKey, sessionID)
 	ctx = context.WithValue(ctx, mcpServerNameCtxKey, serverName)
 	ctx = context.WithValue(ctx, mcpToolNameCtxKey, toolParams.Name)
+	ctx = context.WithValue(ctx, mcpMethodCtxKey, "tools/call")
+	ctx = context.WithValue(ctx, mcpServerCtxKey, serverName)
 	c.Request = c.Request.WithContext(ctx)
 
 	h.signRequest(c, body)

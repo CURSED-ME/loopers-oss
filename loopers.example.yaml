@@ -32,6 +32,15 @@ mcp:
   # SECURITY: Allow clients to override MCP constraints via HTTP headers.
   allow_client_max_tools_override: false
   allow_client_max_servers_override: false
+  inspector:
+    # Enable synchronous tool response inspection (indirect prompt injection wall)
+    enabled: true
+    # Duration to quarantine an agent key if secrets are detected in a tool response
+    quarantine_duration: "1h"
+    # Operator-defined plain-string patterns to flag as injection attempts
+    custom_injection_patterns: []
+    #  - "ignore system directive"
+    #  - "disregard your role"
 
 policy:
   enabled: false

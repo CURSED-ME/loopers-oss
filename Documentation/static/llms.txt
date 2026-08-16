@@ -45,6 +45,11 @@ All custom policy files must use `package loopers.policy` and define rules evalu
 
 Define these security rules in Rego or a single YAML Policy Card (`policy_file: "./policies.yaml"`), or load presets (`presets: ["safety", "pci", "mcp_sandbox"]`). All requests across 15+ providers (and generic OpenAI endpoints) are mapped to a unified canonical schema before evaluation. All formats support regular expressions, Deterministic FSM Gating (Trajectory Risk Modeling via `session.state` and transition triggers), and hot-reloads.
 
+**MCP Response Inspection (Indirect Prompt Injection Wall):**
+If `mcp.inspector.enabled` is set to true in `loopers.yaml`, Loopers synchronously intercepts outbound `tools/call` response payloads. It normalizes text (stripping zero-width characters) and performs pattern scanning:
+1. Indirect prompt injections (e.g., `ignore previous instructions`) and path traversals (`../../etc/passwd`) trigger `transform`, replacing matching strings inline with `[Content removed: security policy]` and injecting the `X-Loopers-Response-Redacted: true` header.
+2. Secret leaks (AWS, OpenAI keys, PEM private keys, JWTs, etc.) trigger `quarantine`, masking the key with `***` in the payload, blocking the tool call via an agent-friendly error response containing `X-Loopers-Policy-Block: true`, and quarantining the agent key in Redis for a duration (default `1h`).
+
 ---
 
 ## Getting Started & Core
