@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.15.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.14.0...v2.15.0) (2026-08-16)
+
+
+### Features
+
+* implement persistent agent identity and cross-session behavioral risk scoring ([27f2b85](https://github.com/CURSED-ME/loopers-oss/commit/27f2b855fdcf4c381ed531e274b2393e0eb4fc6f))
+* implement persistent agent identity and cross-session behavioral risk scoring ([fbead44](https://github.com/CURSED-ME/loopers-oss/commit/fbead442894b74166155e80d6b46aa32c4be5400))
+
 ## [2.14.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.13.0...v2.14.0) (2026-08-16)
 
 
