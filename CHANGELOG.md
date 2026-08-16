@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.14.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.13.0...v2.14.0) (2026-08-16)
+
+
+### Features
+
+* implement Capability 2 Tool Response Inspection ([01bcb92](https://github.com/CURSED-ME/loopers-oss/commit/01bcb92712ea6d99ee11794b19bdf3da307e1bad))
+* implement Capability 2 Tool Response Inspection ([953d47a](https://github.com/CURSED-ME/loopers-oss/commit/953d47aab9b45b12dcf31b0e4eb14096ae312bd0))
+
 ## [2.13.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.12.0...v2.13.0) (2026-08-15)
 
 
