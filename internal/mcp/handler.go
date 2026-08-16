@@ -23,6 +23,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/policy"
 	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	proxyPkg "github.com/CURSED-ME/loopers-oss/internal/proxy"
+	"github.com/CURSED-ME/loopers-oss/internal/riskprofile"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
 	"github.com/CURSED-ME/loopers-oss/internal/signature"
 	"github.com/CURSED-ME/loopers-oss/pkg/api"
@@ -74,6 +75,7 @@ func isSensitiveTaintTool(toolName string) bool {
 
 type Handler struct {
 	cfg              Config
+	riskProfileCfg   riskprofile.Config
 	budgetClient     *budget.Client
 	pricingStore     *pricing.Store
 	alerter          *alerting.Alerter
@@ -91,7 +93,11 @@ func (h *Handler) SetEscalationBroker(broker *a2a.EscalationBroker) {
 	h.escalationBroker = broker
 }
 
-func NewHandler(cfg Config, budgetClient *budget.Client, pricingStore *pricing.Store, alerter *alerting.Alerter, sessionManager *session.Manager, policyEngine *policy.Engine, signer *signature.Signer) *Handler {
+func (h *Handler) SetRiskProfileConfig(cfg riskprofile.Config) {
+	h.riskProfileCfg = cfg
+}
+
+func NewHandler(cfg Config, riskProfileCfg riskprofile.Config, budgetClient *budget.Client, pricingStore *pricing.Store, alerter *alerting.Alerter, sessionManager *session.Manager, policyEngine *policy.Engine, signer *signature.Signer) *Handler {
 	cb := NewCircuitBreaker(cfg.CircuitBreaker, budgetClient.GetUnderlyingClient())
 
 	servers := make(map[string]string)
@@ -112,6 +118,7 @@ func NewHandler(cfg Config, budgetClient *budget.Client, pricingStore *pricing.S
 
 	h := &Handler{
 		cfg:            cfg,
+		riskProfileCfg: riskProfileCfg,
 		budgetClient:   budgetClient,
 		pricingStore:   pricingStore,
 		alerter:        alerter,
@@ -175,6 +182,11 @@ func (h *Handler) modifyResponse(resp *http.Response) error {
 					dur = 1 * time.Hour
 				}
 				_ = h.budgetClient.GetUnderlyingClient().Set(req.Context(), "loopers:quarantine:"+keyHash, "1", dur).Err()
+				if h.riskProfileCfg.Enabled {
+					go func() {
+						_, _ = riskprofile.UpdateRiskScore(context.Background(), h.budgetClient.GetUnderlyingClient(), keyHash, 30, true, "secret_exfiltration")
+					}()
+				}
 				event.EmitQuarantineEvent(req.Context(), event.QuarantineEvent{
 					KeyHash:       keyHash,
 					Reason:        result.Reason,
@@ -313,6 +325,43 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		return
 	}
 
+	// Risk Profile Check: enforce behavioral thresholds before any policy evaluation
+	var rp *riskprofile.AgentRiskProfile
+	if h.riskProfileCfg.Enabled && h.budgetClient != nil {
+		loaded, rpErr := riskprofile.GetProfile(c.Request.Context(), h.budgetClient.GetUnderlyingClient(), keyHash)
+		if rpErr == nil && loaded != nil {
+			rp = loaded
+			if rp.RiskScore > h.riskProfileCfg.PermanentBlockThreshold {
+				event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
+					EventType: "agent_risk_blocked",
+					KeyHash:   keyHash,
+					Provider:  serverName,
+					Reason:    "agent_risk_blocked",
+					Detail:    fmt.Sprintf("Agent risk score %d exceeds permanent block threshold %d", rp.RiskScore, h.riskProfileCfg.PermanentBlockThreshold),
+				})
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+					"error": "Agent permanently blocked due to high behavioral risk",
+					"type":  "agent_risk_blocked",
+				})
+				return
+			}
+			if rp.RiskScore > h.riskProfileCfg.AutoQuarantineThreshold {
+				dur := 1 * time.Hour
+				_ = h.budgetClient.GetUnderlyingClient().Set(c.Request.Context(), "loopers:quarantine:"+keyHash, "1", dur).Err()
+				event.EmitQuarantineEvent(c.Request.Context(), event.QuarantineEvent{
+					KeyHash:       keyHash,
+					Reason:        fmt.Sprintf("Agent risk score %d exceeded auto-quarantine threshold %d", rp.RiskScore, h.riskProfileCfg.AutoQuarantineThreshold),
+					QuarantineFor: "1h",
+				})
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+					"error": "Agent is currently quarantined by security policy",
+					"type":  "quarantine_active",
+				})
+				return
+			}
+		}
+	}
+
 	// Parse request body for JSON-RPC
 	// The body is available via the BodyBuffer middleware context key
 	// Wait, internal/server/server.go uses RequestBodyCtx which is a constant in server package.
@@ -437,6 +486,19 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 	}
 
 	if h.policyEngine != nil {
+		var agentRiskCtx policy.AgentRiskContext
+		if rp != nil {
+			agentRiskCtx = policy.AgentRiskContext{
+				RiskScore:            rp.RiskScore,
+				TotalPolicyBlocks:    rp.TotalPolicyBlocks,
+				TotalEscalations:     rp.TotalEscalations,
+				TotalSpend:           rp.TotalSpend,
+				PersistentTaintFlags: rp.PersistentTaintFlags,
+				SessionCount:         rp.SessionCount,
+				QuarantineActive:     time.Now().Before(rp.QuarantineUntil),
+			}
+		}
+
 		decision, err := h.policyEngine.Evaluate(c.Request.Context(), policy.EvalInput{
 			Agent: policy.AgentContext{
 				KeyHash:   keyHash,
@@ -454,7 +516,8 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 				Path:      c.Request.URL.Path,
 			},
 			// Populated with taint state for cross-call tracking
-			Session: sessionCtx,
+			Session:   sessionCtx,
+			AgentRisk: agentRiskCtx,
 			Action: policy.ActionContext{
 				Type:          "mcp_tool_call",
 				Provider:      serverName,
@@ -483,6 +546,11 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 			// Proceed
 
 		case "deny":
+			if rp != nil && h.budgetClient != nil {
+				go func() {
+					_, _ = riskprofile.UpdateRiskScore(context.Background(), h.budgetClient.GetUnderlyingClient(), keyHash, 10, false, "policy_block")
+				}()
+			}
 			event.EmitBlockEvent(c.Request.Context(), event.BlockEvent{
 				EventType: "policy_block",
 				KeyHash:   keyHash,
@@ -501,6 +569,11 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 			return
 
 		case "quarantine":
+			if rp != nil && h.budgetClient != nil {
+				go func() {
+					_, _ = riskprofile.UpdateRiskScore(context.Background(), h.budgetClient.GetUnderlyingClient(), keyHash, 25, true, "quarantine")
+				}()
+			}
 			dur, _ := time.ParseDuration(decision.QuarantineFor)
 			if dur <= 0 {
 				dur = 1 * time.Hour
@@ -522,6 +595,11 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 			return
 
 		case "escalate":
+			if rp != nil && h.budgetClient != nil {
+				go func() {
+					_, _ = riskprofile.UpdateRiskScore(context.Background(), h.budgetClient.GetUnderlyingClient(), keyHash, 15, false, "escalate")
+				}()
+			}
 			if h.escalationBroker == nil {
 				abortWithMCPPolicyDenied(c, req, toolParams.Name, "Escalation required but broker not configured")
 				return
@@ -739,6 +817,11 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 					Str("taint_flag", "secret_accessed").
 					Msg("mcp_taint_flag_set")
 			}()
+			if h.riskProfileCfg.Enabled && h.budgetClient != nil {
+				go func() {
+					_, _ = riskprofile.AddPersistentTaintFlag(context.Background(), h.budgetClient.GetUnderlyingClient(), keyHash, "secret_accessed")
+				}()
+			}
 		}
 
 		// Handle FSM transitions if configured

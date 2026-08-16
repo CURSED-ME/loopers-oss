@@ -1,0 +1,41 @@
+version: loopers.com/v1alpha1
+metadata:
+  name: zero-trust-preset
+rules:
+  - name: block-high-risk-agent-llm
+    description: Deny LLM access to any agent whose persistent risk score exceeds threshold
+    match:
+      type: llm_call
+    conditions:
+      - field: agent_risk.risk_score
+        op: greater_than
+        value: "75"
+    action: deny
+    reason: "Blocked: Agent risk score exceeds threshold (persistent behavioral history)."
+    severity: critical
+
+  - name: block-high-risk-agent-tool
+    description: Deny MCP tool access to any agent whose persistent risk score exceeds threshold
+    match:
+      type: mcp_tool_call
+    conditions:
+      - field: agent_risk.risk_score
+        op: greater_than
+        value: "75"
+    action: deny
+    reason: "Blocked: Agent risk score exceeds threshold (persistent behavioral history)."
+    severity: critical
+
+  - name: escalate-secret-tainted-agent-email
+    description: Escalate tool calls to send_email from agents that have previously accessed secrets
+    match:
+      type: mcp_tool_call
+      tool: send_email
+    conditions:
+      - field: agent_risk.persistent_taint_flags
+        op: contains_element
+        value: "secret_accessed"
+    action: escalate
+    escalate_to: human
+    reason: "Escalation required: Agent has persistent secret_accessed taint; send_email requires human review."
+    severity: warn

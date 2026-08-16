@@ -42,6 +42,13 @@ mcp:
     #  - "ignore system directive"
     #  - "disregard your role"
 
+# ─── Persistent Agent Risk Profile (Capability 3) ──────────────────────────────
+risk_profile:
+  enabled: true
+  ttl: "0"                           # "0" = permanent (no expiry). E.g. "720h" = 30 days.
+  auto_quarantine_threshold: 75      # Risk score above this triggers 1-hour auto-quarantine.
+  permanent_block_threshold: 90      # Risk score above this blocks the agent permanently.
+
 policy:
   enabled: false
   policy_dir: "./policies"
