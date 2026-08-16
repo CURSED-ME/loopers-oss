@@ -224,4 +224,3 @@ func TestModifyResponse_ToolsList_Unaffected(t *testing.T) {
 		t.Errorf("expected tool name to be present in sanitized tools/list response, got: %s", string(bodyBytes))
 	}
 }
-
