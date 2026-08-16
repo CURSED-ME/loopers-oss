@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"golang.org/x/text/unicode/norm"
+	"github.com/CURSED-ME/loopers-oss/internal/inspector"
 )
 
 // ListToolsResult represents the payload in the JSON-RPC result for tools/list.
@@ -19,34 +19,9 @@ type Tool struct {
 	InputSchema map[string]interface{} `json:"inputSchema,omitempty"`
 }
 
-// VULN-027: Static pattern matching for MCP sanitization is inherently limited.
-// Advanced algorithmic drift detection and LLM-based sanitization are handled
-// by the Loopers SaaS Control Plane. This static blocklist provides baseline protection
-// for the OSS Data Plane.
-var injectionPatterns = []string{
-	"ignore previous instructions",
-	"system prompt",
-	"you must now",
-	"forget your instructions",
-	"override",
-	"bypass",
-	"print instructions",
-	"new instructions",
-}
-
-var zeroWidthChars = []string{
-	"\u200B", // zero-width space
-	"\u200C", // zero-width non-joiner
-	"\u200D", // zero-width joiner
-	"\uFEFF", // zero-width no-break space
-}
-
+// sanitizeString delegates to the unified inspector.SanitizeString function.
 func sanitizeString(input string) string {
-	normalized := norm.NFKC.String(input)
-	for _, z := range zeroWidthChars {
-		normalized = strings.ReplaceAll(normalized, z, "")
-	}
-	return strings.ToLower(normalized)
+	return inspector.SanitizeString(input)
 }
 
 // SanitizeToolList takes a JSON-RPC response body for tools/list and applies
@@ -96,7 +71,7 @@ func SanitizeToolList(body []byte, cfg SanitizerConfig, serverName string) ([]by
 		if desc, ok := toolMap["description"].(string); ok {
 			cleanDesc := sanitizeString(desc)
 			hasInjection := false
-			for _, pat := range injectionPatterns {
+			for _, pat := range inspector.InjectionPatterns {
 				if strings.Contains(cleanDesc, pat) {
 					hasInjection = true
 					break

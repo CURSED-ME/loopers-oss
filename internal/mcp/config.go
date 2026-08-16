@@ -7,6 +7,13 @@ type Config struct {
 	Servers        []ServerConfig       `mapstructure:"servers"`
 	CircuitBreaker CircuitBreakerConfig `mapstructure:"circuit_breaker"`
 	Sanitizer      SanitizerConfig      `mapstructure:"sanitizer"`
+	Inspector      InspectorConfig      `mapstructure:"inspector"`
+}
+
+type InspectorConfig struct {
+	Enabled                 bool     `mapstructure:"enabled"`
+	QuarantineDuration      string   `mapstructure:"quarantine_duration"`
+	CustomInjectionPatterns []string `mapstructure:"custom_injection_patterns"`
 }
 
 type SanitizerConfig struct {

@@ -69,6 +69,10 @@ mcp:
   sanitizer:
     max_description_length: 512
     tool_allowlist: ["mock-server"]
+  inspector:
+    enabled: true
+    quarantine_duration: "1h"
+    custom_injection_patterns: []
 
 alerting:
   webhook_url: "https://example.com/webhook"
@@ -186,6 +190,9 @@ providers:
 | `circuit_breaker.window_seconds` | `60` | Time window in seconds for the tool circuit breaker |
 | `sanitizer.max_description_length` | `512` | Max length of a string in a tool response |
 | `sanitizer.tool_allowlist` | `[]` | List of allowed tool names (empty = allow all) |
+| `inspector.enabled` | `false` | Enable synchronous tool response inspection (indirect prompt injection and secret leakage protection) |
+| `inspector.quarantine_duration` | `"1h"` | Duration to quarantine an agent key if secrets are detected in a tool response |
+| `inspector.custom_injection_patterns` | `[]` | Operator-defined plain-string patterns to flag as injection attempts |
 
 ### policy
 
