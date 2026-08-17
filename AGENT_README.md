@@ -8,7 +8,7 @@
 
 ## 1. Project Goal
 
-Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. It is written in Go and intercepts requests across 500+ AI models (15 native providers + generic OpenAI endpoints) and Model Context Protocol (MCP) servers to prevent token overspending, stop runaway agent loops, and protect against LLMjacking via a zero-storage pass-through architecture and atomic Redis transactions.
+Loopers is the bare-metal AI Firewall for the Agentic Era. It is written in Go and intercepts requests across 500+ AI models (15 native providers + generic OpenAI endpoints) and Model Context Protocol (MCP) servers to prevent token overspending, terminate runaway agent loops, inspect MCP tool responses for prompt injections, track persistent agent behavioral risk, and enforce outbound semantic DLP redaction.
 
 ---
 
@@ -165,7 +165,7 @@ loopers budget set <KEY_HASH> \
 loopers budget status <KEY_HASH>
 ```
 
-**Diagnose Configuration and Connectivity:**
+**Diagnose Configuration, Connectivity, and Firewall Security Engines:**
 ```bash
 loopers doctor
 ```

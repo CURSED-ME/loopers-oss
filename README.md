@@ -4,9 +4,9 @@
 
 # Loopers
 
-### The Firewall & Circuit Breaker for AI Agents
+### The AI Firewall for the Agentic Era
 
-> **Stop runaway agent loops. Enforce hard spending caps. Secure tool execution.**
+> **Stop runaway agent loops. Enforce hard spending caps. Secure tool execution. Block data exfiltration.**
 
 <p align="left">
   <img src="https://img.shields.io/badge/license-MIT-black.svg?style=for-the-badge" alt="License" />
@@ -37,7 +37,7 @@
 
 ## Overview
 
-Loopers is an open-source, bare-metal HTTP reverse proxy designed specifically to address the unique safety, security, and cost challenges of autonomous AI agents. By placing a low-latency, stateless gateway between agent applications and LLM providers (including OpenAI, Anthropic, Gemini, Groq, Ollama, and local vLLMs), Loopers provides real-time traffic monitoring, budget enforcement, and secure tool access control.
+Loopers is an open-source, bare-metal AI firewall designed specifically for autonomous agents. It sits as a low-latency, stateful gateway between agent applications and LLM providers (including OpenAI, Anthropic, Gemini, Groq, Ollama, and local vLLMs), providing real-time traffic monitoring, pre-call budget governance, runaway loop termination, MCP tool response inspection, persistent agent risk scoring, and outbound semantic DLP protection.
 
 This project is built and maintained by the open-source community to establish a reliable, bare-metal firewall standard for the agentic era.
 

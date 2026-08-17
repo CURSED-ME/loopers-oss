@@ -6,7 +6,7 @@ This file contains everything an AI agent needs to understand, set up, and integ
 
 ## What Loopers Is
 
-Loopers is an open-source, zero-storage reverse proxy written in Go. It sits between your application and upstream LLM providers (OpenAI, Anthropic, Gemini, Groq, Bedrock, Azure OpenAI, Mistral, Cohere, DeepSeek, Together, Ollama, Fireworks, xAI, vLLM, OpenRouter) and enforces hard budget limits, agent loop detection, OPA/Rego policy evaluation, and per-tool MCP governance — all before forwarding requests upstream.
+Loopers is the open-source, bare-metal AI Firewall for the Agentic Era written in Go. It sits between your application and upstream LLM providers (OpenAI, Anthropic, Gemini, Groq, Bedrock, Azure OpenAI, Mistral, Cohere, DeepSeek, Together, Ollama, Fireworks, xAI, vLLM, OpenRouter) and enforces pre-call budget limits, runaway loop termination, MCP tool response inspection, persistent agent risk scoring, and real-time outbound semantic DLP redaction — all before forwarding requests upstream.
 
 **Core guarantee:** If Redis is unavailable, Loopers fails closed. No requests pass through. This prevents unbounded spending during infrastructure failures.
 
@@ -28,14 +28,14 @@ git clone https://github.com/CURSED-ME/loopers-oss.git
 cd loopers-oss
 ```
 
-### Step 2: Start Redis and the Loopers proxy
+### Step 2: Start Redis and the Loopers firewall
 ```bash
 docker-compose up -d
 ```
 
 The `docker-compose.yml` in the root starts two services:
 - `redis` — Redis 8 Alpine with password auth
-- `loopers` — the proxy image (`ghcr.io/cursed-me/loopers:latest`) on port 8080
+- `loopers` — the firewall image (`ghcr.io/cursed-me/loopers:latest`) on port 8080
 
 ### Step 3: Create a proxy key
 ```bash
@@ -72,7 +72,7 @@ go install github.com/CURSED-ME/loopers-oss/cmd/loopers@latest
 ```bash
 loopers init
 ```
-This generates `loopers.yaml` (proxy config) and `docker-compose.yml` (Redis) in the current directory.
+This generates `loopers.yaml` (firewall config) and `docker-compose.yml` (Redis) in the current directory.
 
 ### Step 3: Start Redis only
 ```bash
@@ -80,7 +80,7 @@ docker-compose up -d redis
 ```
 > If you already have Redis running locally (e.g. via Homebrew, apt, or a remote instance), skip this step. Set `redis.addr` in `loopers.yaml` to point to your instance.
 
-### Step 4: Start the proxy server
+### Step 4: Start the firewall runtime server
 
 macOS / Linux:
 ```bash
@@ -150,13 +150,13 @@ loopers init
 ```
 
 ### loopers serve
-Starts the proxy server. All config comes from `loopers.yaml` or environment variables.
+Starts the Loopers AI firewall runtime server. All config comes from `loopers.yaml` or environment variables.
 ```bash
 loopers serve
 ```
 
 ### loopers doctor
-Diagnoses configuration and Redis connectivity.
+Diagnoses Loopers firewall configuration, Redis connectivity, and security engines (Loop Detection, MCP Tool Response Inspector, Outbound Semantic DLP Gate, and Persistent Risk Engine).
 ```bash
 loopers doctor
 ```

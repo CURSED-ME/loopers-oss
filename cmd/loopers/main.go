@@ -20,8 +20,11 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "loopers",
-	Short: "Loopers is an airtight AI rate-limit and budget proxy",
-	Long:  `An open-source, zero-storage proxy to enforce hard budget limits on LLM usage.`,
+	Short: "Loopers is the AI Firewall for the Agentic Era",
+	Long: `Loopers is an open-source, bare-metal AI firewall designed for autonomous agents.
+It provides real-time pre-call budget governance, runaway loop termination,
+stateful FSM policy enforcement, MCP tool response inspection, persistent agent risk scoring,
+and outbound semantic DLP protection across 500+ AI models.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if !ui.IsInteractive() {
 			cmd.Help()

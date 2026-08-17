@@ -13,7 +13,7 @@ import (
 
 func screenInit() {
 	ui.PrintLogo()
-	ui.PrintHeader("Loopers Setup Wizard\nConfigure your AI cost firewall")
+	ui.PrintHeader("Loopers Setup Wizard\nConfigure your AI Firewall")
 	fmt.Println()
 
 	var (
@@ -87,7 +87,7 @@ func screenInit() {
 			).Value(&logLevel),
 		).Title("Core Infrastructure"),
 
-		// Group 2: Proxy Settings
+		// Group 2: Firewall Settings
 		huh.NewGroup(
 			huh.NewInput().Title("Max Payload Bytes (Recommended: 8MB)").Value(&maxPayload),
 			huh.NewConfirm().Title("Strip Budget Headers? (Recommended: Yes)").Value(&stripBudgetHeaders),
@@ -95,7 +95,7 @@ func screenInit() {
 			huh.NewInput().Title("TLS Cert File (Optional)").Value(&tlsCert),
 			huh.NewInput().Title("TLS Key File (Optional)").Value(&tlsKey),
 			huh.NewInput().Title("Pricing Path (Recommended: ./pricing.yaml)").Value(&pricingPath),
-		).Title("Proxy Settings"),
+		).Title("Firewall Settings"),
 
 		// Group 3: Session Config
 		huh.NewGroup(
@@ -181,7 +181,7 @@ services:
 
   loopers:
     image: ghcr.io/cursed-me/loopers:latest
-    container_name: loopers-proxy
+    container_name: loopers-firewall
     ports:
       - "8080:8080"
     environment:
