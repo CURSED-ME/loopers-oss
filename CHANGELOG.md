@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.16.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.15.0...v2.16.0) (2026-08-17)
+
+
+### Features
+
+* implement outbound semantic DLP gate ([8fd662d](https://github.com/CURSED-ME/loopers-oss/commit/8fd662d2946fdac31a2aaddfa864eb3a298b1134))
+* implement outbound semantic DLP gate (Capability 4) ([18e5235](https://github.com/CURSED-ME/loopers-oss/commit/18e523570f46cdf6a867a854e9a0273d2d72e31b))
+
 ## [2.15.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.14.0...v2.15.0) (2026-08-16)
 
 
