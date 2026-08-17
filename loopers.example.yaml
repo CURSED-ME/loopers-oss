@@ -12,7 +12,21 @@ server:
   idle_timeout_seconds: 120
   concurrency_timeout_seconds: 5
   strip_budget_headers: true
+  dlp:
+    # Outbound Semantic DLP Gate (Capability 4) — inspects LLM completion text before writing to client.
+    enabled: true
+    # Action on secret detection: "mask" (redact in-place) | "quarantine" (block + agent freeze)
+    # PII triggers "mask" always. Only secrets trigger "quarantine".
+    action: mask
+    scan_secrets: true    # AWS keys, OpenAI keys, GitHub PAT, Slack tokens, JWT, PEM private keys
+    scan_pii: true        # Emails, credit cards (Luhn-validated), US SSN, phone numbers
+    scan_network: false   # RFC 1918 private IPs, .internal/.local/.corp hostnames
+    allowed_hosts:        # Skip network detection for these hosts (e.g. local dev)
+      - "localhost"
+      - "example.com"
+    quarantine_duration: "1h"
 redis:
+
   addr: "localhost:6379"
   password: ""
   db: 0

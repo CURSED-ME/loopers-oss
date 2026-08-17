@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/CURSED-ME/loopers-oss/internal/inspector"
 	"github.com/CURSED-ME/loopers-oss/internal/provider/anthropic"
 	"github.com/CURSED-ME/loopers-oss/internal/provider/openai"
 )
@@ -26,7 +27,7 @@ func TestSSEFrameParsing(t *testing.T) {
 	reader := &mockReadCloser{Reader: strings.NewReader(part1 + part2)}
 
 	ctx := context.Background()
-	r := NewSSEStreamReader(ctx, reader, openai.NewOpenAIProvider(), 0.0, 0.0, func(cost float64) bool { return true }, func(float64, int, int, string, bool) {})
+	r := NewSSEStreamReader(ctx, reader, openai.NewOpenAIProvider(), 0.0, 0.0, func(cost float64) bool { return true }, func(float64, int, int, string, bool) {}, inspector.DLPConfig{}, nil)
 	defer r.Close()
 
 	buf := new(bytes.Buffer)
@@ -49,7 +50,7 @@ func TestDONEHandling(t *testing.T) {
 	reconciled := false
 	r := NewSSEStreamReader(ctx, reader, openai.NewOpenAIProvider(), 0.0, 0.0, func(cost float64) bool { return true }, func(actualCost float64, inTokens, outTokens int, completion string, forcedCut bool) {
 		reconciled = true
-	})
+	}, inspector.DLPConfig{}, nil)
 	defer r.Close()
 
 	buf := new(bytes.Buffer)
@@ -71,7 +72,7 @@ func TestAnthropicEventParsing(t *testing.T) {
 	var actualRecorded float64
 	r := NewSSEStreamReader(ctx, reader, anthropic.NewAnthropicProvider(), 1.0, 2.0, func(cost float64) bool { return true }, func(actualCost float64, inTokens, outTokens int, completion string, forcedCut bool) {
 		actualRecorded = actualCost
-	})
+	}, inspector.DLPConfig{}, nil)
 	defer r.Close()
 
 	buf := new(bytes.Buffer)
@@ -91,7 +92,7 @@ func TestStreamBudgetCutoff(t *testing.T) {
 	reader := &mockReadCloser{Reader: strings.NewReader(stream)}
 
 	ctx := context.Background()
-	r := NewSSEStreamReader(ctx, reader, anthropic.NewAnthropicProvider(), 1.0, 2.0, func(cost float64) bool { return cost <= 0.000005 }, func(actualCost float64, inTokens, outTokens int, completion string, forcedCut bool) {})
+	r := NewSSEStreamReader(ctx, reader, anthropic.NewAnthropicProvider(), 1.0, 2.0, func(cost float64) bool { return cost <= 0.000005 }, func(actualCost float64, inTokens, outTokens int, completion string, forcedCut bool) {}, inspector.DLPConfig{}, nil)
 	defer r.Close()
 
 	buf := new(bytes.Buffer)
@@ -106,5 +107,60 @@ func TestStreamBudgetCutoff(t *testing.T) {
 	}
 	if strings.Contains(output, "forbidden_text") {
 		t.Error("expected stream to be cut off before subsequent chunks are written")
+	}
+}
+
+func TestStreamDLP_MaskPII(t *testing.T) {
+	stream := "data: {\"choices\":[{\"delta\":{\"content\":\"Contact admin@secretcorp.com for key\"}}]}\n\n"
+	reader := &mockReadCloser{Reader: strings.NewReader(stream)}
+
+	dlpCfg := inspector.DLPConfig{
+		Enabled: true,
+		Action:  "mask",
+		ScanPII: true,
+	}
+
+	ctx := context.Background()
+	r := NewSSEStreamReader(ctx, reader, openai.NewOpenAIProvider(), 0.0, 0.0, func(cost float64) bool { return true }, func(float64, int, int, string, bool) {}, dlpCfg, nil)
+	defer r.Close()
+
+	buf := new(bytes.Buffer)
+	_, _ = io.Copy(buf, r)
+
+	output := buf.String()
+	if strings.Contains(output, "admin@secretcorp.com") {
+		t.Errorf("expected email to be masked in streaming response, got: %s", output)
+	}
+	if !strings.Contains(output, "***") {
+		t.Errorf("expected mask *** in output, got: %s", output)
+	}
+}
+
+func TestStreamDLP_QuarantineSecret(t *testing.T) {
+	stream := "data: {\"choices\":[{\"delta\":{\"content\":\"Secret: AKIAIOSFODNN7EXAMPLE\"}}]}\n\n"
+	reader := &mockReadCloser{Reader: strings.NewReader(stream)}
+
+	dlpCfg := inspector.DLPConfig{
+		Enabled:     true,
+		Action:      "quarantine",
+		ScanSecrets: true,
+	}
+
+	quarantined := false
+	ctx := context.Background()
+	r := NewSSEStreamReader(ctx, reader, openai.NewOpenAIProvider(), 0.0, 0.0, func(cost float64) bool { return true }, func(float64, int, int, string, bool) {}, dlpCfg, func() {
+		quarantined = true
+	})
+	defer r.Close()
+
+	buf := new(bytes.Buffer)
+	_, _ = io.Copy(buf, r)
+
+	output := buf.String()
+	if !quarantined {
+		t.Error("expected onDLPQuarantine callback to be executed")
+	}
+	if !strings.Contains(output, "dlp_quarantine") {
+		t.Errorf("expected dlp_quarantine error frame, got: %s", output)
 	}
 }
