@@ -85,7 +85,8 @@ func fetchActiveKeys(rdb *budget.Client) ([]huh.Option[string], error) {
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "Start the loopers proxy server",
+	Short: "Start the Loopers AI firewall runtime server",
+	Long:  "Run the bare-metal Loopers AI firewall runtime reverse proxy, policy engine, and DLP gate.",
 	Run: func(cmd *cobra.Command, args []string) {
 		logLevel := viper.GetString("log.level")
 		if logLevel == "" {
@@ -93,7 +94,7 @@ var serveCmd = &cobra.Command{
 		}
 		logging.InitLogger(logLevel)
 
-		logging.Logger.Info().Msg("Starting Loopers server...")
+		logging.Logger.Info().Msg("Starting Loopers AI Firewall runtime...")
 		fmt.Println("\nIf Loopers saved your budget today, please star our repository: https://github.com/CURSED-ME/loopers-oss")
 
 		pricingPath := viper.GetString("pricing_path")
@@ -205,12 +206,12 @@ var serveCmd = &cobra.Command{
 
 var keysCmd = &cobra.Command{
 	Use:   "keys",
-	Short: "Manage proxy keys",
+	Short: "Manage firewall agent and proxy keys",
 }
 
 var keysCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a new proxy key",
+	Short: "Create a new firewall agent key with identity metadata",
 	Run: func(cmd *cobra.Command, args []string) {
 		if (keyName == "" || keyProvider == "") && ui.IsInteractive() {
 			ui.PrintLogo()
@@ -342,7 +343,7 @@ var keysCreateCmd = &cobra.Command{
 
 var keysListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List all proxy keys",
+	Short: "List all active firewall agent keys",
 	Run: func(cmd *cobra.Command, args []string) {
 		redisClient, err := getRedisClient()
 		if err != nil {
@@ -397,7 +398,7 @@ var keysListCmd = &cobra.Command{
 
 var keysRevokeCmd = &cobra.Command{
 	Use:   "revoke [hash]",
-	Short: "Revoke a proxy key",
+	Short: "Revoke an agent key",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		var hash string
@@ -463,12 +464,12 @@ var keysRevokeCmd = &cobra.Command{
 
 var budgetCmd = &cobra.Command{
 	Use:   "budget",
-	Short: "Manage budgets",
+	Short: "Manage atomic spending limits and budgets",
 }
 
 var budgetSetCmd = &cobra.Command{
 	Use:   "set [hash]",
-	Short: "Set daily, hourly, weekly, monthly, and minute budgets for a key hash",
+	Short: "Set minute, hourly, daily, weekly, and monthly spending caps for an agent key",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		var hash string
@@ -584,7 +585,7 @@ var budgetSetCmd = &cobra.Command{
 
 var budgetStatusCmd = &cobra.Command{
 	Use:   "status [hash]",
-	Short: "Get budget status for a key hash",
+	Short: "Get real-time budget status and spend consumption for an agent key",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		var hash string
@@ -664,7 +665,7 @@ var budgetStatusCmd = &cobra.Command{
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Interactively initialize Loopers configuration",
+	Short: "Interactively initialize Loopers AI firewall configuration",
 	Run: func(cmd *cobra.Command, args []string) {
 		screenInit()
 	},
@@ -672,7 +673,8 @@ var initCmd = &cobra.Command{
 
 var execCmd = &cobra.Command{
 	Use:   "exec -- <command...>",
-	Short: "Execute a command with Loopers proxy environment variables injected",
+	Short: "Execute an agent command with Loopers firewall environment variables and transparent proxying injected",
+	Long:  "Wrap and monitor autonomous AI agents (Aider, OpenHands, Claude, Pi, Codex, OpenCode) with transparent firewall proxying, budget caps, and DLP enforcement.",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		proxyKey := os.Getenv("LOOPERS_PROXY_KEY")

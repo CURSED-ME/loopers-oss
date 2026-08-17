@@ -25,15 +25,15 @@ var menuItems = []struct {
 }{
 	{"Quick Start / Init", "screen_init"},
 	{"Diagnostics", "screen_doctor"},
-	{"Keys", "screen_keys"},
-	{"Budgets", "screen_budget"},
+	{"Keys & Agent Identity", "screen_keys"},
+	{"Budgets & Rate Limits", "screen_budget"},
 	{"Loop Detection", "screen_loop"},
-	{"MCP Governance", "screen_mcp"},
-	{"Policy Engine", "screen_policy"},
-	{"Security (ZSP / A2A)", "screen_zsp"},
+	{"MCP Governance & Injection Wall", "screen_mcp"},
+	{"Policy Engine & FSM Gating", "screen_policy"},
+	{"Zero-Trust & A2A Security", "screen_zsp"},
 	{"Observability", "screen_observability"},
-	{"Execute Command", "screen_exec"},
-	{"Start Server", "serve"},
+	{"Execute Protected Agent", "screen_exec"},
+	{"Start Firewall Server", "serve"},
 	{"Quit", "quit"},
 }
 
@@ -91,7 +91,7 @@ func (m AppModel) View() string {
 	row2Logo := solidBlock + gap + solidBlock
 
 	title := lipgloss.NewStyle().Foreground(colorTextPrimary).Bold(true).Render("LOOPERS")
-	subtitle := lipgloss.NewStyle().Foreground(colorTextSecondary).Render("PRE-CALL AI BILLING CIRCUIT BREAKER")
+	subtitle := lipgloss.NewStyle().Foreground(colorTextSecondary).Render("AI FIREWALL FOR THE AGENTIC ERA")
 
 	sb.WriteString("  " + row1Logo + "   " + title + "\n")
 	sb.WriteString("  " + row2Logo + "   " + subtitle + "\n")
@@ -127,7 +127,7 @@ func (m AppModel) View() string {
 	}
 
 	sb.WriteString(lipgloss.NewStyle().Foreground(colorBorderStrong).Render("  ──────────────────────────────────────────────────────") + "\n")
-	sb.WriteString(lipgloss.NewStyle().Foreground(colorTextTertiary).Render("  LOOPERS  ·  MIT Licensed  ·  15 providers  ·  ~1-2ms") + "\n")
+	sb.WriteString(lipgloss.NewStyle().Foreground(colorTextTertiary).Render("  LOOPERS  ·  AI Firewall  ·  MIT Licensed  ·  15 Providers  ·  ~1-2ms P99") + "\n")
 
 	return sb.String()
 }

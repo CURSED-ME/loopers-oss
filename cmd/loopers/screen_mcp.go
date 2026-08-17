@@ -132,7 +132,7 @@ func screenMCP() {
 			ui.Error(fmt.Sprintf("Failed to write loopers.yaml: %v", err))
 		} else {
 			ui.Success("Updated mcp configuration in loopers.yaml")
-			ui.Warn("You must restart the proxy server for changes to take effect.")
+			ui.Warn("You must restart the firewall server for changes to take effect.")
 		}
 	}
 

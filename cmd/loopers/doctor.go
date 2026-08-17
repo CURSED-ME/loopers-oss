@@ -14,10 +14,10 @@ import (
 
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
-	Short: "Diagnose Loopers configuration and connectivity",
+	Short: "Diagnose Loopers firewall configuration, Redis connectivity, and security engines",
 	Run: func(cmd *cobra.Command, args []string) {
 		ui.PrintLogo()
-		ui.PrintHeader("◎ Loopers Diagnostics")
+		ui.PrintHeader("◎ Loopers AI Firewall Diagnostics")
 		fmt.Println()
 
 		issues := 0
@@ -100,21 +100,53 @@ var doctorCmd = &cobra.Command{
 			}
 		}
 
-		// 5. Check if proxy is running
+		// 5. Check Firewall Security Engines
+		fmt.Println()
+		fmt.Println("  Firewall Security Engines")
+
+		// Loop Detection
+		if viper.GetBool("loop_detection.enabled") {
+			ui.Success("Loop Detection Engine: ENABLED")
+		} else {
+			ui.Warn("Loop Detection Engine: DISABLED")
+		}
+
+		// MCP Response Inspector
+		if viper.GetBool("mcp.inspector.enabled") {
+			ui.Success("MCP Tool Response Inspector: ENABLED")
+		} else {
+			ui.Warn("MCP Tool Response Inspector: DISABLED")
+		}
+
+		// Outbound DLP Gate
+		if viper.GetBool("server.dlp.enabled") {
+			ui.Success(fmt.Sprintf("Outbound Semantic DLP Gate: ENABLED (Action: %s)", viper.GetString("server.dlp.action")))
+		} else {
+			ui.Warn("Outbound Semantic DLP Gate: DISABLED")
+		}
+
+		// Risk Profile Engine
+		if viper.GetBool("risk_profile.enabled") {
+			ui.Success("Persistent Risk Profile Engine: ENABLED")
+		} else {
+			ui.Warn("Persistent Risk Profile Engine: DISABLED")
+		}
+
+		// 6. Check if firewall runtime is running
 		port := viper.GetString("server.port")
 		if port == "" {
 			port = "8080"
 		}
 		resp, err := http.Get(fmt.Sprintf("http://localhost:%s/health", port))
 		if err != nil {
-			ui.Error(fmt.Sprintf("Proxy: not responding on :%s", port))
+			ui.Error(fmt.Sprintf("Firewall runtime: not responding on :%s", port))
 			issues++
 		} else {
 			defer resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
-				ui.Success(fmt.Sprintf("Proxy: running on :%s", port))
+				ui.Success(fmt.Sprintf("Firewall runtime: running on :%s", port))
 			} else {
-				ui.Error(fmt.Sprintf("Proxy: returned status %d on /health", resp.StatusCode))
+				ui.Error(fmt.Sprintf("Firewall runtime: returned status %d on /health", resp.StatusCode))
 				issues++
 			}
 		}

@@ -23,9 +23,8 @@ var (
 
 var verifyCmd = &cobra.Command{
 	Use:   "verify",
-	Short: "Audit session JSON traces against OPA policies and Policy Cards",
-	Long: `Verify replays and audits recorded execution trace logs against your declarative
-YAML Policy Cards and OPA Rego policies to validate behavioral compliance and FSM path sequences.`,
+	Short: "Audit agent execution traces offline against OPA policies and Policy Cards",
+	Long:  "Replay and audit AI agent JSON execution traces against firewall security policies, FSM transitions, and risk rules.",
 	Example: `  # Audit a trace using built-in security presets
   loopers verify --trace ./traces/agent_run.json --presets safety,mcp_sandbox
 
