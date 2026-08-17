@@ -22,6 +22,7 @@
 
 * **Runaway Loop Termination:** Instantly terminates recursive retry loops and reasoning stalls in real time using Bi-Gram Jaccard similarity.
 * **Persistent Agent Identity & Behavioral Risk:** Tracks cross-session agent history in Redis with cumulative risk scoring (0–100), automated 1-hour quarantine lockouts, and permanent threat isolation.
+* **Outbound Semantic DLP Gate:** Intercepts LLM completion responses across non-streaming and streaming SSE pipelines in real time to scrub PII (emails, Luhn-validated credit cards, SSNs, phone numbers), mask internal network indicators, and quarantine secret leaks before delivering them to agents.
 * **Tool Response Inspection & Leak Prevention:** Synchronously scans outbound tool responses to block indirect prompt injections, relative path traversals, and sensitive credential exfiltration.
 * **5-Outcome Policy Action Engine:** Evaluates policy cards to enforce five distinct actions: `allow`, `deny`, `escalate` (waits for human approval), `quarantine` (locks out keys in Redis), and `transform` (masks/redacts sensitive payload fields).
 * **Atomic Cost Governance:** Restricts spending across minute, hourly, daily, and monthly rolling windows with a 0% budget leakage guarantee.

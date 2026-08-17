@@ -56,6 +56,15 @@ Loopers tracks cross-session agent behavioral memory keyed by `loopers:risk_prof
 - Automated lockouts: score > 75 triggers 1-hour auto-quarantine, score > 90 triggers permanent block.
 - OPA policies evaluate `input.agent_risk.risk_score`, `input.agent_risk.persistent_taint_flags`, etc. Built-in preset: `zero_trust`.
 
+**Outbound Semantic DLP Gate (Capability 4):**
+When `server.dlp.enabled` is set to true in `loopers.yaml`, Loopers scans outbound LLM completion text across both non-streaming JSON envelopes and live SSE streaming chunks:
+- PII Signatures: RFC 5322 Emails (with allowlist filtering), Credit Cards (Visa, MC, Amex, Discover with Luhn validation), US SSNs, and E.164 phone numbers.
+- Internal Infrastructure: RFC 1918 private IPs (`10.x`, `172.16-31.x`, `192.168.x`), loopback, and internal host suffixes (`.internal`, `.local`, `.corp`).
+- Action Planes:
+  - `mask`: Rewrites sensitive tokens to `***` in-place inside provider completion JSON (OpenAI, Anthropic, Gemini, OpenRouter), recalculates `Content-Length`, and sets `X-Loopers-DLP-Redacted: true`.
+  - `quarantine`: Severs completion connection with HTTP 403 or error SSE frame, sets `X-Loopers-DLP-Block: true`, sets 1-hour Redis lockout (`loopers:quarantine:{keyHash}`), increments persistent risk score (+30), and rejects subsequent calls at gateway auth layer.
+  - Streaming SSE Sliding Window: 256-character rolling text window catches secret patterns split across chunk boundaries.
+
 ---
 
 ## Getting Started & Core

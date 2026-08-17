@@ -15,6 +15,7 @@ import (
 	"github.com/CURSED-ME/loopers-oss/internal/a2a"
 	"github.com/CURSED-ME/loopers-oss/internal/budget"
 	"github.com/CURSED-ME/loopers-oss/internal/event"
+	"github.com/CURSED-ME/loopers-oss/internal/inspector"
 	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	"github.com/CURSED-ME/loopers-oss/internal/policy"
@@ -865,7 +866,28 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 						}
 					}()
 				}
-			})
+			},
+			s.dlpCfg,
+			func() {
+				dur, _ := time.ParseDuration(s.dlpCfg.QuarantineDuration)
+				if dur <= 0 {
+					dur = 1 * time.Hour
+				}
+				_ = s.redis.GetUnderlyingClient().Set(ctx, "loopers:quarantine:"+keyHash, "1", dur).Err()
+				if s.riskProfileCfg.Enabled {
+					go func() {
+						_, _ = riskprofile.UpdateRiskScore(context.Background(), s.redis.GetUnderlyingClient(), keyHash, 30, true, "secret_exfiltration")
+					}()
+				}
+				event.EmitQuarantineEvent(ctx, event.QuarantineEvent{
+					KeyHash:       keyHash,
+					Reason:        "Secret exfiltration detected in streaming LLM completion",
+					QuarantineFor: s.dlpCfg.QuarantineDuration,
+					RequestID:     reqID,
+				})
+				dlpQuarantinesTotal.WithLabelValues(provName).Inc()
+			},
+		)
 	} else {
 		limit := viper.GetInt64("server.max_response_bytes")
 		if limit == 0 {
@@ -891,7 +913,62 @@ func (s *Server) modifyResponse(resp *http.Response) error {
 			resp.Header.Del("Content-Length")
 		}
 
+		// Outbound DLP Gate (Capability 4: Non-streaming LLM completion)
+		if s.dlpCfg.Enabled {
+			dlpResult, dlpBody, dlpErr := inspector.InspectJSONCompletion(respBodyBytes, provName, s.dlpCfg)
+			if dlpErr != nil {
+				logging.Logger.Error().Err(dlpErr).Msg("Failed to inspect/marshal completion payload for DLP")
+			} else if dlpResult.Action != "allow" {
+				switch dlpResult.Action {
+				case "quarantine":
+					dur, _ := time.ParseDuration(s.dlpCfg.QuarantineDuration)
+					if dur <= 0 {
+						dur = 1 * time.Hour
+					}
+					_ = s.redis.GetUnderlyingClient().Set(ctx, "loopers:quarantine:"+keyHash, "1", dur).Err()
+					if s.riskProfileCfg.Enabled {
+						go func() {
+							_, _ = riskprofile.UpdateRiskScore(context.Background(), s.redis.GetUnderlyingClient(), keyHash, 30, true, "secret_exfiltration")
+						}()
+					}
+					event.EmitQuarantineEvent(ctx, event.QuarantineEvent{
+						KeyHash:       keyHash,
+						Reason:        dlpResult.Reason,
+						QuarantineFor: s.dlpCfg.QuarantineDuration,
+						Evidence:      dlpResult.Matches,
+						RequestID:     reqID,
+					})
+					dlpQuarantinesTotal.WithLabelValues(provName).Inc()
+
+					denialBody := []byte(`{"error":"completion blocked by security policy","type":"dlp_quarantine"}`)
+					resp.StatusCode = http.StatusForbidden
+					resp.Body = io.NopCloser(bytes.NewReader(denialBody))
+					resp.ContentLength = int64(len(denialBody))
+					resp.Header.Set("Content-Length", strconv.Itoa(len(denialBody)))
+					resp.Header.Set("X-Loopers-DLP-Block", "true")
+					s.redis.LeaseManager.ReconcileSpend(ctx, keyHash, reservedCost, 0)
+					return nil
+
+				case "mask":
+					respBodyBytes = dlpBody
+					resp.Header.Set("X-Loopers-DLP-Redacted", "true")
+					event.EmitBlockEvent(ctx, event.BlockEvent{
+						EventType: "dlp_redaction",
+						KeyHash:   keyHash,
+						Provider:  provName,
+						Model:     model,
+						Reason:    dlpResult.Reason,
+						Detail:    "Sensitive content masked by outbound DLP policy",
+						RequestID: reqID,
+					})
+					dlpRedactionsTotal.WithLabelValues(provName).Inc()
+				}
+			}
+		}
+
 		resp.Body = io.NopCloser(bytes.NewReader(respBodyBytes))
+		resp.ContentLength = int64(len(respBodyBytes))
+		resp.Header.Set("Content-Length", strconv.Itoa(len(respBodyBytes)))
 
 		var totalInputTokens int
 		var totalOutputTokens int

@@ -7,10 +7,12 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
-	"github.com/CURSED-ME/loopers-oss/internal/provider"
 	"io"
 	"time"
+
+	"github.com/CURSED-ME/loopers-oss/internal/inspector"
+	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/CURSED-ME/loopers-oss/internal/provider"
 )
 
 // splitSSEFrames is a bufio.SplitFunc that splits on double newlines (\n\n).
@@ -31,7 +33,16 @@ type SSEStreamReader struct {
 }
 
 // NewSSEStreamReader creates a new SSEStreamReader implementing io.ReadCloser.
-func NewSSEStreamReader(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice float64, checkBudget func(float64) bool, onStreamEnd func(float64, int, int, string, bool)) io.ReadCloser {
+func NewSSEStreamReader(
+	ctx context.Context,
+	original io.ReadCloser,
+	prov provider.Provider,
+	inputPrice, outputPrice float64,
+	checkBudget func(float64) bool,
+	onStreamEnd func(float64, int, int, string, bool),
+	dlpCfg inspector.DLPConfig,
+	onDLPQuarantine func(),
+) io.ReadCloser {
 	pr, pw := io.Pipe()
 
 	sr := &SSEStreamReader{
@@ -39,7 +50,7 @@ func NewSSEStreamReader(ctx context.Context, original io.ReadCloser, prov provid
 		pipeWriter: pw,
 	}
 
-	go sr.processStream(ctx, original, prov, inputPrice, outputPrice, checkBudget, onStreamEnd)
+	go sr.processStream(ctx, original, prov, inputPrice, outputPrice, checkBudget, onStreamEnd, dlpCfg, onDLPQuarantine)
 
 	return sr
 }
@@ -54,7 +65,16 @@ func (sr *SSEStreamReader) Close() error {
 	return sr.pipeReader.Close()
 }
 
-func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice float64, checkBudget func(float64) bool, onStreamEnd func(float64, int, int, string, bool)) {
+func (sr *SSEStreamReader) processStream(
+	ctx context.Context,
+	original io.ReadCloser,
+	prov provider.Provider,
+	inputPrice, outputPrice float64,
+	checkBudget func(float64) bool,
+	onStreamEnd func(float64, int, int, string, bool),
+	dlpCfg inspector.DLPConfig,
+	onDLPQuarantine func(),
+) {
 	defer original.Close()
 	defer sr.pipeWriter.Close()
 
@@ -105,6 +125,7 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 	var totalInputTokens int
 	var totalOutputTokens int
 	var accumulatedText string
+	var slidingWindow string
 
 	for {
 		select {
@@ -123,19 +144,44 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 				return
 			}
 
-			// Re-append the double newlines to reconstruct the standard SSE protocol frame
-			outChunk := append(chunk, []byte("\n\n")...)
-
-			// Accumulate response text for transient trace logging
-			if len(accumulatedText) < 512 {
-				txt := extractTextFromChunk(chunk)
-				if txt != "" {
+			// Extract incremental text delta for DLP and trace
+			txt := extractTextFromChunk(chunk)
+			if txt != "" {
+				if len(accumulatedText) < 512 {
 					accumulatedText += txt
 					if len(accumulatedText) > 512 {
 						accumulatedText = accumulatedText[:512]
 					}
 				}
+				slidingWindow += txt
+				if len(slidingWindow) > 256 {
+					slidingWindow = slidingWindow[len(slidingWindow)-256:]
+				}
 			}
+
+			// Outbound Streaming DLP Gate
+			if dlpCfg.Enabled {
+				// Check sliding window across chunks for secret exfiltration / quarantine
+				windowRes, _ := inspector.InspectDLPContent(slidingWindow, dlpCfg)
+				if windowRes.Action == "quarantine" {
+					if onDLPQuarantine != nil {
+						onDLPQuarantine()
+					}
+					// Flush error SSE event to client
+					_, _ = sr.pipeWriter.Write([]byte("event: error\ndata: {\"error\":\"completion blocked by security policy\",\"type\":\"dlp_quarantine\"}\n\n"))
+					actualUSD := (float64(totalInputTokens)*inputPrice + float64(totalOutputTokens)*outputPrice) / 1000000.0
+					onStreamEnd(actualUSD, totalInputTokens, totalOutputTokens, accumulatedText, true)
+					return
+				}
+
+				// Check and mask chunk in-flight if applicable
+				if dlpCfg.Action == "mask" || dlpCfg.ScanPII || dlpCfg.ScanSecrets {
+					chunk = maskTextInChunk(chunk, prov.Name(), dlpCfg)
+				}
+			}
+
+			// Re-append the double newlines to reconstruct the standard SSE protocol frame
+			outChunk := append(chunk, []byte("\n\n")...)
 
 			inTokens, outTokens, isDone, err := prov.ParseStreamChunk(chunk)
 			if err == nil {
@@ -170,6 +216,29 @@ func (sr *SSEStreamReader) processStream(ctx context.Context, original io.ReadCl
 			_, _ = sr.pipeWriter.Write(outChunk)
 		}
 	}
+}
+
+func maskTextInChunk(chunk []byte, providerName string, dlpCfg inspector.DLPConfig) []byte {
+	raw := bytes.TrimSpace(chunk)
+	prefix := []byte("data: ")
+	hasDataPrefix := bytes.HasPrefix(raw, prefix)
+	if hasDataPrefix {
+		raw = bytes.TrimPrefix(raw, prefix)
+	}
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || bytes.Equal(raw, []byte("[DONE]")) {
+		return chunk
+	}
+
+	res, mutatedJSON, err := inspector.InspectJSONCompletion(raw, providerName, dlpCfg)
+	if err != nil || res.Action == "allow" {
+		return chunk
+	}
+
+	if hasDataPrefix {
+		return append([]byte("data: "), mutatedJSON...)
+	}
+	return mutatedJSON
 }
 
 func (sr *SSEStreamReader) processBedrockStream(ctx context.Context, original io.ReadCloser, prov provider.Provider, inputPrice, outputPrice float64, checkBudget func(float64) bool, onStreamEnd func(float64, int, int, string, bool)) {

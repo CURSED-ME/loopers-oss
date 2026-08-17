@@ -96,4 +96,14 @@ var (
 		Name: "loopers_policy_transforms_total",
 		Help: "Total requests where payload was mutated (transform) by policy",
 	}, []string{"provider", "operation"})
+
+	dlpRedactionsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "loopers_dlp_redactions_total",
+		Help: "Total LLM completions where DLP masked sensitive content",
+	}, []string{"provider"})
+
+	dlpQuarantinesTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "loopers_dlp_quarantines_total",
+		Help: "Total agent keys quarantined due to DLP secret detection in LLM completion",
+	}, []string{"provider"})
 )

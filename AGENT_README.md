@@ -20,6 +20,7 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 - **Fail-Closed Guarantee**: If Redis or the proxy fails, it must fail closed to protect the wallet.
 - **Atomic Concurrency Control**: Budget checks and rate limiting happen via Redis Lua scripts to prevent TOCTOU (time-of-check to time-of-use) race conditions under high concurrency.
 - **Cryptographic Action Receipts**: Outgoing mutated request bodies are cryptographically signed using either symmetric HMAC-SHA256 or asymmetric Ed25519 keys, injecting `X-Loopers-Signature: t=<timestamp>; sig=<hex>; type=<type>` into the headers of both the upstream requests and the downstream client responses.
+- **Outbound Semantic DLP Gate**: Intercepts outbound LLM completion bodies across both non-streaming JSON envelopes and SSE streaming chunks. Masking replaces sensitive PII/network tokens with `***` and recalculates Content-Length headers without breaking JSON syntax; quarantine severs the connection with HTTP 403 or error SSE events, registers 1-hour Redis TTL lockouts, and increments persistent risk score (+30).
 - **Sub-150µs ZSP Token Validation**: Ephemeral Agent Delegation JWTs and DPoP (RFC 9449) proofs are verified statelessly in under 150 microseconds.
 - **Fail-Safe Self-Correction**: When an OPA policy blocks an MCP tool call, Loopers returns a valid MCP JSON-RPC 2.0 error object at HTTP 200 (code -32001) with header `X-Loopers-Policy-Block: true`, allowing LLMs to receive the denial as tool output and self-correct instead of crashing on HTTP 403.
 
@@ -49,6 +50,7 @@ Loopers is a baremetal, zero-delay circuit breaker and firewall for AI agents. I
 │   ├── budget/                    # Redis Lua script budget engine (minute, hourly, daily, weekly, monthly, session)
 │   ├── cache/                     # Memory lease cache & low-latency budget reservation
 │   ├── event/                     # OWASP Top 10 for LLMs security event logger
+│   ├── inspector/                 # Outbound Semantic DLP gate (PII regexes, Luhn check, network indicators, JSON completions) & tool response inspection
 │   ├── keyring/                   # Proxy key store & identity metadata (--agent-name, --owner, --allowed-tools, etc.)
 │   ├── logging/                   # Zero-allocation structured loggers
 │   ├── loop/                      # Loop detection engine v1.1 (Bi-Gram Jaccard token similarity, Velocity Limiter, Stall Detector)
@@ -346,6 +348,44 @@ The following machine-readable files are available to help AI agents understand 
 - **`llms.txt`** — structured index of all documentation pages with inline quick-reference: `https://docs.tryloopers.com/llms.txt`
 
 For local use (when docs site is not deployed), both files are in `Documentation/static/`.
+
+---
+
+## 9. Outbound Semantic DLP Gate (Capability 4)
+
+Loopers acts as a bidirectional semantic firewall by intercepting outbound LLM completion text across both non-streaming JSON response envelopes and live Server-Sent Events (SSE) streaming token flows.
+
+### Detection Engine (`internal/inspector`)
+- **PII Signatures:**
+  - RFC 5322 Emails with domain allowlist filtering (`allowed_hosts`).
+  - Credit Cards (Visa, MasterCard, Amex, Discover) with strict Luhn checksum validation.
+  - US Social Security Numbers (`\b\d{3}-\d{2}-\d{4}\b`).
+  - E.164 and NANP Phone Numbers (`(?:\+?1|\b1)?...`).
+- **Internal Infrastructure Indicators:**
+  - RFC 1918 Private IPs (`10.x`, `172.16-31.x`, `192.168.x`) and loopback (`127.0.0.1`, `localhost`).
+  - Internal host suffixes (`.internal`, `.local`, `.corp`).
+- **Secret Exfiltration:**
+  - AWS Keys, OpenAI/OpenRouter Keys, GitHub PATs, Slack Bot Tokens, JWTs, and PEM Private Keys.
+
+### Action Planes
+1. **`mask` (Default for PII):** Redacts sensitive tokens inline with `***`. For non-streaming completions, mutates the provider-specific JSON envelope (OpenAI `choices.message.content` & `tool_calls.arguments`, Anthropic `content.text`, Gemini `candidates.content.parts.text`), recalculates `Content-Length`, and sets header `X-Loopers-DLP-Redacted: true`. For SSE streaming, rewrites individual chunk data payloads in-flight.
+2. **`quarantine` (Default for Secrets):** Immediately severs the connection (HTTP 403 or error SSE frame `{"type":"dlp_quarantine"}`), attaches header `X-Loopers-DLP-Block: true`, sets a Redis lockout key (`loopers:quarantine:{keyHash}`, default 1h TTL), updates persistent agent risk score by `+30`, and rejects subsequent agent calls at the authentication gateway.
+3. **Streaming Sliding Window:** Maintains a 256-character rolling text window across incoming SSE packets to detect secret patterns fragmented across arbitrary token chunk boundaries.
+
+### Configuration (`loopers.yaml`)
+```yaml
+server:
+  dlp:
+    enabled: true
+    action: "mask"               # "mask" or "quarantine"
+    scan_secrets: true
+    scan_pii: true
+    scan_network: true
+    allowed_hosts:
+      - "example.com"
+      - "corp.internal"
+    quarantine_duration: "1h"
+```
 
 ---
 
