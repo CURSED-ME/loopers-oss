@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.16.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.15.0...v2.16.0) (2026-08-17)
+
+
+### Features
+
+* implement outbound semantic DLP gate ([8fd662d](https://github.com/CURSED-ME/loopers-oss/commit/8fd662d2946fdac31a2aaddfa864eb3a298b1134))
+* implement outbound semantic DLP gate (Capability 4) ([18e5235](https://github.com/CURSED-ME/loopers-oss/commit/18e523570f46cdf6a867a854e9a0273d2d72e31b))
+
+## [2.15.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.14.0...v2.15.0) (2026-08-16)
+
+
+### Features
+
+* implement persistent agent identity and cross-session behavioral risk scoring ([27f2b85](https://github.com/CURSED-ME/loopers-oss/commit/27f2b855fdcf4c381ed531e274b2393e0eb4fc6f))
+* implement persistent agent identity and cross-session behavioral risk scoring ([fbead44](https://github.com/CURSED-ME/loopers-oss/commit/fbead442894b74166155e80d6b46aa32c4be5400))
+
+## [2.14.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.13.0...v2.14.0) (2026-08-16)
+
+
+### Features
+
+* implement Capability 2 Tool Response Inspection ([01bcb92](https://github.com/CURSED-ME/loopers-oss/commit/01bcb92712ea6d99ee11794b19bdf3da307e1bad))
+* implement Capability 2 Tool Response Inspection ([953d47a](https://github.com/CURSED-ME/loopers-oss/commit/953d47aab9b45b12dcf31b0e4eb14096ae312bd0))
+
 ## [2.13.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.12.0...v2.13.0) (2026-08-15)
 
 
