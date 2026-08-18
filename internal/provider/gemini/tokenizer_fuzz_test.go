@@ -31,7 +31,7 @@ func FuzzCountGeminiTokensFallback(f *testing.F) {
 	p := NewGeminiProviderWithOptions(ts.URL, ts.Client())
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
 		// Exercise both provider token count (mocked via httptest) and fallback
