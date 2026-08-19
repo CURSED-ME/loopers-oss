@@ -14,7 +14,7 @@ Loopers is the open-source, bare-metal AI Firewall for the Agentic Era written i
 
 ## Prerequisites
 
-- Go 1.25+ (toolchain go1.26.6) — required for native installation
+- Go 1.26.6+ (toolchain go1.26.6) — required for native installation
 - Redis 7+ — required for all deployments (used for atomic budget reservation)
 - Docker + Docker Compose — recommended for running Redis locally
 
@@ -59,7 +59,7 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 
 ---
 
-## Setup Method 2: Native Installation (Go 1.25+)
+## Setup Method 2: Native Installation (Go 1.26.6+)
 
 ### Step 1: Install the CLI globally
 
@@ -203,7 +203,7 @@ loopers exec [--model-override string] [--model-map string] -- <command>
 
 Required environment variables:
 - `LOOPERS_PROXY_KEY` — your proxy key (`lp-xxx`)
-- `LOOPERS_PROVIDER` — upstream provider (e.g. `openai`, `anthropic`, `openrouter`). Auto-detected from executable name for `aider` (openai), `openhands` (openai), `pi` (openai), `claude` (anthropic), `codex` (openai), `opencode` (openai). Must be set explicitly for all other tools.
+- `LOOPERS_PROVIDER` — upstream provider (e.g. `openai`, `anthropic`, `openrouter`). Auto-detected from executable name for `aider` (openai), `openhands` (openai), `pi` (openai), `claude` (anthropic), `gemini` (gemini), `codex` (openai), `opencode` (openai). Must be set explicitly for all other tools.
 
 Optional flags:
 - `--model-override <model>` — force all requests to use a specific model (e.g. `google/gemma-2-9b-it:free`)
@@ -255,6 +255,7 @@ server:
   read_timeout: 30s
   write_timeout: 120s          # increase for long streaming responses
   max_payload_bytes: 2097152   # 2MB
+  shadow_mode: false           # set to true to log policy violations without blocking traffic
 
 redis:
   addr: "localhost:6379"
@@ -334,6 +335,13 @@ otel:
   endpoint: "localhost:4317"
   protocol: "grpc"            # grpc | http | stdout
   sampling_rate: 1.0
+
+zsp:
+  enabled: false              # enable ZSP & DPoP JWT validation
+  jwt_only: false             # require JWT auth for all proxy keys
+  jwks_url: "https://auth.loopers.dev/.well-known/jwks.json"
+  escalation_enabled: false   # allow human approvals via Redis Pub/Sub
+  escalation_secret: ""       # HMAC-SHA256 signature secret for approvals
 
 providers:
   openai:
@@ -518,7 +526,7 @@ Loopers maintains a cross-session behavioral risk profile anchored to the agent'
 - **Score > 90 (`permanent_block_threshold`)**: Agent is permanently blocked at the gateway (`403 Forbidden` with reason `agent_risk_blocked`).
 
 ### Built-In Preset: `zero_trust`
-Enable with `presets: ["zero_trust"]` in `loopers.yaml` or `--presets zero_trust` via CLI. Restricts high-privilege actions for agents with `risk_score > 50` or active `secret_accessed` taint flags.
+Enable with `presets: ["zero_trust"]` in `loopers.yaml` or `--presets zero_trust` via CLI. Restricts high-privilege actions for agents with `risk_score > 75` or active `secret_accessed` taint flags.
 
 ---
 

@@ -6,163 +6,362 @@
 
 ### The AI Firewall for the Agentic Era
 
-> **Stop runaway agent loops. Enforce hard spending caps. Secure tool execution. Block data exfiltration.**
+> **Stop runaway loops. Block data exfiltration. Enforce policy. No SDK required.**
 
 <p align="left">
   <img src="https://img.shields.io/badge/license-MIT-black.svg?style=for-the-badge" alt="License" />
-  <img src="https://img.shields.io/badge/go-1.25%2B-black.svg?style=for-the-badge" alt="Go Version" />
-  <img src="https://img.shields.io/badge/models-500%2B%20Supported-black.svg?style=for-the-badge" alt="Models Supported" />
-  <img src="https://img.shields.io/badge/latency-1--2ms%20P99-black.svg?style=for-the-badge" alt="Latency" />
-  <img src="https://img.shields.io/badge/budget%20leakage-0.00%25-black.svg?style=for-the-badge" alt="Zero Leakage" />
+  <img src="https://img.shields.io/badge/go-1.26.6%2B-black.svg?style=for-the-badge" alt="Go Version" />
+  <img src="https://img.shields.io/badge/models-500%2B%20Models%20%C2%B7%2015%20Providers-black.svg?style=for-the-badge" alt="Models and Providers" />
+  <img src="https://img.shields.io/badge/architecture-Fail--Closed-black.svg?style=for-the-badge" alt="Fail Closed Architecture" />
+  <img src="https://img.shields.io/badge/budget%20leakage-0%25%20Over--Charge%20by%20Design-black.svg?style=for-the-badge" alt="Zero Over-Charge Guarantee" />
+  <img src="https://img.shields.io/badge/redis-7%2B%20Required-black.svg?style=for-the-badge" alt="Redis 7+ Required" />
 </p>
 
 ---
 
-## Highlights
+## The Problem
 
-* **Runaway Loop Termination:** Instantly terminates recursive retry loops and reasoning stalls in real time using Bi-Gram Jaccard similarity.
-* **Persistent Agent Identity & Behavioral Risk:** Tracks cross-session agent history in Redis with cumulative risk scoring (0–100), automated 1-hour quarantine lockouts, and permanent threat isolation.
-* **Outbound Semantic DLP Gate:** Intercepts LLM completion responses across non-streaming and streaming SSE pipelines in real time to scrub PII (emails, Luhn-validated credit cards, SSNs, phone numbers), mask internal network indicators, and quarantine secret leaks before delivering them to agents.
-* **Tool Response Inspection & Leak Prevention:** Synchronously scans outbound tool responses to block indirect prompt injections, relative path traversals, and sensitive credential exfiltration.
-* **5-Outcome Policy Action Engine:** Evaluates policy cards to enforce five distinct actions: `allow`, `deny`, `escalate` (waits for human approval), `quarantine` (locks out keys in Redis), and `transform` (masks/redacts sensitive payload fields).
-* **Atomic Cost Governance:** Restricts spending across minute, hourly, daily, and monthly rolling windows with a 0% budget leakage guarantee.
-* **Mid-Stream SSE Cutoff:** Severs Server-Sent Event (SSE) streaming connections mid-flight the millisecond a budget ceiling is breached.
-* **Deterministic FSM Gating:** Enforces stateful tool calling paths (e.g., `UNAUTH -> AUTH -> CALL`) using declarative YAML Policy Cards.
-* **Zero-Storage Pass-Through:** Provider keys and payload data remain strictly in-memory during transit and are never saved to disk.
-* **Fail-Closed Guarantee:** System errors or database drops trigger a fail-closed response, securing your wallets and infrastructure.
-* **Graceful Self-Correction:** Returns agent-friendly JSON-RPC 2.0 error payloads on blocked tool calls (including deny/quarantine/escalation failures), allowing models to correct themselves.
+**1. Uncontrolled Cost & Runaway Loops**  
+Autonomous AI agents are expensive when running unsupervised. A single stuck retry loop, recursive reasoning stall, or cascade failure can burn hundreds of dollars in API credits within minutes. Upstream provider dashboards only give post-hoc metrics and alerts after the damage has already hit your card. Loopers intercepts traffic in real time and cuts off spending before the bill is generated.
 
+**2. Runtime Tool Poisoning & Data Exfiltration**  
+Autonomous agents ingest external web pages, parse tool responses, and execute commands. A compromised MCP server, poisoned tool response, or indirect prompt injection can turn your agent into an exfiltration vector. Outbound LLM completions frequently leak credentials, PII, or internal network IPs back to untrusted contexts. Without a runtime firewall inspecting bidirectional traffic, agents operate completely unshielded.
 
----
+**3. Lack of Deterministic Policy Governance**  
+As agent systems scale, relying on prompt instructions for safety and operational boundaries fails. Safety directives placed in system prompts can be overridden by jailbreaks or forgotten across long context windows. Loopers introduces a deterministic, stateful enforcement layer: declarative policies that quarantine, block, mutate, or escalate live requests at the network boundary.
 
-## Overview
-
-Loopers is an open-source, bare-metal AI firewall designed specifically for autonomous agents. It sits as a low-latency, stateful gateway between agent applications and LLM providers (including OpenAI, Anthropic, Gemini, Groq, Ollama, and local vLLMs), providing real-time traffic monitoring, pre-call budget governance, runaway loop termination, MCP tool response inspection, persistent agent risk scoring, and outbound semantic DLP protection.
-
-This project is built and maintained by the open-source community to establish a reliable, bare-metal firewall standard for the agentic era.
-
-### Authors
+### Origins & Authors
 
 Loopers is created and actively maintained by **[Varad Khoriya](https://github.com/CURSED-ME)** and **[Mayank Agrawal](https://github.com/Mxyank)** (part of the Loopers organization).
 
-This project started because I got hit with a surprise $10 AI API bill from a single test run by my OpenClaw agent. I know $10 might not sound like a huge deal to everyone, but as a broke dev, getting a surprise bill is never a good feeling. 
+The project was born when an autonomous test agent got stuck in a recursive loop and ran up an unexpected bill during local development. After analyzing the root cause, it became clear that major AI platforms only offer passive telemetry rather than active circuit breakers. We built Loopers to establish an open-source, bare-metal firewall standard for autonomous agent systems.
 
-I started looking into this surprise bill problem and found out that many developers and enterprises are facing the exact same issue. Right now, major providers like OpenAI and Anthropic only give you passive dashboards that show alerts and warnings after the damage has already been done. We wanted to build something that actively intercepts the requests and shuts down loops in real time *before* you get a bill.
+Have questions, suggestions, or need help integrating? Join the community on [GitHub Discussions](https://github.com/CURSED-ME/loopers-oss/discussions) or submit an issue on [GitHub Issues](https://github.com/CURSED-ME/loopers-oss/issues).
 
-If you have any issues, need assistance setting it up, or have suggestions, please reach out to us directly at our personal emails:
-* **Varad:** varadkoriya17@gmail.com
-* **Mayank:** agrawalmayank200228@gmail.com
-
-> **AI Agents & Bots:** See [AGENT_README.md](./AGENT_README.md) for dense technical schemas and machine-readable context.
+> **AI Agents & LLMs:** See [AGENT_README.md](./AGENT_README.md) for dense machine-readable context and configuration schemas.
 
 ---
 
-## Usage
+## What Loopers Is — and Is Not
 
-Loopers runs as a background proxy. Once started, you can route any agent or CLI tool through it with zero code changes.
+Loopers is a **stateful, runtime security firewall** for autonomous AI agents.  
+It is **not** an AI gateway, model router, prompt management platform, or agent orchestration framework.
 
-### Transparent Proxy Injection (One-Liner Wrapper)
-Run your agent through the `loopers exec` wrapper. Loopers automatically configures a local proxy, intercepts, and protects the tool session:
+### The Firewall Difference
+
+| Capability | AI Gateways (LiteLLM, PortKey, OpenRouter) | Loopers AI Firewall |
+|---|---|---|
+| **Primary Focus** | Traffic routing, model aggregation, latency | Security boundaries, budget enforcement, threat termination |
+| **Budget Enforcement** | Post-request tracking or passive webhook alerts | Pre-call atomic leases with 0% over-charge by design |
+| **Streaming Enforcement** | Passes stream chunks transparently | Active chunk-by-chunk SSE inspection; severs connections mid-stream |
+| **Outbound DLP Gate** | ❌ None | ✅ Real-time scanning & redaction of PII, secrets, and private IPs |
+| **Agent Behavioral Risk** | ❌ Stateless per request | ✅ Persistent cross-session risk scoring (0–100) & automated quarantine |
+| **Runaway Loop Breaker** | ❌ None | ✅ Real-time 3-engine detection (Fingerprint, Velocity, Stall) |
+| **Tool Execution FSM** | ❌ None | ✅ Stateful tool sequencing (e.g. require dry run before bash execution) |
+| **Human-in-the-Loop Escalation** | ❌ None | ✅ Suspends live HTTP requests for Redis Pub/Sub approval |
+| **Zero-Storage Pass-Through** | Often caches prompts / logs payloads | Provider keys & payloads stay strictly in-memory (never persisted) |
+| **Failure Mode** | Fail-open for maximum availability | **Fail-closed** by design (blocks traffic if state/Redis drops) |
+
+---
+
+## How It Works
+
+### Architecture Overview
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                             Agent Runtime                                │
+│       (Aider / OpenHands / Claude Code / Custom Agent / Python SDK)      │
+└────────────────────────────────────┬─────────────────────────────────────┘
+                                     │ HTTP (e.g., OPENAI_BASE_URL)
+                                     ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        Loopers Firewall (:8080)                          │
+│                                                                          │
+│  [1. Key Auth & DPoP] ──► [2. Risk Score & Quarantine Gate]              │
+│            │                                                             │
+│  [3. Pre-Call Budget Lease] ──► [4. Policy Engine & FSM Validation]      │
+│            │                                                             │
+│  [5. Multi-Engine Loop Detector] ──► [6. Upstream Provider Proxy]        │
+│            │                                                             │
+│  [7. Outbound DLP & SSE Cutoff] ──► [8. Cost Reconcile & Risk Update]    │
+│                                                                          │
+│  Admin Server (:9090): /metrics (Prometheus) | /health                   │
+│  Telemetry: OpenTelemetry Traces (OTLP gRPC/HTTP) | HMAC Webhooks        │
+└───────────────────┬──────────────────────────────────┬───────────────────┘
+                    │                                  │
+                    ▼                                  ▼
+          ┌───────────────────┐              ┌───────────────────┐
+          │     Redis 7+      │              │ Upstream Provider │
+          │ (Atomic Leases,   │              │ (OpenAI, Anthropic│
+          │  Risk Scores,     │              │  Gemini, Bedrock, │
+          │  FSM Session State│              │  Groq, Ollama...) │
+          │  Quarantine Keys) │              └───────────────────┘
+          └───────────────────┘
+```
+
+### Request Lifecycle
+
+1. **Key Authentication & DPoP Check:** The agent request arrives with a Loopers proxy key (`lp-...`). Loopers verifies the HMAC-SHA256 hash against Redis. If DPoP is configured, proof-of-possession is validated against the sender's public key.
+2. **Quarantine & Risk Profile Gate:** Checks the agent's persistent behavioral risk score. If the score exceeds the quarantine threshold (default: 75), requests are rejected with `403 Forbidden`. If permanently blocked (score > 90), traffic is dropped.
+3. **Pre-Call Atomic Budget Lease:** Loopers calculates the maximum estimated cost using model rates from `pricing.yaml` and atomically reserves this quota in Redis across minute, hourly, daily, weekly, and monthly sliding windows. If limits are reached, the call is blocked before hitting the provider.
+4. **Policy Engine & FSM Evaluation:** Evaluates Open Policy Agent (OPA) Rego rules and declarative YAML Policy Cards. Validates session state transitions (e.g., ensuring prerequisite tool calls were executed). If an `escalate` policy triggers, Loopers suspends the live HTTP connection and awaits human/admin approval via Redis Pub/Sub.
+5. **Multi-Engine Loop Detection:** Evaluates the request against session history using bi-gram Jaccard similarity, request velocity, and SimHash Hamming distance to detect stuck reasoning or recursive loops.
+6. **Upstream Request Forwarding:** Injects the actual upstream provider key (from `X-Loopers-Provider-Key` or configuration) and forwards the sanitized payload to the LLM provider. The Loopers proxy key is never sent upstream.
+7. **Outbound Semantic DLP & Mid-Stream SSE Cutoff:** As response tokens stream back, Loopers runs a sliding window DLP inspection to mask PII, redact internal IPs, or sever the connection if secrets are leaked. If a budget cap is breached mid-generation, the SSE stream is cut off immediately.
+8. **Reconciliation & Telemetry:** Reconciles the actual token usage reported by the provider against the estimated lease, releasing unspent funds back to the budget window. Records metrics to Prometheus, spans to OpenTelemetry, and updates the agent's risk profile.
+
+---
+
+## Core Capabilities
+
+* **Multi-Engine Runaway Loop Termination:** Detects and terminates repetitive reasoning and execution loops using three distinct algorithms:
+  * *Fingerprint Engine:* Bi-Gram Jaccard similarity detection for repetitive prompts.
+  * *Velocity Engine:* Sliding window requests-per-second (RPS) surge limiter.
+  * *Stall Engine:* SimHash Hamming distance analysis to catch low-diversity semantic output stalls.
+* **Persistent Agent Risk Identity:** Tracks behavioral history across sessions in Redis with cumulative risk scoring (0–100), automated time-bounded quarantines (e.g., 1 hour), taint flags (`secret_accessed`), and risk decay over time.
+* **Outbound Semantic DLP Gate:** Real-time scrubbing of PII (emails, Luhn-validated credit cards, US SSNs, phone numbers), masking of internal network addresses (RFC 1918 IPs, `.internal` hostnames), and quarantine lockouts on secret leaks (AWS, OpenAI, GitHub tokens, private keys) across both JSON and streaming SSE responses.
+* **Tool Response Sanitization & Injection Wall:** Scans outbound tool responses, normalizes Unicode, strips zero-width obfuscation characters, and blocks path traversal attempts (`../`) and indirect prompt injection patterns.
+* **5-Outcome Policy Action Engine:** Declarative OPA/Rego policy engine supporting five distinct actions:
+  * `allow`: Passes request through to the upstream provider.
+  * `deny`: Rejects the request with a structured error payload.
+  * `escalate`: Suspends live HTTP request and waits up to 60s for external human approval via Redis Pub/Sub.
+  * `quarantine`: Freezes the agent key in Redis across all endpoints for a defined lockout duration.
+  * `transform`: Mutates payload fields (e.g., redactions, parameter replacements) in-flight.
+* **Deterministic FSM Tool Sequencing:** Enforces valid state machine transitions on agent tool execution (e.g., requiring `dry_run_command` before allowing destructive `execute_bash` calls).
+* **Atomic Cost Governance:** Multi-window budget limits (minute, hourly, daily, weekly, monthly) enforced atomically with zero budget over-charge guarantee.
+* **Mid-Stream SSE Cutoff:** Actively parses and counts streaming Server-Sent Events (SSE) tokens chunk-by-chunk, severing the HTTP stream mid-flight the millisecond a budget ceiling is reached.
+* **DPoP / Zero-Trust Security Protocol (ZSP):** RFC 9449 Demonstration of Proof-of-Possession for cryptographic agent identity verification, preventing token replay attacks.
+* **Shadow Mode:** Operates the firewall in non-blocking observation mode (`server.shadow_mode: true`) to audit policies against live traffic without impacting production workflows.
+* **MCP Blast Radius Limiter:** Restricts the maximum number of distinct Model Context Protocol (MCP) servers and tools an agent session can bind to, preventing privilege escalation.
+* **Model Overrides & Header Rewriting:** Transparently rewrite models or remap target endpoints on the fly using `X-Loopers-Model-Override` and `X-Loopers-Model-Map` headers without modifying agent codebases.
+* **Offline Trace Verification (`loopers verify`):** Validates past execution trace logs against current policy cards offline, providing verifiable compliance reporting for CI/CD gates.
+* **Self-Correcting Error Payloads:** Returns structured, machine-actionable error messages on policy denials and blocks, allowing autonomous agents to understand the rejection reason and self-correct on subsequent turns.
+* **Zero-Storage In-Memory Pass-Through:** Provider keys and raw payloads remain strictly in-memory during transit and are never written to disk or persistent databases.
+
+---
+
+## Built-in Security Presets
+
+Loopers includes pre-configured security presets that can be enabled instantly via `--presets` or in `loopers.yaml`:
+
+| Preset | Target & Scope | What It Enforces |
+|---|---|---|
+| `safety` | LLM Prompts & MCP Tools | Blocks SSNs, credentials, API keys, common prompt injection signatures (`ignore previous instructions`, `dan mode`), and destructive bash commands (`rm -rf`, `sudo`, `chmod 777`, `curl`, `nc -e`). |
+| `pci` | LLM Prompts & Payloads | Enforces PCI-DSS input sanitization by blocking 16-digit credit card numbers, CVV/CVC codes, and SQL injection signatures (`UNION SELECT`, `DROP TABLE`, `OR 1=1`). |
+| `mcp_sandbox` | MCP Tool Invocations | Prevents path traversal (`../`) in filesystem arguments and enforces stateful tool chaining: requires `dry_run_command` to be executed within the last 2 steps before running `execute_bash`. |
+| `zero_trust` | Agent Identity & Risk | Denies LLM and MCP tool access to any agent with a persistent risk score above 75. Automatically escalates `send_email` tool calls to human review if the agent holds a `secret_accessed` taint flag. |
+
+Enable presets on startup:
+```bash
+loopers serve --presets safety,pci,mcp_sandbox
+```
+
+---
+
+## Quickstart
+
+### Prerequisites
+- **Go 1.26.6+** or **Docker**
+- **Redis 7+** (required for atomic state and budget governance)
+
+### Step 1: Install Loopers
 
 ```bash
-# Run Aider protected by Loopers using your proxy key
-export LOOPERS_PROXY_KEY="lp-demo"
+# Via Homebrew (macOS / Linux)
+brew install cursed-me/tap/loopers
+
+# Via Docker
+docker pull ghcr.io/cursed-me/loopers:latest
+
+# Build from Source
+git clone https://github.com/CURSED-ME/loopers-oss.git
+cd loopers-oss
+go install ./cmd/loopers
+```
+
+### Step 2: Initialize Configuration & Start Redis
+
+```bash
+# Start local Redis instance
+docker run -d --name loopers-redis -p 6379:6379 redis:7-alpine
+
+# Initialize Loopers configuration wizard (creates loopers.yaml and docker-compose.yml)
+loopers init
+
+# Run system diagnostic checks
+loopers doctor
+```
+*Note: For native installs, ensure the `pricing.yaml` file from the repository root is present in your working directory, as Loopers requires it at startup.*
+
+### Step 3: Create a Proxy Key
+
+```bash
+loopers keys create --name dev-agent --provider openai
+```
+*Note: This generates a raw proxy key (e.g. `lp-a1b2c3d4...`) and its SHA-256 hash. Save the raw key immediately.*
+
+### Step 4: Configure Budget Limits
+
+```bash
+# Set hourly and daily spending limits on the key hash
+loopers budget set <KEY_HASH> --daily 5.00 --hourly 1.00
+
+# Verify current budget allocations
+loopers budget status <KEY_HASH>
+```
+
+### Step 5: Start the Firewall
+
+```bash
+# Run in development mode
+SERVER_INSECURE_DEV=true loopers serve --presets safety
+```
+
+<details>
+<summary><b>Alternative: Development with Docker Compose (Local Dev)</b></summary>
+
+If you want to run Redis and the Loopers firewall together using Docker Compose:
+```bash
+# 1. Start Redis cache dependency
+docker-compose up -d redis
+
+# 2. Run the Loopers firewall locally
+SERVER_INSECURE_DEV=true loopers serve --presets safety
+```
+</details>
+
+> [!WARNING]
+> `SERVER_INSECURE_DEV=true` disables TLS enforcement for local testing. In production environments, configure valid TLS certificates in `loopers.yaml`.
+
+### Step 6: Route Your Agent Traffic
+
+#### Option A: Transparent CLI Wrapper (Zero Code Changes)
+```bash
+export LOOPERS_PROXY_KEY="lp-your-proxy-key"
+export OPENAI_API_KEY="sk-your-actual-provider-key"
+
+# Wrap any agent CLI tool directly. Auto-detection supports:
+# aider, openhands, pi, claude, codex, opencode, gemini.
+# Other tools require setting LOOPERS_PROVIDER explicitly.
 loopers exec -- aider
 ```
 
-### Manual Endpoint Routing
-Alternatively, configure your agent's client to point directly to the Loopers gateway:
-
+#### Option B: Base URL Redirection
+Point your agent client directly to the Loopers proxy endpoint:
 ```bash
-export OPENAI_BASE_URL="http://localhost:8080/lp-demo/openai/v1"
-export OPENAI_API_KEY="sk-proj-your-actual-api-key"
+export OPENAI_BASE_URL="http://localhost:8080/lp-your-proxy-key/openai/v1"
+export OPENAI_API_KEY="sk-your-actual-provider-key"
 
-# All calls are now routed and protected
 aider
 ```
 
-### Programmatic SDK Integration
-For custom agent loops, initialize the client wrapper directly in your scripts:
-
+#### Option C: Programmatic Python Integration
 ```python
 from loopers_client import LoopersOpenAI
 
 client = LoopersOpenAI(
     loopers_url="http://localhost:8080",
-    loopers_key="lp-demo",
-    provider_key="sk-proj-...",
+    loopers_key="lp-your-proxy-key",
+    provider_key="sk-your-actual-provider-key",
     session_budget=2.00,  # Cap session spend at $2.00
-    max_steps=15
+    max_steps=20          # Terminate if session exceeds 20 turns
 )
 
 response = client.chat.completions.create(
     model="gpt-4o",
-    messages=[{"role": "user", "content": "Execute agent task"}]
+    messages=[{"role": "user", "content": "Analyze system logs and report findings."}]
 )
+print(response.choices[0].message.content)
 ```
 
 ---
 
-## Installation
+## CLI Reference
 
-Loopers requires Go 1.25+ and a running Redis 7+ instance.
+| Command | Description |
+|---|---|
+| `loopers serve` | Starts the firewall proxy server and admin metrics listener. Accepts `--presets` and `--config`. |
+| `loopers init` | Interactive terminal UI (TUI) wizard to generate a production-ready `loopers.yaml`. |
+| `loopers doctor` | Verifies Redis connectivity, pricing configuration, policy directories, and dependencies. |
+| `loopers exec -- <cmd>` | Wraps and executes agent CLI binaries with transparent proxy injection and auto-detected providers. |
+| `loopers verify -t <trace>` | Audits historical agent execution traces offline against security policies. Supports `--format json` for CI/CD. |
+| `loopers keys create` | Provisions a new agent proxy key (`lp-...`) with associated identity metadata and provider bindings. |
+| `loopers keys list` | Lists all registered agent proxy keys, provider assignments, and active statuses. |
+| `loopers keys revoke <hash>` | Instantly revokes a proxy key, preventing all subsequent inbound agent traffic. |
+| `loopers budget set <hash>` | Sets minute, hourly, daily, weekly, or monthly spending limits for an agent key. |
+| `loopers budget status <hash>`| Displays real-time window consumption, remaining balance, and lease allocations. |
 
-### Homebrew (macOS / Linux)
-```bash
-brew install cursed-me/tap/loopers
+---
+
+## Observability & Telemetry
+
+### Prometheus Metrics
+Loopers runs an isolated admin server on `:9090` exposing Prometheus metrics at `/metrics`:
+
+| Metric Name | Type | Description |
+|---|---|---|
+| `loopers_requests_total` | Counter | Total AI requests processed partitioned by `provider`, `model`, and `status`. |
+| `loopers_budget_blocks_total` | Counter | Total requests blocked by budget governance per `provider` and `window`. |
+| `loopers_loop_blocks_total` | Counter | Total requests halted by loop detection engines (`fingerprint`, `velocity`, `stall`). |
+| `loopers_spend_usd_total` | Counter | Cumulative USD spend tracked per `provider` and `key_hash`. |
+| `loopers_dlp_redactions_total` | Counter | Total outbound LLM completions redacted by semantic DLP. |
+| `loopers_dlp_quarantines_total` | Counter | Total agent keys locked out due to secret exfiltration detection. |
+| `loopers_policy_escalations_total` | Counter | Total policy decisions suspended and escalated for human approval. |
+| `loopers_mcp_tool_calls_total` | Counter | Total MCP tool invocations tracked per `tool_name` and `status`. |
+
+*A pre-configured [Grafana Dashboard](./grafana/) is provided in the repository for turnkey deployment.*
+
+### OpenTelemetry Distributed Tracing
+Loopers exports standard OpenTelemetry spans via OTLP (gRPC/HTTP) adhering to `gen_ai.*` semantic conventions. Configure your collector in `loopers.yaml`:
+```yaml
+otel:
+  enabled: true
+  endpoint: "localhost:4317"
+  protocol: "grpc"
+  sampling_rate: 1.0
 ```
+*Note: All security enforcement actions (blocks, quarantines, escalations) are traced at 100% fidelity regardless of the configured sampling rate.*
 
-### Docker
-```bash
-docker pull ghcr.io/cursed-me/loopers:latest
+### Real-Time Webhook Alerts
+Configure HMAC-SHA256 signed webhooks to alert external incident systems on security anomalies and budget thresholds:
+```yaml
+alerting:
+  webhook_url: "https://ops.example.com/alerts"
+  webhook_secret: "env:LOOPERS_WEBHOOK_SECRET"
+  thresholds:
+    - percent: 50
+      message: "Agent budget at 50% capacity"
+    - percent: 90
+      message: "Agent budget near exhaustion — cutoff imminent"
 ```
 
 ---
 
-## Feedback & Contributions
+## Documentation Index
 
-We are in the business of Open Source Software to share our work and make an impact. We actively solicit your engagement:
+Explore our comprehensive guides and architectural documentation:
 
-* **Suggestions & Questions:** Share feedback or ask questions in our [GitHub Discussions](https://github.com/CURSED-ME/loopers-oss/discussions).
-* **Feature Requests & Bugs:** Open an issue on our [GitHub Issues](https://github.com/CURSED-ME/loopers-oss/issues) page.
-* **Contributing Code:** Please read our [Contributing Guide](./CONTRIBUTING.md) to learn how to submit pull requests, run tests, and adhere to our development standards.
-
----
-
-## Building from Source
-
-If you want to build and run Loopers locally for development:
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/CURSED-ME/loopers-oss.git && cd loopers-oss
-
-# 2. Run Redis cache dependency
-docker-compose up -d
-
-# 3. Build and install the binary
-go install ./cmd/loopers
-
-# 4. Start the server in local development mode
-SERVER_INSECURE_DEV=true loopers serve
-```
+* **Budget Governance:** [Sliding Budget Windows](./Documentation/docs/concepts/budget-windows.md) | [Per-Session Budgets](./Documentation/docs/concepts/session-budgets.md)
+* **Agent Circuit Breakers:** [Runaway Loop Detection Guide](./Documentation/docs/concepts/agent-loop-detection.md)
+* **Policy Engine & FSM:** [OPA Rego & YAML Policy Cards](./Documentation/docs/guides/policy-engine.md)
+* **Tool Sandboxing:** [Model Context Protocol (MCP) Setup](./Documentation/docs/guides/mcp-setup.md)
+* **Zero-Code Integration:** [Agent CLI Wrappers & Environments](./Documentation/docs/guides/agent-cli-integrations.md)
+* **Monitoring:** [Grafana Dashboards & Prometheus Setup](./Documentation/docs/guides/monitoring-grafana.md)
+* **CI/CD Compliance:** [Offline Trace Verification Guide](./Documentation/docs/guides/trace-verification.md)
 
 ---
 
-## Reference & Documentation Index
+## Contributing
 
-For detailed API references, system concepts, and guides, visit our dedicated documentation sites:
+We welcome contributions from the open-source community!
 
-* **Cost Limits:** [Budget Windows Guide](./Documentation/docs/concepts/budget-windows.md) | [Session Budgets Guide](./Documentation/docs/concepts/session-budgets.md)
-* **Agent Circuit Breakers:** [Loop Detection Guide](./Documentation/docs/concepts/agent-loop-detection.md)
-* **Policy Engines:** [OPA Policy Card & FSM Gating Guide](./Documentation/docs/guides/policy-engine.md)
-* **MCP Governance:** [Model Context Protocol Setup Guide](./Documentation/docs/guides/mcp-setup.md)
-* **CLI Wrapper:** [Zero-Code CLI Integration Guide](./Documentation/docs/guides/agent-cli-integrations.md)
-* **Telemetry:** [Prometheus & Grafana Monitoring Guide](./Documentation/docs/guides/monitoring-grafana.md)
-* **Offline Auditing:** [Trace Verification CLI Guide](./Documentation/docs/guides/trace-verification.md)
+* **Bug Reports & Feature Requests:** Submit an issue on [GitHub Issues](https://github.com/CURSED-ME/loopers-oss/issues).
+* **Community Discussions:** Join conversations on [GitHub Discussions](https://github.com/CURSED-ME/loopers-oss/discussions).
+* **Development Workflow:** Read our [Contributing Guide](./CONTRIBUTING.md) to learn about code standards, running test suites, and opening pull requests.
 
 ---
 
 ## License
 
-Loopers is released under the [MIT License](./LICENSE).
+Loopers is distributed under the [MIT License](./LICENSE).
