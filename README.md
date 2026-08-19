@@ -11,7 +11,7 @@
 <p align="left">
   <img src="https://img.shields.io/badge/license-MIT-black.svg?style=for-the-badge" alt="License" />
   <img src="https://img.shields.io/badge/go-1.26.6%2B-black.svg?style=for-the-badge" alt="Go Version" />
-  <img src="https://img.shields.io/badge/models-45%2B%20Models%20%C2%B7%2015%20Providers-black.svg?style=for-the-badge" alt="Models and Providers" />
+  <img src="https://img.shields.io/badge/models-500%2B%20Models%20%C2%B7%2015%20Providers-black.svg?style=for-the-badge" alt="Models and Providers" />
   <img src="https://img.shields.io/badge/architecture-Fail--Closed-black.svg?style=for-the-badge" alt="Fail Closed Architecture" />
   <img src="https://img.shields.io/badge/budget%20leakage-0%25%20Over--Charge%20by%20Design-black.svg?style=for-the-badge" alt="Zero Over-Charge Guarantee" />
   <img src="https://img.shields.io/badge/redis-7%2B%20Required-black.svg?style=for-the-badge" alt="Redis 7+ Required" />

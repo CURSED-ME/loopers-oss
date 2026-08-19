@@ -8,7 +8,7 @@
 
 ## 1. Project Goal
 
-Loopers is the bare-metal AI Firewall for the Agentic Era. It is written in Go and intercepts requests across 45+ explicitly priced AI models (15 native providers + generic OpenAI-compatible endpoints) and Model Context Protocol (MCP) servers to prevent token overspending, terminate runaway agent loops, inspect MCP tool responses for prompt injections, track persistent agent behavioral risk, and enforce outbound semantic DLP redaction.
+Loopers is the bare-metal AI Firewall for the Agentic Era. It is written in Go and intercepts requests across 500+ AI models (15 native providers + generic OpenAI-compatible endpoints) and Model Context Protocol (MCP) servers to prevent token overspending, terminate runaway agent loops, inspect MCP tool responses for prompt injections, track persistent agent behavioral risk, and enforce outbound semantic DLP redaction.
 
 ---
 
