@@ -8,7 +8,7 @@
 
 ## 1. Project Goal
 
-Loopers is the bare-metal AI Firewall for the Agentic Era. It is written in Go and intercepts requests across 500+ AI models (15 native providers + generic OpenAI endpoints) and Model Context Protocol (MCP) servers to prevent token overspending, terminate runaway agent loops, inspect MCP tool responses for prompt injections, track persistent agent behavioral risk, and enforce outbound semantic DLP redaction.
+Loopers is the bare-metal AI Firewall for the Agentic Era. It is written in Go and intercepts requests across 45+ explicitly priced AI models (15 native providers + generic OpenAI-compatible endpoints) and Model Context Protocol (MCP) servers to prevent token overspending, terminate runaway agent loops, inspect MCP tool responses for prompt injections, track persistent agent behavioral risk, and enforce outbound semantic DLP redaction.
 
 ---
 
@@ -19,16 +19,17 @@ Loopers is the bare-metal AI Firewall for the Agentic Era. It is written in Go a
 - **Local Translation Middleware (Action Canonicalization)**: Native translation layer that normalizes varied provider requests (system prompts, tool definitions, tool calls) across 15+ providers (and generic OpenAI endpoints) into a single, canonical schema for universal OPA policy evaluation.
 - **Fail-Closed Guarantee**: If Redis or the proxy fails, it must fail closed to protect the wallet.
 - **Atomic Concurrency Control**: Budget checks and rate limiting happen via Redis Lua scripts to prevent TOCTOU (time-of-check to time-of-use) race conditions under high concurrency.
-- **Cryptographic Action Receipts**: Outgoing mutated request bodies are cryptographically signed using either symmetric HMAC-SHA256 or asymmetric Ed25519 keys, injecting `X-Loopers-Signature: t=<timestamp>; sig=<hex>; type=<type>` into the headers of both the upstream requests and the downstream client responses.
+- **Cryptographic Action Receipts**: Outgoing mutated request bodies are cryptographically signed using either symmetric HMAC-SHA256 or asymmetric Ed25519 keys, injecting `X-Loopers-Signature: t=<timestamp>; sig=<hex>; type=<type>` into the headers of both the upstream requests and the downstream client responses. Requires `policy.signature.enabled: true` and either `policy.signature.secret` (HMAC) or key pair (Ed25519) configured in `loopers.yaml`.
 - **Outbound Semantic DLP Gate**: Intercepts outbound LLM completion bodies across both non-streaming JSON envelopes and SSE streaming chunks. Masking replaces sensitive PII/network tokens with `***` and recalculates Content-Length headers without breaking JSON syntax; quarantine severs the connection with HTTP 403 or error SSE events, registers 1-hour Redis TTL lockouts, and increments persistent risk score (+30).
 - **Sub-150µs ZSP Token Validation**: Ephemeral Agent Delegation JWTs and DPoP (RFC 9449) proofs are verified statelessly in under 150 microseconds.
 - **Fail-Safe Self-Correction**: When an OPA policy blocks an MCP tool call, Loopers returns a valid MCP JSON-RPC 2.0 error object at HTTP 200 (code -32001) with header `X-Loopers-Policy-Block: true`, allowing LLMs to receive the denial as tool output and self-correct instead of crashing on HTTP 403.
+- **Shadow Mode**: Set `server.shadow_mode: true` to run the firewall in observation-only mode — logs and records policy violations without blocking traffic. Useful for auditing policies against live workloads before enforcing.
 
 ---
 
 ## 3. Tech Stack & Requirements
 
-- **Language**: Go 1.25+ (toolchain go1.26.6)
+- **Language**: Go 1.26.6+ (toolchain go1.26.6)
 - **Cache/Storage**: Redis 7+
 - **Proxy Engine**: `net/http/httputil.ReverseProxy`
 - **Policy Engine**: Open Policy Agent (OPA) / Rego with dynamic YAML Policy Card transpilation
@@ -174,7 +175,7 @@ loopers doctor
 
 Required env vars:
 - `LOOPERS_PROXY_KEY` — your proxy key (`lp-xxx`)
-- `LOOPERS_PROVIDER` — upstream provider (`openai`, `anthropic`, `openrouter`, etc.). Auto-detected from executable name if omitted (supports `aider`, `openhands`, `pi`, `claude`, `codex`, `opencode`).
+- `LOOPERS_PROVIDER` — upstream provider (`openai`, `anthropic`, `openrouter`, etc.). Auto-detected from executable name if omitted (supports `aider`, `openhands`, `pi`, `claude`, `gemini`, `codex`, `opencode`).
 
 Optional flags: `--model-override <model>`, `--model-map <alias=model,...>`
 
