@@ -42,12 +42,13 @@ func screenExec() {
 				huh.NewOption("OpenAI", "openai"),
 				huh.NewOption("Anthropic", "anthropic"),
 				huh.NewOption("Google", "google"),
+				huh.NewOption("DeepSeek", "deepseek"),
 				huh.NewOption("Ollama", "ollama"),
 				huh.NewOption("OpenRouter", "openrouter"),
 			).Value(&provider),
 			huh.NewInput().Title("Model Map (Optional)").Description("e.g. gpt-4o=google/gemini-2.5-pro").Value(&modelMap),
 			huh.NewInput().Title("Model Override (Optional)").Description("Force specific model").Value(&modelOverride),
-			huh.NewInput().Title("Command to Run").Description("e.g. aider, openhands, pi, or claude").Value(&commandToRun).Validate(func(s string) error {
+			huh.NewInput().Title("Command to Run").Description("e.g. aider, openhands, pi, dsh, or claude").Value(&commandToRun).Validate(func(s string) error {
 				if strings.TrimSpace(s) == "" {
 					return fmt.Errorf("command is required")
 				}

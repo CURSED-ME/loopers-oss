@@ -242,7 +242,7 @@ export LOOPERS_PROXY_KEY="lp-your-proxy-key"
 export OPENAI_API_KEY="sk-your-actual-provider-key"
 
 # Wrap any agent CLI tool directly. Auto-detection supports:
-# aider, openhands, pi, claude, codex, opencode, gemini.
+# aider, openhands, pi, claude, codex, opencode, gemini, dsh, deepseek-harness, deepseek.
 # Other tools require setting LOOPERS_PROVIDER explicitly.
 loopers exec -- aider
 ```
