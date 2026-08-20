@@ -36,7 +36,7 @@ If you find a security problem, please do not post it publicly. That could put o
 
 **You can report security issues by:**
 1. Using private vulnerability reporting on the GitHub repository page (preferred).
-2. Sending an email to `security@tryloopers.com` (or `varadkhoriya17@gmail.com`).
+2. Sending an email to `varadkhroiya17@gmail.com`.
 
 ### What to include in your report
 * The version of Loopers you are using
