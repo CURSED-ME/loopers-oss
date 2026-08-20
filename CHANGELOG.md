@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.17.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.16.0...v2.17.0) (2026-08-20)
+
+
+### Features
+
+* add DeepSeek Harness CLI support ([c785e35](https://github.com/CURSED-ME/loopers-oss/commit/c785e35c1e8941dff749a104cbc3dd42fe6b178c))
+* add DeepSeek Harness CLI support ([719952c](https://github.com/CURSED-ME/loopers-oss/commit/719952c6cc3ff3564e2d20b2684b7b1889014027))
+
 ## [2.16.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.15.0...v2.16.0) (2026-08-17)
 
 
