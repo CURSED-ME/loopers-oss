@@ -80,9 +80,14 @@ const sidebars = {
       ],
     },
     {
-      type: 'doc',
-      id: 'security',
-      label: 'Security',
+      type: 'category',
+      label: 'Security & Governance',
+      collapsed: false,
+      items: [
+        'security/security-model',
+        'security/owasp-mapping',
+        'security/policy',
+      ],
     },
   ],
 };

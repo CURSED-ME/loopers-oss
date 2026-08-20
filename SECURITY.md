@@ -1,5 +1,8 @@
 # Security Policy
 
+## Threat Model & Security Architecture
+For an in-depth, code-grounded architectural reference of Loopers' security invariants, trust boundaries, fail-closed mechanics, and cryptographic DPoP verification, refer to the [Standalone Security & Threat Model](docs/security_model.md).
+
 ## Pass-Through Key Trust Model
 
 Loopers is architected with a **zero-storage, zero-persistence** security model to avoid the risk of stored credential leaks. This model introduces specific deployment constraints:
