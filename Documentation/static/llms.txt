@@ -17,7 +17,7 @@ Loopers is a Go binary that proxies and secures AI API calls. Requests from your
 - `REDIS_PASSWORD` — Redis password
 - `SERVER_PORT` — proxy port (default: `8080`)
 - `LOOPERS_PROXY_KEY` — used by `loopers exec` to inject proxy key into child process
-- `LOOPERS_PROVIDER` — used by `loopers exec` to specify upstream provider (e.g. `openai`, `anthropic`, `openrouter`). Auto-detected for aider, openhands, pi, claude, gemini, codex, opencode.
+- `LOOPERS_PROVIDER` — used by `loopers exec` to specify upstream provider (e.g. `openai`, `anthropic`, `openrouter`). Auto-detected for aider, openhands, pi, claude, gemini, codex, opencode, dsh, deepseek-harness, deepseek.
 
 **Core CLI commands:**
 - `loopers init` — interactively initialize Loopers AI firewall configuration
@@ -28,7 +28,7 @@ Loopers is a Go binary that proxies and secures AI API calls. Requests from your
 - `loopers keys revoke <hash>` — revokes an agent key
 - `loopers budget set <hash> [--minute] [--hourly] [--daily] [--weekly] [--monthly]` — sets atomic spending limits in USD
 - `loopers budget status <hash>` — shows real-time spend consumption vs limits
-- `loopers exec -- <command>` — wraps a CLI agent process, injecting proxy env vars; supports `--model-override` and `--model-map`. Auto-detects aider, openhands, pi, claude, gemini, codex, opencode.
+- `loopers exec -- <command>` — wraps a CLI agent process, injecting proxy env vars; supports `--model-override` and `--model-map`. Auto-detects aider, openhands, pi, claude, gemini, codex, opencode, dsh, deepseek-harness, deepseek.
 - `loopers verify --trace <path>` — audits agent execution traces offline against Policy Cards, presets (`safety`, `pci`, `mcp_sandbox`, `zero_trust`), or Rego rules.
 
 **Supported providers for `--provider` flag:**

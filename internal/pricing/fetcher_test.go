@@ -280,3 +280,45 @@ func TestStartRemoteFetcher_FetchFailure_DoesNotPanic(t *testing.T) {
 	store.StartRemoteFetcher(ctx, server.URL, 1)
 	<-ctx.Done()
 }
+
+// --- DeepSeek pricing tests ---
+
+func TestGetModelPrice_DeepSeekV4Models(t *testing.T) {
+	store, err := LoadStore("../../pricing.yaml")
+	if err != nil {
+		t.Fatalf("failed to load pricing store: %v", err)
+	}
+
+	// 1. Test deepseek-v4-flash
+	inp, out, maxTokens := store.GetModelPrice("deepseek", "deepseek-v4-flash")
+	if inp != 0.44 || out != 1.32 {
+		t.Errorf("expected deepseek-v4-flash to be 0.44/1.32, got %v/%v", inp, out)
+	}
+	if maxTokens != 8192 {
+		t.Errorf("expected default_max_output_tokens 8192, got %d", maxTokens)
+	}
+
+	// 2. Test deepseek-v4-pro
+	inp, out, _ = store.GetModelPrice("deepseek", "deepseek-v4-pro")
+	if inp != 1.32 || out != 3.96 {
+		t.Errorf("expected deepseek-v4-pro to be 1.32/3.96, got %v/%v", inp, out)
+	}
+
+	// 3. Test legacy deepseek-chat
+	inp, out, _ = store.GetModelPrice("deepseek", "deepseek-chat")
+	if inp != 0.14 || out != 0.28 {
+		t.Errorf("expected deepseek-chat to be 0.14/0.28, got %v/%v", inp, out)
+	}
+
+	// 4. Test legacy deepseek-reasoner
+	inp, out, _ = store.GetModelPrice("deepseek", "deepseek-reasoner")
+	if inp != 0.55 || out != 2.19 {
+		t.Errorf("expected deepseek-reasoner to be 0.55/2.19, got %v/%v", inp, out)
+	}
+
+	// 5. Test unknown model fallback
+	inp, out, _ = store.GetModelPrice("deepseek", "unknown-deepseek-variant")
+	if inp != 1.32 || out != 3.96 {
+		t.Errorf("expected deepseek fallback to be 1.32/3.96, got %v/%v", inp, out)
+	}
+}

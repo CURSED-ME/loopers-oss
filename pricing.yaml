@@ -139,12 +139,21 @@ providers:
   deepseek:
     default_max_output_tokens: 8192
     models:
+      "deepseek-v4-flash":
+        input_per_1m: 0.44
+        output_per_1m: 1.32
+      "deepseek-v4-pro":
+        input_per_1m: 1.32
+        output_per_1m: 3.96
       "deepseek-chat":
         input_per_1m: 0.14
         output_per_1m: 0.28
+      "deepseek-reasoner":
+        input_per_1m: 0.55
+        output_per_1m: 2.19
       "_fallback":
-        input_per_1m: 0.14
-        output_per_1m: 0.28
+        input_per_1m: 1.32
+        output_per_1m: 3.96
 
   together:
     default_max_output_tokens: 8192

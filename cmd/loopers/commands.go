@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -674,7 +675,7 @@ var initCmd = &cobra.Command{
 var execCmd = &cobra.Command{
 	Use:   "exec -- <command...>",
 	Short: "Execute an agent command with Loopers firewall environment variables and transparent proxying injected",
-	Long:  "Wrap and monitor autonomous AI agents (Aider, OpenHands, Claude, Pi, Codex, OpenCode) with transparent firewall proxying, budget caps, and DLP enforcement.",
+	Long:  "Wrap and monitor autonomous AI agents (Aider, OpenHands, Claude, Pi, Codex, OpenCode, DeepSeek Harness) with transparent firewall proxying, budget caps, and DLP enforcement.",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		proxyKey := os.Getenv("LOOPERS_PROXY_KEY")
@@ -692,7 +693,8 @@ var execCmd = &cobra.Command{
 		if provider == "" {
 			// Auto-detect provider from the CLI executable name.
 			// Note: antigravity is intentionally excluded as it does not support BYOK.
-			executable := strings.ToLower(args[0])
+			executable := strings.ToLower(filepath.Base(args[0]))
+			executable = strings.TrimSuffix(strings.TrimSuffix(strings.TrimSuffix(executable, ".exe"), ".cmd"), ".bat")
 			switch {
 			case executable == "claude":
 				provider = "anthropic"
@@ -700,6 +702,8 @@ var execCmd = &cobra.Command{
 				provider = "gemini"
 			case strings.Contains(executable, "openrouter"):
 				provider = "openrouter"
+			case executable == "dsh" || executable == "deepseek-harness" || executable == "deepseek":
+				provider = "deepseek"
 			case executable == "aider":
 				provider = "openai"
 			case executable == "openhands":
@@ -771,6 +775,8 @@ var execCmd = &cobra.Command{
 			envAPIKey = "GEMINI_API_KEY"
 		case "openrouter":
 			envAPIKey = "OPENROUTER_API_KEY"
+		case "deepseek":
+			envAPIKey = "DEEPSEEK_API_KEY"
 		default:
 			envAPIKey = "OPENAI_API_KEY"
 		}
@@ -789,6 +795,8 @@ var execCmd = &cobra.Command{
 		c.Env = append(c.Env, fmt.Sprintf("OPENAI_API_BASE=%s", localProxyURL))
 		c.Env = append(c.Env, fmt.Sprintf("ANTHROPIC_BASE_URL=%s", localProxyURL))
 		c.Env = append(c.Env, fmt.Sprintf("GEMINI_BASE_URL=%s", localProxyURL))
+		c.Env = append(c.Env, fmt.Sprintf("DEEPSEEK_BASE_URL=%s", localProxyURL))
+		c.Env = append(c.Env, fmt.Sprintf("DEEPSEEK_API_BASE=%s", localProxyURL))
 
 		// Always inject OPENROUTER_BASE_URL regardless of provider, since some CLIs
 		// (e.g. opencode) use it as an alternative base URL resolution path.
@@ -810,6 +818,7 @@ var execCmd = &cobra.Command{
 		injectIfMissing("OPENAI_API_KEY")
 		injectIfMissing("ANTHROPIC_API_KEY")
 		injectIfMissing("GEMINI_API_KEY")
+		injectIfMissing("DEEPSEEK_API_KEY")
 
 		// Inject OpenHands-specific LLM override variables.
 		// OpenHands uses LLM_BASE_URL (not OPENAI_BASE_URL) to override its endpoint.
@@ -836,10 +845,15 @@ var execCmd = &cobra.Command{
 		}
 
 		// Warn if a real (user-supplied) API key is missing for BYOK flows.
-		// Harnesses that Loopers fully manages (aider, openhands, pi) skip this
+		// Harnesses that Loopers fully manages (aider, openhands, pi, dsh) skip this
 		// warning because they are designed to work with the synthetic key above.
-		managedHarnesses := map[string]bool{"aider": true, "openhands": true, "pi": true}
-		if !managedHarnesses[strings.ToLower(args[0])] {
+		managedHarnesses := map[string]bool{
+			"aider": true, "openhands": true, "pi": true,
+			"dsh": true, "deepseek-harness": true, "deepseek": true,
+		}
+		execName := strings.ToLower(filepath.Base(args[0]))
+		execName = strings.TrimSuffix(strings.TrimSuffix(strings.TrimSuffix(execName, ".exe"), ".cmd"), ".bat")
+		if !managedHarnesses[execName] {
 			foundRealKey := false
 			for _, e := range c.Env {
 				if strings.HasPrefix(e, envAPIKey+"=") && !strings.HasPrefix(e, envAPIKey+"="+syntheticKey) {
