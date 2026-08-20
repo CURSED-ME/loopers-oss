@@ -196,7 +196,7 @@ const config = {
               { label: 'llms.txt', href: 'https://docs.tryloopers.com/llms.txt' },
               { label: 'llms-full.txt', href: 'https://docs.tryloopers.com/llms-full.txt' },
               { label: 'Contributing', to: '/docs/contributing/guide' },
-              { label: 'Security Policy', to: '/docs/security' },
+              { label: 'Security Policy', to: '/docs/security/security-model' },
             ],
           },
         ],
