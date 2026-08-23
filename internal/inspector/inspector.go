@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"golang.org/x/text/unicode/norm"
+	"github.com/CURSED-ME/loopers-oss/internal/syntactic"
 )
 
 // InjectionPatterns covers direct and indirect prompt injection signatures.
@@ -131,13 +131,9 @@ type InspectionResult struct {
 	NewBody []byte
 }
 
-// SanitizeString normalizes Unicode and strips zero-width characters.
+// SanitizeString normalizes Unicode, homoglyphs, encodings, and strips invisible characters.
 func SanitizeString(input string) string {
-	normalized := norm.NFKC.String(input)
-	for _, z := range ZeroWidthChars {
-		normalized = strings.ReplaceAll(normalized, z, "")
-	}
-	return strings.ToLower(normalized)
+	return syntactic.Normalize(input)
 }
 
 // InspectDLPContent scans a plain text string for secrets, PII, and internal network indicators.
@@ -422,53 +418,62 @@ func InspectJSONCompletion(body []byte, provider string, cfg DLPConfig) (DLPResu
 }
 
 // CheckString inspects an individual string for secrets, injections, and traversal patterns.
-// Precedence: quarantine (secrets) > transform (injection/traversal) > allow.
+// Precedence: quarantine (secrets) > transform (injection/traversal/obfuscation) > allow.
 func CheckString(s string, customPatterns []string) (string, string, string) {
 	var (
-		action   = "allow"
-		reason   string
-		mutated  = s
-		hasZeroW = false
+		action  = "allow"
+		reason  string
+		mutated = s
 	)
 
-	// 1. Check for Zero-Width Chars
-	for _, z := range ZeroWidthChars {
-		if strings.Contains(mutated, z) {
-			hasZeroW = true
-			mutated = strings.ReplaceAll(mutated, z, "")
-		}
-	}
-	if hasZeroW {
+	// Extract all candidate layers (raw, normalized, decoded base64, unescaped)
+	layers := syntactic.ExtractAllTextLayers(s)
+	obf := syntactic.AnalyzeObfuscation(s)
+
+	// 1. Check for Zero-Width / Invisible Chars or Homoglyphs
+	if obf.HasInvisibleChars {
 		action = "transform"
-		reason = "Zero-width characters detected and removed"
+		reason = "Invisible or zero-width characters detected and removed"
+		mutated, _ = syntactic.StripInvisibleCharacters(s)
+	} else if obf.HasHomoglyphs {
+		action = "transform"
+		reason = "Homoglyph obfuscation detected and normalized"
+		mutated, _ = syntactic.CanonicalizeHomoglyphs(s)
 	}
 
-	// 2. Check for Prompt Injection / Traversal
-	clean := SanitizeString(mutated)
+	// 2. Check for Prompt Injection / Traversal across all layers
 	hasInjection := false
+	for _, layer := range layers {
+		clean := syntactic.Normalize(layer)
 
-	for _, pat := range InjectionPatterns {
-		if strings.Contains(clean, strings.ToLower(pat)) {
-			hasInjection = true
+		for _, pat := range InjectionPatterns {
+			if strings.Contains(clean, strings.ToLower(pat)) {
+				hasInjection = true
+				break
+			}
+		}
+		if hasInjection {
 			break
 		}
-	}
 
-	if !hasInjection {
 		for _, pat := range customPatterns {
 			if strings.Contains(clean, strings.ToLower(pat)) {
 				hasInjection = true
 				break
 			}
 		}
-	}
+		if hasInjection {
+			break
+		}
 
-	if !hasInjection {
 		for _, pat := range TraversalPatterns {
 			if strings.Contains(clean, strings.ToLower(pat)) {
 				hasInjection = true
 				break
 			}
+		}
+		if hasInjection {
+			break
 		}
 	}
 
@@ -478,13 +483,15 @@ func CheckString(s string, customPatterns []string) (string, string, string) {
 		mutated = "[Content removed: security policy]"
 	}
 
-	// 3. Check for Secret Leakage (Highest Precedence)
-	for _, re := range SecretRegexes {
-		if re.MatchString(s) {
-			action = "quarantine"
-			reason = "Secret or credential exfiltration detected in tool response"
-			mutated = re.ReplaceAllString(mutated, "***")
-			break
+	// 3. Check for Secret Leakage across all layers (Highest Precedence)
+	for _, layer := range layers {
+		for _, re := range SecretRegexes {
+			if re.MatchString(layer) {
+				action = "quarantine"
+				reason = "Secret or credential exfiltration detected in tool response"
+				mutated = re.ReplaceAllString(s, "***")
+				return action, reason, mutated
+			}
 		}
 	}
 

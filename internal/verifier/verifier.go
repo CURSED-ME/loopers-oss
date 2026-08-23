@@ -10,6 +10,7 @@ import (
 
 	"github.com/CURSED-ME/loopers-oss/internal/policy"
 	"github.com/CURSED-ME/loopers-oss/internal/session"
+	"github.com/CURSED-ME/loopers-oss/internal/syntactic"
 )
 
 // Config configures the verification engine.
@@ -262,6 +263,18 @@ func (v *Verifier) VerifyTrace(ctx context.Context, traceFile *SessionTraceFile)
 				PromptText:    trace.Content,
 				ToolName:      trace.ToolName,
 				ToolArguments: trace.Arguments,
+			}
+			if trace.Content != "" {
+				obf := syntactic.AnalyzeObfuscation(trace.Content)
+				actionCtx.NormalizedPrompt = obf.NormalizedText
+				actionCtx.Obfuscation = policy.ObfuscationContext{
+					ObfuscationDetected: obf.ObfuscationDetected,
+					HasHomoglyphs:       obf.HasHomoglyphs,
+					HasInvisibleChars:   obf.HasInvisibleChars,
+					HasBase64Payloads:   obf.HasBase64Payloads,
+					HasEncodingAttacks:  obf.HasEncodingAttacks,
+					HasDelimPadding:     obf.HasDelimPadding,
+				}
 			}
 			if actionType == "llm_call" && trace.Content != "" {
 				actionCtx.Messages = []policy.CanonicalMessage{
