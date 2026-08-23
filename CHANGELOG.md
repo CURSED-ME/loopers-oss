@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.19.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.18.0...v2.19.0) (2026-08-23)
+
+
+### Features
+
+* **security:** implement expanded syntactic normalization and homoglyph defense ([cd73beb](https://github.com/CURSED-ME/loopers-oss/commit/cd73bebcdf4a2e613d8b8615e2aa6f6f9ccbb087))
+* **security:** implement expanded syntactic normalization and homoglyph defense (Layer 3) ([a5b9c05](https://github.com/CURSED-ME/loopers-oss/commit/a5b9c05381f526618c2cacb0ca58ce281cb2bfe3))
+
 ## [2.18.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.17.0...v2.18.0) (2026-08-23)
 
 
