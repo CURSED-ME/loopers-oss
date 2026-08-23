@@ -69,6 +69,34 @@ func TranspileToRego(card *PolicyCard) (string, error) {
 	var sb strings.Builder
 	sb.WriteString("package loopers.policy\n\n")
 
+	// Helper rules for dual matching against raw and normalized prompt text
+	sb.WriteString(`# Multi-layer prompt matching helpers (raw, normalized, and all decoded layers)
+prompt_matches_regex(action, pattern) {
+    re_match(pattern, action.prompt_text)
+}
+prompt_matches_regex(action, pattern) {
+    action.normalized_prompt != ""
+    re_match(pattern, action.normalized_prompt)
+}
+prompt_matches_regex(action, pattern) {
+    some i
+    re_match(pattern, action.obfuscation.decoded_layers[i])
+}
+
+prompt_contains(action, substr) {
+    contains(action.prompt_text, substr)
+}
+prompt_contains(action, substr) {
+    action.normalized_prompt != ""
+    contains(action.normalized_prompt, substr)
+}
+prompt_contains(action, substr) {
+    some i
+    contains(action.obfuscation.decoded_layers[i], substr)
+}
+
+`)
+
 	for _, rule := range card.Rules {
 		action := strings.ToLower(rule.Action)
 		validActions := map[string]bool{
@@ -124,7 +152,7 @@ func TranspileToRego(card *PolicyCard) (string, error) {
 			sb.WriteString("}\n\n")
 		}
 
-		// 2. Structured decision output in data.loopers.policy.decisions
+		// 2. Comprehensive 5-outcome decision rules
 		sb.WriteString(fmt.Sprintf("# Rule (structured decision): %s\ndecisions[decision] {\n", rule.Name))
 		writeRuleConditions(&sb, rule)
 
@@ -156,17 +184,14 @@ func TranspileToRego(card *PolicyCard) (string, error) {
 		default: // "allow" or "deny"
 			sb.WriteString(fmt.Sprintf("    decision := {\n        \"action\": %q,\n        \"reason\": %q,\n        \"severity\": %q,\n        \"evidence\": [%q]\n    }\n", action, escapedReason, escapedSeverity, escapedName))
 		}
-
 		sb.WriteString("}\n\n")
-	}
 
-	// Generate SessionFlow helper functions
-	for _, rule := range card.Rules {
+		// 3. Generate helper functions for SessionFlow requirements if present
 		if rule.SessionFlow != nil && len(rule.SessionFlow.Requires) > 0 {
 			cleanRuleName := strings.ReplaceAll(rule.Name, "-", "_")
 			steps := rule.SessionFlow.Steps
 			if steps <= 0 {
-				steps = 50 // Default to max history size
+				steps = 5 // Default to looking back 5 steps
 			}
 			for _, reqTool := range rule.SessionFlow.Requires {
 				sb.WriteString(fmt.Sprintf("satisfied_requires_%s(tools) {\n", cleanRuleName))
@@ -192,6 +217,21 @@ func writeRuleConditions(sb *strings.Builder, rule Rule) {
 
 	// Apply Conditions
 	for _, cond := range rule.Conditions {
+		// Special handling for prompt_text to match both raw and normalized prompt
+		if cond.Field == "prompt_text" {
+			switch strings.ToLower(cond.Op) {
+			case "contains":
+				sb.WriteString(fmt.Sprintf("    prompt_contains(input.action, %q)\n", cond.Value))
+				continue
+			case "matches_regex":
+				sb.WriteString(fmt.Sprintf("    prompt_matches_regex(input.action, %q)\n", cond.Value))
+				continue
+			case "equals":
+				sb.WriteString(fmt.Sprintf("    (input.action.prompt_text == %q ; input.action.normalized_prompt == %q)\n", cond.Value, cond.Value))
+				continue
+			}
+		}
+
 		regoField, err := mapFieldToRego(cond.Field)
 		if err != nil {
 			continue
@@ -242,6 +282,23 @@ func mapFieldToRego(field string) (string, error) {
 
 	if field == "prompt_text" {
 		return "input.action.prompt_text", nil
+	}
+	if field == "normalized_prompt" || field == "action.normalized_prompt" {
+		return "input.action.normalized_prompt", nil
+	}
+	if strings.HasPrefix(field, "action.obfuscation.") {
+		subField := field[len("action.obfuscation."):]
+		if subField == "" {
+			return "", fmt.Errorf("invalid action.obfuscation field pattern")
+		}
+		return fmt.Sprintf("input.action.obfuscation.%s", subField), nil
+	}
+	if strings.HasPrefix(field, "obfuscation.") {
+		subField := field[len("obfuscation."):]
+		if subField == "" {
+			return "", fmt.Errorf("invalid obfuscation field pattern")
+		}
+		return fmt.Sprintf("input.action.obfuscation.%s", subField), nil
 	}
 	if field == "model" {
 		return "input.action.model", nil

@@ -72,6 +72,15 @@ When `session.drift_detection.enabled` is active, Loopers defends against multi-
 - Evaluates token containment similarity ($75\%$ anchor grounding + $25\%$ immediate turn continuity) with trigram FNV-1a hashing and English stopword filtering.
 - Maps drift attributes directly into OPA/Rego (`input.session.drift.drift_detected`, `input.session.drift.drift_score`) and YAML Policy Cards (`session.drift.drift_detected == true`). Built-in preset: `safety_drift`.
 
+**Syntactic Normalization & Homoglyph Defense (Capability 6):**
+Embedded Layer 3 pipeline (`internal/syntactic`) running 5-stage de-obfuscation on all inbound prompts and tool responses:
+- TR39 Confusable Resolution: Cyrillic (`а`, `е`, `о`, `р`, `с`, `і`), Greek (`α`, `ο`, `ν`, `ρ`, `τ`), Mathematical Alphanumeric bold/italic (`𝐢𝐠𝐧𝐨𝐫𝐞`), Fullwidth (`ｉｇｎｏｒｅ`), and Enclosed runes (`ⓘⓖⓝⓞⓡⓔ`) normalized to canonical ASCII.
+- Invisible Rune Stripping: Removes 28+ zero-width spaces (`\u200B`, `\u200C`, `\u200D`, `\uFEFF`), bidi directional overrides (`\u202E`, `\u200E`), soft hyphens, and variation selectors.
+- Recursive Multi-Layer Decoding: Recursively unescapes double/triple URL percent-encoding (`%252e%252e` -> `..`), hex escapes (`\xHH`), unicode escapes (`\uHHHH`), and HTML entities (`&#105;`).
+- Multi-Layer Payload Extraction: Unpacks Base64 printable text layers to inspect embedded instructions and secret tokens without corrupting binary data.
+- Delimiter & Token Collapse: Unpacks padded token splitting (`i.g.n.o.r.e`) and leetspeak (`1gn0r3` -> `ignore`).
+- Dual Policy Matching: Exposes `input.action.normalized_prompt` and `input.action.obfuscation.*` to OPA and automatically matches prompt conditions against both raw and normalized text.
+
 ---
 
 ## Getting Started & Core

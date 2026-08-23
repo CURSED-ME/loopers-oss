@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/CURSED-ME/loopers-oss/internal/policy"
+	"github.com/CURSED-ME/loopers-oss/internal/syntactic"
 )
 
 // MapLLMRequestToContext parses provider request bodies to extract structured ActionContext.
@@ -299,6 +300,19 @@ func MapLLMRequestToContext(provider string, body []byte) (policy.ActionContext,
 	}
 
 	actionCtx.PromptText = strings.Join(prompts, "\n")
+	if actionCtx.PromptText != "" {
+		obfReport := syntactic.AnalyzeObfuscation(actionCtx.PromptText)
+		actionCtx.NormalizedPrompt = obfReport.NormalizedText
+		actionCtx.Obfuscation = policy.ObfuscationContext{
+			ObfuscationDetected: obfReport.ObfuscationDetected,
+			HasHomoglyphs:       obfReport.HasHomoglyphs,
+			HasInvisibleChars:   obfReport.HasInvisibleChars,
+			HasBase64Payloads:   obfReport.HasBase64Payloads,
+			HasEncodingAttacks:  obfReport.HasEncodingAttacks,
+			HasDelimPadding:     obfReport.HasDelimPadding,
+			DecodedLayers:       obfReport.DecodedLayers,
+		}
+	}
 	return actionCtx, nil
 }
 

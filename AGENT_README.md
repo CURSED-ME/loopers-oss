@@ -82,6 +82,7 @@ Loopers is the bare-metal AI Firewall for the Agentic Era. It is written in Go a
 │   ├── server/                    # HTTP server engine, ZSP OIDC JWT & DPoP middleware, PathAuthWrapper (/lp-xxx/), admin router (/metrics)
 │   ├── session/                   # Redis session manager (session budget, max steps, taint flags, transient session trace buffer, FSM state tracking, tool history, multi-turn drift detection & anchor storage, absolute TTL)
 │   ├── signature/                 # Asymmetric Ed25519 & HMAC inline signing package
+│   ├── syntactic/                 # Layer 3 Syntactic Normalization (TR39 homoglyph resolution, invisible rune stripping, recursive Base64/URL decoding, delimiter collapse)
 │   └── verifier/                  # Offline trace verification, sequential replay engine, and FSM trajectory simulation
 ├── pkg/
 │   └── api/                       # Shared API types (PolicyDeniedResponse, MCPJSONRPCErrorResponse)
@@ -432,6 +433,47 @@ rules:
 Enable instantly on firewall startup:
 ```bash
 loopers serve --presets safety_drift
+```
+
+---
+
+## 9. Syntactic Normalization & Obfuscation Defense (Layer 3)
+
+The Layer 3 syntactic normalizer (`internal/syntactic`) defends against adversarial prompt evasion techniques that attempt to bypass keyword and regex filters by de-obfuscating all incoming prompts and tool responses pre-LLM.
+
+### 5-Stage Transformation Pipeline
+1. **Recursive Multi-Layer Decoding:** Unescapes double/triple URL percent-encoding (`%252e%252e` -> `..`), hex escapes (`\xHH`), unicode escapes (`\uHHHH`), and HTML entities (`&#105;`).
+2. **Invisible Character Stripping:** Removes 28+ zero-width spaces (`\u200B`, `\u200C`, `\u200D`, `\uFEFF`), bidi directional overrides (`\u202E`), soft hyphens (`\u00AD`), combining marks (`\u034F`), and variation selectors.
+3. **Unicode TR39 Homoglyph Canonicalization:** Maps confusable lookalike characters (Cyrillic `а, е, о, р, с, і`, Greek `α, ο, ν, ρ, τ`, Mathematical Alphanumeric bold/italic `𝐢𝐠𝐧𝐨𝐫𝐞`, Fullwidth `ｉｇｎｏｒｅ`, Enclosed runes `ⓘⓖⓝⓞⓡⓔ`) to ASCII equivalents.
+4. **Delimiter Padding Collapse & Leetspeak Folding:** Collapses padded token splitting (e.g. `i.g.n.o.r.e`, `i_g_n_o_r_e`, `i-g-n-o-r-e`) and folds leetspeak substitutions (`1gn0r3` -> `ignore`).
+5. **Payload Layer Extraction:** `ExtractAllTextLayers()` extracts printable UTF-8 strings embedded inside Base64 blocks to enable deep policy inspection.
+
+### OPA Rego Input Schema (`input.action.obfuscation`)
+```rego
+input.action.normalized_prompt                 # string: canonical de-obfuscated prompt text
+input.action.obfuscation.obfuscation_detected  # boolean: true if any obfuscation was found
+input.action.obfuscation.has_homoglyphs        # boolean: true if confusable Unicode characters were resolved
+input.action.obfuscation.has_invisible_chars   # boolean: true if zero-width/format runes were stripped
+input.action.obfuscation.has_encoding_attacks  # boolean: true if recursive URL/Hex/Unicode encodings were decoded
+input.action.obfuscation.has_delim_padding     # boolean: true if intra-word delimiter padding was collapsed
+input.action.obfuscation.has_base64_payloads   # boolean: true if embedded Base64 blocks were unpacked
+input.action.obfuscation.decoded_layers        # array of strings: all extracted candidate text layers
+```
+
+### Declarative Policy Integration
+In declarative YAML policy cards, standard rules matching `prompt_text` (with `contains` or `matches_regex`) automatically evaluate against both raw and normalized de-obfuscated layers without duplicating rules:
+```yaml
+rules:
+  - name: block-prompt-injection
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)(ignore previous|system prompt|override|bypass)"
+    action: deny
+    severity: critical
+    reason: "Blocked: Prompt injection attempt detected (evaluated across all de-obfuscation layers)."
 ```
 
 ---

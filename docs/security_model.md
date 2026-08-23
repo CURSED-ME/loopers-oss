@@ -29,7 +29,8 @@ Loopers is a stateful, fail-closed **AI Firewall** purpose-built for autonomous 
 
 | Threat Category | Threat Description | Loopers Enforcement Mechanism | Default Action |
 |---|---|---|---|
-| **Direct & Indirect Prompt Injection** | Malicious instructions delivered via user input or third-party tool output to hijack agent intent. | Inbound prompt scanning and synchronous MCP Tool Response Inspector with zero-width character stripping and heuristic pattern matching. | `quarantine` or `transform` |
+| **Homoglyph & Syntactic Encoding Attacks** | Evasion of regex and keyword guardrails using Unicode homoglyphs (Cyrillic, Greek, Math Bold), zero-width characters, delimiter splitting (`i.g.n.o.r.e`), leetspeak, or recursive Base64/URL encoding. | Layer 3 Syntactic Normalizer (`internal/syntactic`) running 5-stage canonicalization (TR39 confusable resolution, invisible rune stripping, recursive multi-layer decoding, delimiter collapse) exposing `normalized_prompt` and dual policy matching. | `deny` or `transform` |
+| **Direct & Indirect Prompt Injection** | Malicious instructions delivered via user input or third-party tool output to hijack agent intent. | Inbound prompt scanning and synchronous MCP Tool Response Inspector with multi-layer text extraction, zero-width stripping, and pattern matching. | `quarantine` or `transform` |
 | **Multi-Turn Goal Hijacking & Context Drift** | Gradual crescent context divergence or sudden mid-session pivots designed to bypass stateless single-turn guardrails. | Immutable session anchor ($T_1$) storage in Redis with dual-anchor trigram containment similarity scoring and OPA gating. | `deny` (403 Policy Denied) |
 | **Excessive Agency & Runaway Loops** | Agents executing unintended recursive operations, cycling through identical actions, or exceeding operational boundaries. | Stateful FSM (Finite State Machine) policy gates, bi-gram similarity loop detection, and stall/velocity circuit breakers. | `deny` / `escalate` |
 | **Data Exfiltration & Sensitive Info Leakage** | Exposure of PII, internal infrastructure topology, credentials, or private keys in model completions or tool responses. | Real-time Outbound Semantic DLP Gate scanning streaming SSE and JSON completions; Luhn-validated credit card, SSN, and secret pattern matching. | `transform` (mask) or `deny` |
@@ -40,7 +41,8 @@ Loopers is a stateful, fail-closed **AI Firewall** purpose-built for autonomous 
 1. **Fail-Closed by Design:** If a downstream dependency (e.g., Redis, Open Policy Agent, or rate limiter) experiences an outage, or if a policy evaluation yields an error, Loopers rejects the request with `503 Service Unavailable`. It never fails open.
 2. **Zero Persistent Storage of Provider Secrets:** Downstream LLM provider credentials (`X-Loopers-Provider-Key`) are held in volatile memory only for the duration of the active HTTP request goroutine. Keys are never written to disk, database, or cache.
 3. **Institutional Memory via Cross-Session Risk:** Agent identity is decoupled from ephemeral session IDs. Historical risk indicators (policy blocks, quarantines, taint flags) follow the agent across sessions, preventing evasion via session resets.
-4. **Single-Tenant OSS Isolation:** Loopers Open-Source Software (OSS) operates as a dedicated single-tenant data plane node with local policy configuration and isolated keyrings, eliminating cross-tenant data co-mingling risks.
+4. **Syntactic Canonicalization Before Evaluation:** Inbound prompt content and tool responses undergo deterministic syntactic normalization (resolving confusable Unicode runes, zero-width joiners, and recursive encodings) before policy evaluation or tool response mutation.
+5. **Single-Tenant OSS Isolation:** Loopers Open-Source Software (OSS) operates as a dedicated single-tenant data plane node with local policy configuration and isolated keyrings, eliminating cross-tenant data co-mingling risks.
 
 ---
 
@@ -130,3 +132,14 @@ Implemented in [`internal/riskprofile/`](file:///c:/Users/varad/loopers-oss/inte
 * **Automated Containment Thresholds:**
   - `RiskScore > AutoQuarantineThreshold`: Triggers an automatic 1-hour quarantine in Redis.
   - `RiskScore > PermanentBlockThreshold`: Permanently rejects all requests from the agent key hash until administrative review.
+
+## 7. Syntactic Normalization & Obfuscation Defense (Layer 3)
+
+Implemented in [`internal/syntactic/`](file:///c:/Users/varad/loopers-oss/internal/syntactic/), the Layer 3 normalizer defends against adversarial evasion techniques that attempt to bypass keyword and regex filters:
+
+* **Homoglyph & Confusable Resolution:** Maps Unicode lookalike characters (Cyrillic `а, е, о, р, с, і`, Greek `α, ο, ν, ρ, τ`, Mathematical Alphanumeric bold/italic `𝐢𝐠𝐧𝐨𝐫𝐞`, Fullwidth `ｉｇｎｏｒｅ`, Enclosed runes `ⓘⓖⓝⓞⓡⓔ`) to their ASCII equivalents via Unicode TR39 tables and NFKC normalization.
+* **Invisible Character Stripping:** Removes 28+ zero-width spaces, joiners, bi-directional overrides (`\u202E`, `\u200E`), soft hyphens (`\u00AD`), combining grapheme joiners (`\u034F`), and variation selectors.
+* **Recursive Multi-Layer Decoding:** Recursively unescapes double/triple URL percent-encoding (`%252e%252e` -> `..`), hex escapes (`\xHH`, `0xHH`), unicode escapes (`\uHHHH`), and HTML entities (`&#105;`, `&quot;`).
+* **Payload Layer Extraction:** `ExtractAllTextLayers()` extracts printable UTF-8 strings embedded inside Base64 blocks and unescaped buffers, enabling deep inspection without corrupting raw binary data.
+* **Delimiter & Token Collapsing:** Unpacks padded token splitting (e.g. `i.g.n.o.r.e`, `i_g_n_o_r_e`, `i-g-n-o-r-e`) and folds leetspeak (`1gn0r3` -> `ignore`).
+* **Dual Policy Engine Matching:** Automatically passes `normalized_prompt` and `obfuscation.*` telemetry to OPA, ensuring standard policy cards catch obfuscated injections without duplicating rules.

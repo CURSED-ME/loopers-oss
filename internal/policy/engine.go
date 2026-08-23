@@ -88,16 +88,28 @@ type CanonicalToolCall struct {
 	Arguments map[string]interface{} `json:"arguments"`
 }
 
+type ObfuscationContext struct {
+	ObfuscationDetected bool     `json:"obfuscation_detected"`
+	HasHomoglyphs       bool     `json:"has_homoglyphs"`
+	HasInvisibleChars   bool     `json:"has_invisible_chars"`
+	HasBase64Payloads   bool     `json:"has_base64_payloads"`
+	HasEncodingAttacks  bool     `json:"has_encoding_attacks"`
+	HasDelimPadding     bool     `json:"has_delim_padding"`
+	DecodedLayers       []string `json:"decoded_layers,omitempty"`
+}
+
 type ActionContext struct {
-	Type          string                    `json:"type"`                     // "llm_call" | "mcp_tool_call"
-	Provider      string                    `json:"provider"`                 // "openai" | "anthropic" | "gemini" | etc.
-	Model         string                    `json:"model"`                    // e.g. "gpt-4o"
-	PromptText    string                    `json:"prompt_text"`              // Concatenated prompts
-	ToolName      string                    `json:"tool_name,omitempty"`      // if tool call
-	ToolArguments map[string]interface{}    `json:"tool_arguments,omitempty"` // if tool call
-	Messages      []CanonicalMessage        `json:"messages,omitempty"`       // Canonical messages
-	Tools         []CanonicalToolDefinition `json:"tools,omitempty"`          // Canonical tools defined
-	ToolCalls     []CanonicalToolCall       `json:"tool_calls,omitempty"`     // Canonical tool calls requested
+	Type             string                    `json:"type"`                        // "llm_call" | "mcp_tool_call"
+	Provider         string                    `json:"provider"`                    // "openai" | "anthropic" | "gemini" | etc.
+	Model            string                    `json:"model"`                       // e.g. "gpt-4o"
+	PromptText       string                    `json:"prompt_text"`                 // Concatenated raw prompts
+	NormalizedPrompt string                    `json:"normalized_prompt,omitempty"` // Canonical de-obfuscated prompt
+	Obfuscation      ObfuscationContext        `json:"obfuscation,omitempty"`       // Obfuscation detection telemetry
+	ToolName         string                    `json:"tool_name,omitempty"`         // if tool call
+	ToolArguments    map[string]interface{}    `json:"tool_arguments,omitempty"`    // if tool call
+	Messages         []CanonicalMessage        `json:"messages,omitempty"`          // Canonical messages
+	Tools            []CanonicalToolDefinition `json:"tools,omitempty"`             // Canonical tools defined
+	ToolCalls        []CanonicalToolCall       `json:"tool_calls,omitempty"`        // Canonical tool calls requested
 }
 
 type AgentRiskContext struct {

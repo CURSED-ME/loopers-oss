@@ -54,12 +54,13 @@ It is **not** an AI gateway, model router, prompt management platform, or agent 
 | **Primary Focus** | Traffic routing, model aggregation, latency | Security boundaries, budget enforcement, threat termination |
 | **Budget Enforcement** | Post-request tracking or passive webhook alerts | Pre-call atomic leases with 0% over-charge by design |
 | **Streaming Enforcement** | Passes stream chunks transparently | Active chunk-by-chunk SSE inspection; severs connections mid-stream |
-| **Outbound DLP Gate** | ❌ None | ✅ Real-time scanning & redaction of PII, secrets, and private IPs |
-| **Agent Behavioral Risk** | ❌ Stateless per request | ✅ Persistent cross-session risk scoring (0–100) & automated quarantine |
-| **Runaway Loop Breaker** | ❌ None | ✅ Real-time 3-engine detection (Fingerprint, Velocity, Stall) |
-| **Multi-Turn Drift Protection** | ❌ Stateless per request | ✅ Active containment scoring against initial session anchor ($T_1$) |
-| **Tool Execution FSM** | ❌ None | ✅ Stateful tool sequencing (e.g. require dry run before bash execution) |
-| **Human-in-the-Loop Escalation** | ❌ None | ✅ Suspends live HTTP requests for Redis Pub/Sub approval |
+| **Syntactic Normalization** | None | 5-stage de-obfuscation (Unicode homoglyphs, invisible runes, base64 decoding, token collapse) |
+| **Outbound DLP Gate** | None | Real-time scanning & redaction of PII, secrets, and private IPs |
+| **Agent Behavioral Risk** | Stateless per request | Persistent cross-session risk scoring (0–100) & automated quarantine |
+| **Runaway Loop Breaker** | None | Real-time 3-engine detection (Fingerprint, Velocity, Stall) |
+| **Multi-Turn Drift Protection** | Stateless per request | Active containment scoring against initial session anchor ($T_1$) |
+| **Tool Execution FSM** | None | Stateful tool sequencing (e.g. require dry run before bash execution) |
+| **Human-in-the-Loop Escalation** | None | Suspends live HTTP requests for Redis Pub/Sub approval |
 | **Zero-Storage Pass-Through** | Often caches prompts / logs payloads | Provider keys & payloads stay strictly in-memory (never persisted) |
 | **Failure Mode** | Fail-open for maximum availability | **Fail-closed** by design (blocks traffic if state/Redis drops) |
 
@@ -81,11 +82,13 @@ It is **not** an AI gateway, model router, prompt management platform, or agent 
 │                                                                          │
 │  [1. Key Auth & DPoP] ──► [2. Risk Score & Quarantine Gate]              │
 │            │                                                             │
-│  [3. Pre-Call Budget Lease] ──► [4. Policy Engine & FSM Validation]      │
+│  [3. Syntactic Normalizer] ──► [4. Pre-Call Budget Lease]                │
 │            │                                                             │
-│  [5. Multi-Engine Loop Detector] ──► [6. Upstream Provider Proxy]        │
+│  [5. Policy Engine & FSM] ──► [6. Multi-Engine Loop Detector]            │
 │            │                                                             │
-│  [7. Outbound DLP & SSE Cutoff] ──► [8. Cost Reconcile & Risk Update]    │
+│  [7. Upstream Provider Proxy] ──► [8. Outbound DLP & SSE Cutoff]         │
+│            │                                                             │
+│  [9. Cost Reconcile & Risk Update]                                       │
 │                                                                          │
 │  Admin Server (:9090): /metrics (Prometheus) | /health                   │
 │  Telemetry: OpenTelemetry Traces (OTLP gRPC/HTTP) | HMAC Webhooks        │
@@ -105,12 +108,13 @@ It is **not** an AI gateway, model router, prompt management platform, or agent 
 
 1. **Key Authentication & DPoP Check:** The agent request arrives with a Loopers proxy key (`lp-...`). Loopers verifies the HMAC-SHA256 hash against Redis. If DPoP is configured, proof-of-possession is validated against the sender's public key.
 2. **Quarantine & Risk Profile Gate:** Checks the agent's persistent behavioral risk score. If the score exceeds the quarantine threshold (default: 75), requests are rejected with `403 Forbidden`. If permanently blocked (score > 90), traffic is dropped.
-3. **Pre-Call Atomic Budget Lease:** Loopers calculates the maximum estimated cost using model rates from `pricing.yaml` and atomically reserves this quota in Redis across minute, hourly, daily, weekly, and monthly sliding windows. If limits are reached, the call is blocked before hitting the provider.
-4. **Policy Engine & FSM Evaluation:** Evaluates Open Policy Agent (OPA) Rego rules and declarative YAML Policy Cards. Validates session state transitions, computes multi-turn conversation drift against initial session anchor goals, and checks tool sequences. If an `escalate` policy triggers, Loopers suspends the live HTTP connection and awaits human/admin approval via Redis Pub/Sub.
-5. **Multi-Engine Loop Detection:** Evaluates the request against session history using bi-gram Jaccard similarity, request velocity, and SimHash Hamming distance to detect stuck reasoning or recursive loops.
-6. **Upstream Request Forwarding:** Injects the actual upstream provider key (from `X-Loopers-Provider-Key` or configuration) and forwards the sanitized payload to the LLM provider. The Loopers proxy key is never sent upstream.
-7. **Outbound Semantic DLP & Mid-Stream SSE Cutoff:** As response tokens stream back, Loopers runs a sliding window DLP inspection to mask PII, redact internal IPs, or sever the connection if secrets are leaked. If a budget cap is breached mid-generation, the SSE stream is cut off immediately.
-8. **Reconciliation & Telemetry:** Reconciles the actual token usage reported by the provider against the estimated lease, releasing unspent funds back to the budget window. Records metrics to Prometheus, spans to OpenTelemetry, and updates the agent's risk profile.
+3. **Layer 3 Syntactic Normalization:** Inbound prompt content is processed through the 5-stage syntactic normalization pipeline (`internal/syntactic`), resolving Unicode homoglyphs (Cyrillic, Greek, Math Bold), stripping zero-width/bidi runes, recursively decoding nested Base64/URL percent escapes, and collapsing delimited tokens (`i.g.n.o.r.e`). Both raw and canonical `normalized_prompt` are exposed to the policy engine.
+4. **Pre-Call Atomic Budget Lease:** Loopers calculates the maximum estimated cost using model rates from `pricing.yaml` and atomically reserves this quota in Redis across minute, hourly, daily, weekly, and monthly sliding windows. If limits are reached, the call is blocked before hitting the provider.
+5. **Policy Engine & FSM Evaluation:** Evaluates Open Policy Agent (OPA) Rego rules and declarative YAML Policy Cards against canonical normalized inputs. Validates session state transitions, computes multi-turn conversation drift against initial session anchor goals, and checks tool sequences. If an `escalate` policy triggers, Loopers suspends the live HTTP connection and awaits human/admin approval via Redis Pub/Sub.
+6. **Multi-Engine Loop Detection:** Evaluates the request against session history using bi-gram Jaccard similarity, request velocity, and SimHash Hamming distance to detect stuck reasoning or recursive loops.
+7. **Upstream Request Forwarding:** Injects the actual upstream provider key (from `X-Loopers-Provider-Key` or configuration) and forwards the sanitized payload to the LLM provider. The Loopers proxy key is never sent upstream.
+8. **Outbound Semantic DLP & Mid-Stream SSE Cutoff:** As response tokens stream back, Loopers runs a multi-layer DLP inspection to mask PII, redact internal IPs, or sever the connection if secrets are leaked. If a budget cap is breached mid-generation, the SSE stream is cut off immediately.
+9. **Reconciliation & Telemetry:** Reconciles the actual token usage reported by the provider against the estimated lease, releasing unspent funds back to the budget window. Records metrics to Prometheus, spans to OpenTelemetry, and updates the agent's risk profile.
 
 ---
 

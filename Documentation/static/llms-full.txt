@@ -595,6 +595,30 @@ session:
 
 ---
 
+## Syntactic Normalization & Homoglyph Defense (Layer 3)
+
+The `internal/syntactic` engine runs high-performance 5-stage de-obfuscation on all inbound prompts and outbound tool responses to protect against adversarial bypass techniques:
+
+### Normalization Pipeline
+1. **Unicode Confusable Resolution:** Resolves lookalike homoglyphs from Cyrillic (`а, е, о, р, с, і`), Greek (`α, ο, ν, ρ, τ`), Mathematical Alphanumeric bold/italic (`𝐢𝐠𝐧𝐨𝐫𝐞`), Fullwidth (`ｉｇｎｏｒｅ`), and Enclosed runes (`ⓘⓖⓝⓞⓡⓔ`) to ASCII equivalents using Unicode TR39 tables and NFKC normalization.
+2. **Invisible Character Stripping:** Removes 28+ zero-width spaces, non-joiners, joiners, bi-directional overrides (`\u202E`, `\u200E`), soft hyphens, and combining grapheme joiners.
+3. **Recursive Encoding Decoder:** Recursively unwraps double/triple URL percent-encoding (`%252e%252e` -> `..`), hex escapes (`\xHH`), unicode escapes (`\uHHHH`), and HTML entities (`&#105;`).
+4. **Multi-Layer Payload Extraction:** `ExtractAllTextLayers()` extracts printable UTF-8 strings inside Base64 blocks and unescaped buffers, enabling regex inspection without corrupting raw binary data.
+5. **Token & Delimiter Collapsing:** Collapses intra-word single-delimiter splitting (`i.g.n.o.r.e`, `i_g_n_o_r_e`, `i-g-n-o-r-e`) and leetspeak substitutions (`1gn0r3` -> `ignore`).
+
+### Policy Integration
+- **Dual Matching:** OPA Rego and YAML Policy Cards matching on `prompt_text` (`contains`, `matches_regex`) automatically evaluate against both raw prompt text and de-obfuscated `normalized_prompt`.
+- **Telemetry Fields:**
+  - `input.action.normalized_prompt`: Canonical ASCII de-obfuscated string.
+  - `input.action.obfuscation.obfuscation_detected`: Boolean flag indicating if any obfuscation technique was found.
+  - `input.action.obfuscation.has_homoglyphs`: Boolean flag.
+  - `input.action.obfuscation.has_invisible_chars`: Boolean flag.
+  - `input.action.obfuscation.has_base64_payloads`: Boolean flag.
+  - `input.action.obfuscation.has_encoding_attacks`: Boolean flag.
+  - `input.action.obfuscation.has_delim_padding`: Boolean flag.
+
+---
+
 ## Supported Providers
 
 | Provider | `--provider` value |
