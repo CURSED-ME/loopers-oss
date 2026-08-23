@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.18.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.17.0...v2.18.0) (2026-08-23)
+
+
+### Features
+
+* implement multi-turn conversation drift detection engine, safet… ([8fdb983](https://github.com/CURSED-ME/loopers-oss/commit/8fdb983835ddcdbd3d2cd09a7701dc3ca56209bd))
+* implement multi-turn conversation drift detection engine, safety_drift preset, and aligned documentation ([1d3acc7](https://github.com/CURSED-ME/loopers-oss/commit/1d3acc7deecce0d19fbf0ac3fc59c88d2cb0c940))
+
 ## [2.17.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.16.0...v2.17.0) (2026-08-20)
 
 
