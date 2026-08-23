@@ -30,6 +30,7 @@ Loopers is a stateful, fail-closed **AI Firewall** purpose-built for autonomous 
 | Threat Category | Threat Description | Loopers Enforcement Mechanism | Default Action |
 |---|---|---|---|
 | **Direct & Indirect Prompt Injection** | Malicious instructions delivered via user input or third-party tool output to hijack agent intent. | Inbound prompt scanning and synchronous MCP Tool Response Inspector with zero-width character stripping and heuristic pattern matching. | `quarantine` or `transform` |
+| **Multi-Turn Goal Hijacking & Context Drift** | Gradual crescent context divergence or sudden mid-session pivots designed to bypass stateless single-turn guardrails. | Immutable session anchor ($T_1$) storage in Redis with dual-anchor trigram containment similarity scoring and OPA gating. | `deny` (403 Policy Denied) |
 | **Excessive Agency & Runaway Loops** | Agents executing unintended recursive operations, cycling through identical actions, or exceeding operational boundaries. | Stateful FSM (Finite State Machine) policy gates, bi-gram similarity loop detection, and stall/velocity circuit breakers. | `deny` / `escalate` |
 | **Data Exfiltration & Sensitive Info Leakage** | Exposure of PII, internal infrastructure topology, credentials, or private keys in model completions or tool responses. | Real-time Outbound Semantic DLP Gate scanning streaming SSE and JSON completions; Luhn-validated credit card, SSN, and secret pattern matching. | `transform` (mask) or `deny` |
 | **Credential Hijacking & Replay** | Interception or unauthorized reuse of agent identity tokens across distributed networks. | Stateless, cryptographic DPoP (RFC 9449) proof verification with single-use JTI replay prevention. | `deny` (401 Unauthorized) |
@@ -64,6 +65,7 @@ Loopers defines four distinct security perimeters:
 │  [ Policy & Evaluation Engine ]                                             │
 │    ├── Behavioral Risk Profile Check (Score Thresholds)                     │
 │    ├── Stateful FSM Context Validation (Allowed State Transitions)          │
+│    ├── Multi-Turn Conversation Drift Context (Anchor Containment)           │
 │    ├── Deterministic Loop Detection (Bi-Gram & Velocity)                    │
 │    └── Policy Engine (OPA / Policy Cards)                                   │
 │                                                                             │

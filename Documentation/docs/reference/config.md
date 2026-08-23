@@ -150,6 +150,11 @@ providers:
 | Key | Default | Description |
 |---|---|---|
 | max_per_key | 0 | The maximum number of concurrent active sessions allowed per API key (0 = disabled) |
+| allow_client_budget_override | false | Allow clients to override session limits and budget via HTTP headers |
+| drift_detection.enabled | true | Enable multi-turn conversation drift and goal hijacking detection |
+| drift_detection.min_turns | 3 | Minimum turns in a session before evaluating drift |
+| drift_detection.anchor_similarity_threshold | 0.08 | Minimum containment similarity against initial session anchor |
+| drift_detection.drift_score_threshold | 0.45 | Drift score threshold (0.0 to 1.0) above which drift is flagged |
 
 ### loop_detection
 

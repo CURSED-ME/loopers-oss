@@ -52,14 +52,23 @@ type SessionTrace struct {
 	Arguments map[string]interface{} `json:"arguments,omitempty"` // tool arguments if tool call
 }
 
+type SessionDriftContext struct {
+	AnchorSimilarity    float64 `json:"anchor_similarity"`
+	PriorTurnSimilarity float64 `json:"prior_turn_similarity"`
+	DriftScore          float64 `json:"drift_score"`
+	DriftDetected       bool    `json:"drift_detected"`
+	TurnCount           int     `json:"turn_count"`
+}
+
 type SessionContext struct {
-	ID          string          `json:"id,omitempty"`
-	State       string          `json:"state,omitempty"`
-	Spend       float64         `json:"spend,omitempty"`
-	Steps       int             `json:"steps,omitempty"`
-	TaintFlags  map[string]bool `json:"taint_flags"`  // Persistent taint flags for the session (e.g. "secret_accessed")
-	ToolsCalled []string        `json:"tools_called"` // Recent tool call history (newest first, capped at 50)
-	Traces      []SessionTrace  `json:"traces"`       // Recent request/response traces (newest first, capped at 15)
+	ID          string              `json:"id,omitempty"`
+	State       string              `json:"state,omitempty"`
+	Spend       float64             `json:"spend,omitempty"`
+	Steps       int                 `json:"steps,omitempty"`
+	TaintFlags  map[string]bool     `json:"taint_flags"`  // Persistent taint flags for the session (e.g. "secret_accessed")
+	ToolsCalled []string            `json:"tools_called"` // Recent tool call history (newest first, capped at 50)
+	Traces      []SessionTrace      `json:"traces"`       // Recent request/response traces (newest first, capped at 15)
+	Drift       SessionDriftContext `json:"drift,omitempty"`
 }
 
 type CanonicalMessage struct {

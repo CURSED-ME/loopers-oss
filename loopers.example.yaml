@@ -41,6 +41,12 @@ session:
   # SECURITY: Allow clients to override session limits and budget via HTTP headers.
   # Should be set to false when SaaS control plane is managing policies.
   allow_client_budget_override: false
+  # Multi-Turn Conversation Drift Detection (detects goal hijacking across long dialogues)
+  drift_detection:
+    enabled: true
+    min_turns: 3                         # Minimum turns before evaluating drift
+    anchor_similarity_threshold: 0.08    # Minimum trigram overlap with initial session goal
+    drift_score_threshold: 0.45          # Drift score (0.0 - 1.0) above which drift is flagged
 
 mcp:
   # SECURITY: Allow clients to override MCP constraints via HTTP headers.

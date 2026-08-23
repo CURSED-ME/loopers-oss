@@ -371,6 +371,14 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 			actionCtx.Model = model
 		}
 
+		if earlySessionID != "" && session.IsValidID(earlySessionID) && s.sessionManager != nil && actionCtx.PromptText != "" {
+			if driftCtx, dErr := s.sessionManager.ComputeDrift(c.Request.Context(), keyHash, earlySessionID, actionCtx.PromptText, policySessionCtx.Traces); dErr == nil {
+				policySessionCtx.Drift = driftCtx
+			} else {
+				logging.Logger.Warn().Err(dErr).Str("session_id", earlySessionID).Msg("proxy_failed_to_compute_session_drift")
+			}
+		}
+
 		var agentRiskCtx policy.AgentRiskContext
 		if rp != nil {
 			agentRiskCtx = policy.AgentRiskContext{

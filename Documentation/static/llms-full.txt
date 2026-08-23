@@ -568,6 +568,33 @@ server:
 
 ---
 
+## Multi-Turn Conversation Drift Detection (Capability 5)
+
+When `session.drift_detection.enabled: true` in `loopers.yaml`, Loopers protects multi-turn agent sessions against gradual context divergence, goal hijacking, and stealth prompt injections:
+
+### Algorithmic Engine (`internal/session/drift.go`)
+1. **Session Anchoring:** Persists the initial user request ($T_1$) as an immutable reference anchor in Redis (`loopers:session:{keyHash}:{sessionID}:anchor`) via atomic `SetNX`.
+2. **Trigram & Stopword Normalization:** Filters high-frequency English stopwords and extracts 3-character n-grams hashed to `uint16` with FNV-1a to capture technical vocabulary semantics.
+3. **Containment Similarity:** Measures $\text{Containment}(A, B) = \frac{|A \cap B|}{|A|}$ to determine what fraction of the current prompt is grounded in session history without Jaccard denominator decay.
+4. **Dual-Anchor Scoring:** Evaluates weighted continuity ($75\%$ anchor grounding + $25\%$ prior turn continuity) and normalizes drift score ($0.0$ to $1.0$). If drift exceeds `drift_score_threshold` after `min_turns`, requests are denied at the gateway.
+
+### OPA & Policy Cards
+- **Rego Fields:** `input.session.drift.drift_detected`, `input.session.drift.drift_score`, `input.session.drift.anchor_similarity`, `input.session.drift.prior_similarity`, `input.session.drift.turn_count`.
+- **YAML Syntax:** `field: session.drift.drift_detected`, `op: equals`, `value: true`.
+- **Built-in Preset:** `safety_drift` (`loopers serve --presets safety_drift`).
+
+### Configuration (`loopers.yaml`)
+```yaml
+session:
+  drift_detection:
+    enabled: true
+    min_turns: 3
+    anchor_similarity_threshold: 0.08
+    drift_score_threshold: 0.45
+```
+
+---
+
 ## Supported Providers
 
 | Provider | `--provider` value |

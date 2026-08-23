@@ -87,7 +87,7 @@ func TestTranspileToRego(t *testing.T) {
 	assert.Contains(t, regoCode, "input.action.type == \"mcp_tool_call\"")
 	assert.Contains(t, regoCode, "input.action.tool_name == \"execute_bash\"")
 	assert.Contains(t, regoCode, "contains(input.action.tool_arguments.command, \"rm -rf\")")
-	assert.Contains(t, regoCode, "input.session.taint_flags.secret_accessed == \"true\"")
+	assert.Contains(t, regoCode, "input.session.taint_flags.secret_accessed == true")
 	assert.Contains(t, regoCode, "allow {")
 	assert.Contains(t, regoCode, "input.action.tool_name == \"read_file\"")
 }
@@ -202,4 +202,40 @@ func TestTranspileToRego_NewActions(t *testing.T) {
 	assert.Contains(t, regoCode, `"action": "transform"`)
 	assert.Contains(t, regoCode, `"field": "password"`)
 	assert.Contains(t, regoCode, `"operation": "mask"`)
+}
+
+func TestTranspileToRego_DriftConditions(t *testing.T) {
+	yamlData := []byte(`
+version: loopers.com/v1alpha1
+metadata:
+  name: drift-policy
+rules:
+  - name: block-context-drift
+    match:
+      type: llm_call
+    conditions:
+      - field: session.drift.drift_detected
+        op: equals
+        value: "true"
+      - field: session.drift.drift_score
+        op: greater_than
+        value: "0.75"
+      - field: session.drift.anchor_similarity
+        op: less_than
+        value: "0.20"
+    action: escalate
+    reason: "Severe conversational drift detected"
+`)
+
+	card, err := ParseYAML(yamlData)
+	assert.NoError(t, err)
+
+	regoCode, err := TranspileToRego(card)
+	assert.NoError(t, err)
+
+	assert.Contains(t, regoCode, `input.session.drift.drift_detected == true`)
+	assert.Contains(t, regoCode, `input.session.drift.drift_score > 0.75`)
+	assert.Contains(t, regoCode, `input.session.drift.anchor_similarity < 0.20`)
+	assert.Contains(t, regoCode, `"action": "escalate"`)
+	assert.Contains(t, regoCode, `Severe conversational drift detected`)
 }
