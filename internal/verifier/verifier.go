@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/policy"
+	"github.com/CURSED-ME/loopers-oss/internal/session"
 )
 
 // Config configures the verification engine.
@@ -147,6 +148,7 @@ func (v *Verifier) VerifyTrace(ctx context.Context, traceFile *SessionTraceFile)
 	for k, val := range traceFile.TaintFlags {
 		taintFlags[k] = val
 	}
+	var anchorGrams []uint16
 
 	var currentState string
 	if fsm := v.engine.FSM(); fsm != nil {
@@ -202,6 +204,55 @@ func (v *Verifier) VerifyTrace(ctx context.Context, traceFile *SessionTraceFile)
 				TaintFlags:  copiedTaint,
 				ToolsCalled: cappedTools,
 				Traces:      cappedTraces,
+			}
+
+			if actionType == "llm_call" && trace.Content != "" {
+				currGrams := session.ExtractTriGrams(trace.Content)
+				if len(anchorGrams) == 0 && len(currGrams) > 0 {
+					anchorGrams = currGrams
+				}
+				var anchorSim float64 = 1.0
+				if len(anchorGrams) > 0 && len(currGrams) > 0 {
+					anchorSim = session.ContainmentSimilarity(currGrams, anchorGrams)
+				}
+				var maxPriorSim float64 = 0.0
+				llmPromptCount := 0
+				for _, tr := range cappedTraces {
+					if tr.Type == "llm_call" || tr.Type == "" {
+						llmPromptCount++
+						if tr.Content != "" {
+							priorGrams := session.ExtractTriGrams(tr.Content)
+							if len(priorGrams) > 0 {
+								sim := session.ContainmentSimilarity(currGrams, priorGrams)
+								if sim > maxPriorSim {
+									maxPriorSim = sim
+								}
+							}
+						}
+					}
+				}
+				priorSim := maxPriorSim
+				combinedSim := (0.75 * anchorSim) + (0.25 * priorSim)
+				continuity := combinedSim / 0.35
+				if continuity > 1.0 {
+					continuity = 1.0
+				}
+				driftScore := 1.0 - continuity
+				if driftScore < 0.0 {
+					driftScore = 0.0
+				}
+				turnCount := llmPromptCount + 1
+				driftDetected := false
+				if turnCount >= 3 && (driftScore >= 0.45 || (anchorSim < 0.08 && priorSim < 0.05)) {
+					driftDetected = true
+				}
+				sessionCtx.Drift = policy.SessionDriftContext{
+					AnchorSimilarity:    anchorSim,
+					PriorTurnSimilarity: priorSim,
+					DriftScore:          driftScore,
+					DriftDetected:       driftDetected,
+					TurnCount:           turnCount,
+				}
 			}
 
 			actionCtx := policy.ActionContext{

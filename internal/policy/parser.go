@@ -204,9 +204,17 @@ func writeRuleConditions(sb *strings.Builder, rule Rule) {
 		case "matches_regex":
 			sb.WriteString(fmt.Sprintf("    re_match(%q, %s)\n", cond.Value, regoField))
 		case "equals":
-			sb.WriteString(fmt.Sprintf("    %s == %q\n", regoField, cond.Value))
+			if cond.Value == "true" || cond.Value == "false" {
+				sb.WriteString(fmt.Sprintf("    %s == %s\n", regoField, cond.Value))
+			} else {
+				sb.WriteString(fmt.Sprintf("    %s == %q\n", regoField, cond.Value))
+			}
 		case "not_equals":
-			sb.WriteString(fmt.Sprintf("    %s != %q\n", regoField, cond.Value))
+			if cond.Value == "true" || cond.Value == "false" {
+				sb.WriteString(fmt.Sprintf("    %s != %s\n", regoField, cond.Value))
+			} else {
+				sb.WriteString(fmt.Sprintf("    %s != %q\n", regoField, cond.Value))
+			}
 		case "greater_than", ">":
 			sb.WriteString(fmt.Sprintf("    %s > %s\n", regoField, cond.Value))
 		case "greater_than_or_equals", ">=":
@@ -260,6 +268,13 @@ func mapFieldToRego(field string) (string, error) {
 	}
 	if field == "session.tools_called_count" {
 		return "count(input.session.tools_called)", nil
+	}
+	if strings.HasPrefix(field, "session.drift.") {
+		subField := field[len("session.drift."):]
+		if subField == "" {
+			return "", fmt.Errorf("invalid session.drift field pattern")
+		}
+		return fmt.Sprintf("input.session.drift.%s", subField), nil
 	}
 	if strings.HasPrefix(field, "agent_risk.") {
 		subField := field[len("agent_risk."):]

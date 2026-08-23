@@ -9,15 +9,16 @@ description: Offline compliance and regression auditing of AI agent execution tr
 
 Loopers provides an offline compliance verification CLI (`loopers verify`) designed for **shift-left governance**, **CI/CD regression gates**, and **post-mortem incident analysis**. 
 
-While the Loopers proxy functions as a real-time Policy Enforcement Point (PEP) during live traffic, `loopers verify` allows developers and security teams to deterministically audit historical execution traces (`.json`) against [Declarative YAML Policy Cards](./policy-engine.md#method-a-declarative-yaml-policies--presets), built-in security presets (`safety`, `pci`, `mcp_sandbox`), or custom Open Policy Agent (OPA/Rego) rules without needing a running proxy server or active Redis instance.
+While the Loopers proxy functions as a real-time Policy Enforcement Point (PEP) during live traffic, `loopers verify` allows developers and security teams to deterministically audit historical execution traces (`.json`) against [Declarative YAML Policy Cards](./policy-engine.md#method-a-declarative-yaml-policies--presets), built-in security presets (`safety`, `safety_drift`, `pci`, `mcp_sandbox`, `zero_trust`), or custom Open Policy Agent (OPA/Rego) rules without needing a running proxy server or active Redis instance.
 
 ---
 
 ## Key Use Cases
 
 1. **Automated CI/CD Quality Gates:** Audit agent evaluation runs in GitHub Actions, GitLab CI, or local test suites before deploying prompt or tool changes to production.
-2. **Deterministic FSM Path Sequence Gating:** Prove that multi-step constraints (e.g. `execute_bash` must be preceded by `dry_run_command`) were never violated throughout the agent's trajectory.
-3. **Zero-Storage Compliance Auditing:** Audit exported session logs offline while preserving Loopers' lightweight Zero-Storage model on disk.
+2. **Multi-Turn Goal Drift Auditing:** Detect gradual or sudden goal hijacking in multi-turn agent conversation traces.
+3. **Deterministic FSM Path Sequence Gating:** Prove that multi-step constraints (e.g. `execute_bash` must be preceded by `dry_run_command`) were never violated throughout the agent's trajectory.
+4. **Zero-Storage Compliance Auditing:** Audit exported session logs offline while preserving Loopers' lightweight Zero-Storage model on disk.
 
 ---
 
@@ -34,7 +35,7 @@ loopers verify --trace <path-to-trace.json> [flags]
 | `--trace` | `-t` | string | `""` | **Required.** Path to the session trace JSON file to audit. |
 | `--policy-file` | `-f` | string | `""` | Path to declarative YAML Policy Card file (e.g. `./policies.yaml`). |
 | `--policy-dir` | `-d` | string | `""` | Directory containing custom Rego (`.rego`) policy files. |
-| `--presets` | `-p` | string slice | `[]` | Comma-separated list of built-in presets (`safety`, `pci`, `mcp_sandbox`). |
+| `--presets` | `-p` | string slice | `[]` | Comma-separated list of built-in presets (`safety`, `safety_drift`, `pci`, `mcp_sandbox`, `zero_trust`). |
 | `--default-action` | | string | `"allow"` | Default decision when no policy rule matches (`allow` or `deny`). |
 | `--format` | | string | `"pretty"` | Output format: `"pretty"` (formatted terminal report) or `"json"`. |
 | `--fail-on-violation` | | bool | `true` | Exit with non-zero status code (`1`) if any policy violation is detected. |

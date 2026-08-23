@@ -29,7 +29,7 @@ Loopers is a Go binary that proxies and secures AI API calls. Requests from your
 - `loopers budget set <hash> [--minute] [--hourly] [--daily] [--weekly] [--monthly]` — sets atomic spending limits in USD
 - `loopers budget status <hash>` — shows real-time spend consumption vs limits
 - `loopers exec -- <command>` — wraps a CLI agent process, injecting proxy env vars; supports `--model-override` and `--model-map`. Auto-detects aider, openhands, pi, claude, gemini, codex, opencode, dsh, deepseek-harness, deepseek.
-- `loopers verify --trace <path>` — audits agent execution traces offline against Policy Cards, presets (`safety`, `pci`, `mcp_sandbox`, `zero_trust`), or Rego rules.
+- `loopers verify --trace <path>` — audits agent execution traces offline against Policy Cards, presets (`safety`, `safety_drift`, `pci`, `mcp_sandbox`, `zero_trust`), or Rego rules.
 
 **Supported providers for `--provider` flag:**
 `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`, `ollama`, `fireworks`, `xai`, `vllm`, `openrouter`
@@ -44,7 +44,7 @@ All custom policy files must use `package loopers.policy` and define rules evalu
 
 *Precedence Resolution:* `deny (5) > quarantine (4) > escalate (3) > transform (2) > allow (1)`. Severity (`critical > warn > info`) resolves ties. Multiple transform rules accumulate field mutations.
 
-Define these security rules in Rego or a single YAML Policy Card (`policy_file: "./policies.yaml"`), or load presets (`presets: ["safety", "pci", "mcp_sandbox", "zero_trust"]`). All requests across 15+ providers (and generic OpenAI endpoints) are mapped to a unified canonical schema before evaluation. All formats support regular expressions, Deterministic FSM Gating (Trajectory Risk Modeling via `session.state` and transition triggers), Persistent Agent Risk Profiles (`input.agent_risk`), and hot-reloads.
+Define these security rules in Rego or a single YAML Policy Card (`policy_file: "./policies.yaml"`), or load presets (`presets: ["safety", "safety_drift", "pci", "mcp_sandbox", "zero_trust"]`). All requests across 15+ providers (and generic OpenAI endpoints) are mapped to a unified canonical schema before evaluation. All formats support regular expressions, Deterministic FSM Gating (Trajectory Risk Modeling via `session.state` and transition triggers), Persistent Agent Risk Profiles (`input.agent_risk`), Multi-Turn Conversation Drift Context (`input.session.drift`), and hot-reloads.
 
 **MCP Response Inspection (Indirect Prompt Injection Wall):**
 If `mcp.inspector.enabled` is set to true in `loopers.yaml`, Loopers synchronously intercepts outbound `tools/call` response payloads. It normalizes text (stripping zero-width characters) and performs pattern scanning:
@@ -65,6 +65,12 @@ When `server.dlp.enabled` is set to true in `loopers.yaml`, Loopers scans outbou
   - `mask`: Rewrites sensitive tokens to `***` in-place inside provider completion JSON (OpenAI, Anthropic, Gemini, OpenRouter), recalculates `Content-Length`, and sets `X-Loopers-DLP-Redacted: true`.
   - `quarantine`: Severs completion connection with HTTP 403 or error SSE frame, sets `X-Loopers-DLP-Block: true`, sets 1-hour Redis lockout (`loopers:quarantine:{keyHash}`), increments persistent risk score (+30), and rejects subsequent calls at gateway auth layer.
   - Streaming SSE Sliding Window: 256-character rolling text window catches secret patterns split across chunk boundaries.
+
+**Multi-Turn Conversation Drift Detection (Capability 5):**
+When `session.drift_detection.enabled` is active, Loopers defends against multi-turn goal hijacking and gradual crescent context divergence across conversational dialogues:
+- Persists initial turn ($T_1$) as the immutable session anchor in Redis (`loopers:session:{keyHash}:{sessionID}:anchor`).
+- Evaluates token containment similarity ($75\%$ anchor grounding + $25\%$ immediate turn continuity) with trigram FNV-1a hashing and English stopword filtering.
+- Maps drift attributes directly into OPA/Rego (`input.session.drift.drift_detected`, `input.session.drift.drift_score`) and YAML Policy Cards (`session.drift.drift_detected == true`). Built-in preset: `safety_drift`.
 
 ---
 

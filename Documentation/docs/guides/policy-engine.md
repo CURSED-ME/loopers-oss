@@ -40,7 +40,7 @@ policy:
   enabled: true
   policy_file: "./policies.yaml" # Path to declarative YAML Policy Card
   policy_dir: "./policies"       # Local directory containing custom Rego (.rego) files
-  presets: []                    # Safety presets to enable (safety|pci|mcp_sandbox)
+  presets: []                    # Safety presets to enable (safety|safety_drift|pci|mcp_sandbox|zero_trust)
   default_action: "deny"
 ```
 
@@ -49,7 +49,7 @@ policy:
 | `enabled` | `false` | Enable or disable the policy engine |
 | `policy_file` | `""` | Path to the declarative YAML Policy Card file |
 | `policy_dir` | `"./policies"` | Local directory containing custom Rego (.rego) files |
-| `presets` | `[]` | List of safety presets to enable (`"safety"`, `"pci"`, `"mcp_sandbox"`) |
+| `presets` | `[]` | List of safety presets to enable (`"safety"`, `"safety_drift"`, `"pci"`, `"mcp_sandbox"`, `"zero_trust"`) |
 | `default_action` | `"deny"` | Default decision when no rule matches (`"allow"` or `"deny"`) |
 
 ---
@@ -157,10 +157,20 @@ Mitigates credit card leaks, security codes exfiltration, and database queries m
 * **CVV Verification:** Blocks CVV verification codes matching `(?i)\b(cvv|cvc|cid)\b\s*[:=]?\s*\b\d{3,4}\b`.
 * **SQL Injection Gating:** Blocks database injection signatures (e.g. `UNION SELECT`, `DROP TABLE`, `INSERT INTO`).
 
-### 3. `mcp_sandbox` (MCP Blast Radius Prevention)
+### 3. `safety_drift` (Multi-Turn Goal Drift Protection)
+Defends against gradual crescent context divergence and sudden goal hijacking across extended dialogues.
+* **Goal Anchoring:** Evaluates each turn's prompt against the initial session anchor ($T_1$).
+* **Proactive Interception:** Blocks prompts locally with HTTP 403 when the weighted containment drift score exceeds the security threshold.
+
+### 4. `mcp_sandbox` (MCP Blast Radius Prevention)
 Limits file system traversal and enforces execution sequences.
 * **Path Traversal Blocking:** Blocks MCP tool call arguments (e.g., `path`, `file`) containing parent directory traversal paths (`../` or `..\`).
 * **FSM Sequence Gating:** Restricts `execute_bash` tool calls unless preceded by a `dry_run_command` in the session history within the last 2 steps.
+
+### 5. `zero_trust` (Agent Identity & Risk Management)
+Enforces behavioral risk score limits and taint-flag gating.
+* **Elevated Risk Gate:** Denies requests from agents with a cumulative risk score above 75.
+* **Taint Flag Escalation:** Automatically escalates privileged operations (such as `send_email`) to human review if the agent holds a `secret_accessed` taint flag.
 
 ---
 
@@ -171,7 +181,7 @@ You can enable presets either via command-line flags or through your configurati
 #### A. CLI Flag (Recommended for Quick Dev)
 Pass a comma-separated list of preset names via the `--presets` flag on server startup:
 ```bash
-loopers serve --presets safety,mcp_sandbox
+loopers serve --presets safety,safety_drift,mcp_sandbox
 ```
 *Note: Specifying `--presets` implicitly enables the policy engine (`policy.enabled = true`).*
 
@@ -301,12 +311,19 @@ The input object passed to the policy engine contains the following structure:
       "read_file",
       "read_secret",
       "initialize"
-    ]
+    ],
+    "drift": {
+      "drift_detected": false,
+      "drift_score": 0.12,
+      "anchor_similarity": 0.85,
+      "prior_similarity": 0.90,
+      "turn_count": 5
+    }
   }
 }
 ```
 
-The `agent` block is populated from key metadata. The `session` block carries historical state including `taint_flags` and `tools_called` (newest first) for cross-call evaluation.
+The `agent` block is populated from key metadata. The `session` block carries historical state including `taint_flags`, `tools_called` (newest first), and `drift` context for multi-turn cross-call evaluation.
 
 ---
 

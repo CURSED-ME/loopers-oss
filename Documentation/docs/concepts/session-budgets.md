@@ -48,6 +48,15 @@ Modern LLMs and agents rarely repeat the *exact* same text when they get stuck i
 
 SimHash uses 3-byte trigrams to generate a 64-bit signature where *similar* JSON bodies have a very small Hamming distance. By configuring the `max_distance` threshold (default is 3 bits), Loopers accurately catches polymorphic and mutating agent loops while still ignoring completely different prompts.
 
+## Multi-Turn Conversation Drift Detection
+
+While SimHash loop detection catches rapid repeating prompts, **Multi-Turn Drift Detection** defends against gradual crescent context divergence or sudden mid-dialogue prompt injection pivots across extended conversations.
+
+When a session begins, Loopers persists the first turn ($T_1$) as the **Session Anchor** in Redis. As the dialogue continues:
+- Every incoming user prompt is analyzed using character trigram containment against both the initial Session Anchor ($75\%$ weight) and the immediate prior turn ($25\%$ weight).
+- If the calculated `DriftScore` exceeds the threshold (default `0.45`) after minimum turns (default `3`), Loopers blocks the request locally with `403 Forbidden` (`code: policy_denied`) before token consumption or upstream LLM execution.
+- Configurable via `session.drift_detection` in `loopers.yaml` or out-of-the-box via preset `safety_drift`.
+
 ## Using the Python SDK
 
 You can configure session limits directly in your code using our SDK:

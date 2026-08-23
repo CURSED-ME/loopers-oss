@@ -80,7 +80,7 @@ Loopers is the bare-metal AI Firewall for the Agentic Era. It is written in Go a
 │   ├── ratelimit/                 # Per-key sliding window rate limiter (atomic Lua)
 │   ├── riskprofile/               # Persistent cross-session agent behavioral risk engine (0-100 scoring, auto-quarantine, permanent block, lazy decay)
 │   ├── server/                    # HTTP server engine, ZSP OIDC JWT & DPoP middleware, PathAuthWrapper (/lp-xxx/), admin router (/metrics)
-│   ├── session/                   # Redis session manager (session budget, max steps, taint flags, transient session trace buffer, FSM state tracking, tool history, absolute TTL)
+│   ├── session/                   # Redis session manager (session budget, max steps, taint flags, transient session trace buffer, FSM state tracking, tool history, multi-turn drift detection & anchor storage, absolute TTL)
 │   ├── signature/                 # Asymmetric Ed25519 & HMAC inline signing package
 │   └── verifier/                  # Offline trace verification, sequential replay engine, and FSM trajectory simulation
 ├── pkg/
@@ -386,6 +386,52 @@ server:
       - "example.com"
       - "corp.internal"
     quarantine_duration: "1h"
+```
+
+---
+
+## 10. Multi-Turn Conversation Drift Detection & Goal Hijacking Protection (Capability 5)
+
+Loopers defends autonomous agent sessions against multi-turn goal hijacking, progressive topic subversion, and sudden prompt injection pivots across long conversational dialogues.
+
+### Mathematical & Algorithmic Engine (`internal/session/drift.go`)
+- **Session Anchor ($T_1$):** Atomically persisted in Redis via `SetNX` on the first user prompt at `loopers:session:{keyHash}:{sessionID}:anchor`.
+- **Trigram & Stopword Normalization:** Cleans prose, filters top English stopwords, and extracts 3-character character n-grams folded with FNV-1a hashing to `uint16`.
+- **Containment Similarity Metric:**
+  $$\text{Containment}(A, B) = \frac{|A \cap B|}{|A|}$$
+  Evaluates what proportion of the current turn's active vocabulary ($A$) is grounded in the session history ($B$), eliminating false positive Jaccard denominator decay across long dialogues.
+- **Dual-Anchor Weighted Continuity:**
+  $$\text{Continuity} = \frac{(0.75 \times \text{AnchorSim}) + (0.25 \times \text{PriorTurnSim})}{0.35}$$
+  $$\text{DriftScore} = 1.0 - \text{Continuity}$$
+
+### OPA Rego Input Schema (`input.session.drift`)
+```rego
+input.session.drift.drift_detected       # boolean: true if DriftScore >= threshold and TurnCount >= min_turns
+input.session.drift.drift_score          # float: normalized drift score (0.0 = identical, 1.0 = total divergence)
+input.session.drift.anchor_similarity    # float: similarity score against initial turn T1
+input.session.drift.prior_similarity     # float: similarity score against immediate previous turn
+input.session.drift.turn_count           # integer: count of user turns evaluated in this session
+```
+
+### Declarative YAML Policy Card Syntax
+```yaml
+rules:
+  - name: block-multi-turn-goal-hijack
+    match:
+      type: llm_call
+    conditions:
+      - field: session.drift.drift_detected
+        op: equals
+        value: true
+    action: deny
+    severity: critical
+    reason: "Blocked: Multi-turn goal hijacking detected. Prompt context has diverged significantly from initial session objective."
+```
+
+### Built-in Preset: `safety_drift`
+Enable instantly on firewall startup:
+```bash
+loopers serve --presets safety_drift
 ```
 
 ---

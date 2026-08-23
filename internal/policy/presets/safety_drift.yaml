@@ -1,0 +1,14 @@
+version: loopers.com/v1alpha1
+metadata:
+  name: safety-drift-preset
+rules:
+  - name: block-context-hijacking
+    description: Detect and block significant multi-turn semantic drift away from session anchor
+    match:
+      type: llm_call
+    conditions:
+      - field: session.drift.drift_detected
+        op: equals
+        value: "true"
+    action: deny
+    reason: "Blocked: Multi-turn goal hijacking detected. Prompt context has diverged significantly from initial session objective."

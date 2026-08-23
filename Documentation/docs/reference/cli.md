@@ -208,13 +208,13 @@ Audits and replays recorded execution traces (`.json`) against declarative YAML 
 | `--trace` | `-t` | string | `""` | **Required.** Path to session trace JSON file to verify |
 | `--policy-file` | `-f` | string | `""` | Path to declarative YAML Policy Card (e.g., `policies.yaml`) |
 | `--policy-dir` | `-d` | string | `""` | Path to directory containing custom Rego (`.rego`) policy files |
-| `--presets` | `-p` | string slice | `[]` | Comma-separated list of built-in security presets (`safety`, `pci`, `mcp_sandbox`) |
+| `--presets` | `-p` | string slice | `[]` | Comma-separated list of built-in security presets (`safety`, `safety_drift`, `pci`, `mcp_sandbox`, `zero_trust`) |
 | `--default-action` | | string | `"allow"` | Default decision when no policy rule matches (`allow` or `deny`) |
 | `--format` | | string | `"pretty"` | Output format: `"pretty"` (terminal table) or `"json"` |
 | `--fail-on-violation` | | bool | `true` | Exit with non-zero exit code (`1`) on detected policy violations |
 
 **Example:**
 ```bash
-loopers verify --trace ./traces/session.json --presets safety,mcp_sandbox
+loopers verify --trace ./traces/session.json --presets safety_drift,mcp_sandbox
 ```
 

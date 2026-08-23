@@ -57,6 +57,7 @@ It is **not** an AI gateway, model router, prompt management platform, or agent 
 | **Outbound DLP Gate** | ❌ None | ✅ Real-time scanning & redaction of PII, secrets, and private IPs |
 | **Agent Behavioral Risk** | ❌ Stateless per request | ✅ Persistent cross-session risk scoring (0–100) & automated quarantine |
 | **Runaway Loop Breaker** | ❌ None | ✅ Real-time 3-engine detection (Fingerprint, Velocity, Stall) |
+| **Multi-Turn Drift Protection** | ❌ Stateless per request | ✅ Active containment scoring against initial session anchor ($T_1$) |
 | **Tool Execution FSM** | ❌ None | ✅ Stateful tool sequencing (e.g. require dry run before bash execution) |
 | **Human-in-the-Loop Escalation** | ❌ None | ✅ Suspends live HTTP requests for Redis Pub/Sub approval |
 | **Zero-Storage Pass-Through** | Often caches prompts / logs payloads | Provider keys & payloads stay strictly in-memory (never persisted) |
@@ -105,7 +106,7 @@ It is **not** an AI gateway, model router, prompt management platform, or agent 
 1. **Key Authentication & DPoP Check:** The agent request arrives with a Loopers proxy key (`lp-...`). Loopers verifies the HMAC-SHA256 hash against Redis. If DPoP is configured, proof-of-possession is validated against the sender's public key.
 2. **Quarantine & Risk Profile Gate:** Checks the agent's persistent behavioral risk score. If the score exceeds the quarantine threshold (default: 75), requests are rejected with `403 Forbidden`. If permanently blocked (score > 90), traffic is dropped.
 3. **Pre-Call Atomic Budget Lease:** Loopers calculates the maximum estimated cost using model rates from `pricing.yaml` and atomically reserves this quota in Redis across minute, hourly, daily, weekly, and monthly sliding windows. If limits are reached, the call is blocked before hitting the provider.
-4. **Policy Engine & FSM Evaluation:** Evaluates Open Policy Agent (OPA) Rego rules and declarative YAML Policy Cards. Validates session state transitions (e.g., ensuring prerequisite tool calls were executed). If an `escalate` policy triggers, Loopers suspends the live HTTP connection and awaits human/admin approval via Redis Pub/Sub.
+4. **Policy Engine & FSM Evaluation:** Evaluates Open Policy Agent (OPA) Rego rules and declarative YAML Policy Cards. Validates session state transitions, computes multi-turn conversation drift against initial session anchor goals, and checks tool sequences. If an `escalate` policy triggers, Loopers suspends the live HTTP connection and awaits human/admin approval via Redis Pub/Sub.
 5. **Multi-Engine Loop Detection:** Evaluates the request against session history using bi-gram Jaccard similarity, request velocity, and SimHash Hamming distance to detect stuck reasoning or recursive loops.
 6. **Upstream Request Forwarding:** Injects the actual upstream provider key (from `X-Loopers-Provider-Key` or configuration) and forwards the sanitized payload to the LLM provider. The Loopers proxy key is never sent upstream.
 7. **Outbound Semantic DLP & Mid-Stream SSE Cutoff:** As response tokens stream back, Loopers runs a sliding window DLP inspection to mask PII, redact internal IPs, or sever the connection if secrets are leaked. If a budget cap is breached mid-generation, the SSE stream is cut off immediately.
@@ -119,6 +120,7 @@ It is **not** an AI gateway, model router, prompt management platform, or agent 
   * *Fingerprint Engine:* Bi-Gram Jaccard similarity detection for repetitive prompts.
   * *Velocity Engine:* Sliding window requests-per-second (RPS) surge limiter.
   * *Stall Engine:* SimHash Hamming distance analysis to catch low-diversity semantic output stalls.
+* **Multi-Turn Conversation Drift Detection & Goal Hijacking Protection:** Defends against gradual crescent context divergence and sudden prompt injection goal hijacks across multi-turn sessions. Persists an immutable session anchor ($T_1$) in Redis and calculates weighted containment similarity ($75\%$ anchor grounding + $25\%$ immediate turn continuity) using trigram FNV-1a hashing and English stopword normalization. Proactively terminates diverged requests locally before token consumption.
 * **Persistent Agent Risk Identity:** Tracks behavioral history across sessions in Redis with cumulative risk scoring (0–100), automated time-bounded quarantines (e.g., 1 hour), taint flags (`secret_accessed`), and risk decay over time.
 * **Outbound Semantic DLP Gate:** Real-time scrubbing of PII (emails, Luhn-validated credit cards, US SSNs, phone numbers), masking of internal network addresses (RFC 1918 IPs, `.internal` hostnames), and quarantine lockouts on secret leaks (AWS, OpenAI, GitHub tokens, private keys) across both JSON and streaming SSE responses.
 * **Tool Response Sanitization & Injection Wall:** Scans outbound tool responses, normalizes Unicode, strips zero-width obfuscation characters, and blocks path traversal attempts (`../`) and indirect prompt injection patterns.
@@ -148,13 +150,14 @@ Loopers includes pre-configured security presets that can be enabled instantly v
 | Preset | Target & Scope | What It Enforces |
 |---|---|---|
 | `safety` | LLM Prompts & MCP Tools | Blocks SSNs, credentials, API keys, common prompt injection signatures (`ignore previous instructions`, `dan mode`), and destructive bash commands (`rm -rf`, `sudo`, `chmod 777`, `curl`, `nc -e`). |
+| `safety_drift` | Multi-Turn LLM Dialogues | Prevents multi-turn goal hijacking and conversational context divergence. Evaluates prompt similarity against the initial session anchor ($T_1$) and blocks turns that deviate from the authorized session objective. |
 | `pci` | LLM Prompts & Payloads | Enforces PCI-DSS input sanitization by blocking 16-digit credit card numbers, CVV/CVC codes, and SQL injection signatures (`UNION SELECT`, `DROP TABLE`, `OR 1=1`). |
 | `mcp_sandbox` | MCP Tool Invocations | Prevents path traversal (`../`) in filesystem arguments and enforces stateful tool chaining: requires `dry_run_command` to be executed within the last 2 steps before running `execute_bash`. |
 | `zero_trust` | Agent Identity & Risk | Denies LLM and MCP tool access to any agent with a persistent risk score above 75. Automatically escalates `send_email` tool calls to human review if the agent holds a `secret_accessed` taint flag. |
 
 Enable presets on startup:
 ```bash
-loopers serve --presets safety,pci,mcp_sandbox
+loopers serve --presets safety,safety_drift,pci,mcp_sandbox
 ```
 
 ---
