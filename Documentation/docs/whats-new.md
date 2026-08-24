@@ -11,6 +11,22 @@ Stay up to date with the newest capabilities we've added to the Loopers cost fir
 
 ---
 
+## Compliance Policy Presets: OWASP Top 10, NIST AI RMF & EU AI Act (Layer 6)
+Loopers now embeds production-ready compliance policy presets that map directly to global AI security and regulatory standards without requiring external policy servers:
+- **`owasp_llm_top10`**: Defends against LLM01 (Prompt Injection & Drift), LLM02 (Insecure Output / RCE), LLM06 (DB connection strings & Private keys), and LLM08 (Excessive Agency & Destructive tool escalation).
+- **`nist_ai_rmf`**: Enforces NIST SP 1270 AI risk categories including mandatory agent owner traceability (GOVERN 1.1), persistent behavioral risk score quarantine (MEASURE 2.7), high-consequence IAM & financial escalation (MANAGE 2.4), and objective drift containment (MANAGE 4.1).
+- **`eu_ai_act`**: Enforces EU Regulation 2024/1689 compliance, prohibiting Article 5 practices (subliminal cognitive manipulation, citizen social scoring, remote biometric surveillance) and enforcing Article 14 mandatory human oversight on recruitment screening and credit scoring.
+* **Learn More**: See the [Policy Engine Guide](/docs/guides/policy-engine#out-of-the-box-presets--templates).
+
+## Expanded Syntactic Normalization: Homoglyphs & Encoding Attacks (Layer 3)
+An embedded 5-stage de-obfuscation pipeline (`internal/syntactic`) runs on all inbound prompts and outbound tool responses:
+- Resolves Unicode lookalikes (Cyrillic, Greek, Math Bold, Fullwidth, Enclosed) to ASCII via Unicode TR39 tables and NFKC normalization.
+- Strips 28+ zero-width runes, directional overrides, and soft hyphens.
+- Recursively unescapes multi-layer URL percent encoding, hex, unicode, and HTML entities.
+- Extracts Base64 printable text layers for deep regex inspection without corrupting raw binary data.
+- Automatically exposes `normalized_prompt` and `obfuscation.*` telemetry to OPA and dual-matches YAML rules.
+* **Learn More**: See the [Security Model](/docs/security_model).
+
 ## Transient Session Buffer (Stateful Tracing)
 Operators can now evaluate actual request and response text payloads (prompts, completions, tool inputs, and tool outputs) in OPA/Rego and Declarative YAML policies. Loopers captures execution history dynamically in Redis as JSON-serialized events under `input.session.traces`.
 

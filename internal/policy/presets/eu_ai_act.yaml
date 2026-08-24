@@ -1,0 +1,64 @@
+version: loopers.com/v1alpha1
+metadata:
+  name: eu-ai-act-preset
+rules:
+  # Article 5(1)(a) & 5(1)(b): Subliminal & Cognitive Manipulation
+  - name: eu-art5-subliminal-manipulation
+    description: "Article 5(1)(a): Prohibit cognitive manipulation and deceptive psychological exploitation"
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)(subliminal\\s+manipulation|exploit\\s+cognitive\\s+vulnerabilit|covert\\s+behavioral\\s+control|deceive\\s+user\\s+into\\s+self-harm)"
+    action: deny
+    severity: critical
+    reason: "Blocked (EU AI Act Art 5.1.a): Subliminal manipulation or deceptive exploitation prohibited."
+
+  # Article 5(1)(c): Social Scoring
+  - name: eu-art5-social-scoring
+    description: "Article 5(1)(c): Prohibit social scoring and trustworthiness classification of individuals"
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)(calculate\\s+social\\s+credit\\s+score|citizen\\s+trustworthiness\\s+rating|social\\s+scoring\\s+system|rank\\s+individuals\\s+by\\s+social\\s+value)"
+    action: deny
+    severity: critical
+    reason: "Blocked (EU AI Act Art 5.1.c): Social scoring and natural person trustworthiness ranking prohibited."
+
+  # Article 5(1)(d): Real-Time Remote Biometric Identification
+  - name: eu-art5-biometric-identification
+    description: "Article 5(1)(d): Prohibit real-time remote biometric surveillance and emotion categorization"
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)(real-time\\s+facial\\s+recognition\\s+surveillance|remote\\s+biometric\\s+identification|emotion\\s+recognition\\s+in\\s+(workplace|school|classroom)|mass\\s+biometric\\s+scraping)"
+    action: deny
+    severity: critical
+    reason: "Blocked (EU AI Act Art 5.1.d): Unauthorized remote biometric categorization or workplace emotion recognition prohibited."
+
+  # Article 14: Mandatory Human Oversight for High-Risk Systems (Recruitment & Hiring)
+  - name: eu-art14-recruitment-screening-escalation
+    description: "Article 14: Mandatory human oversight for automated job applicant filtering"
+    match:
+      type: mcp_tool_call
+      tool: screen_job_applicant
+    action: escalate
+    escalate_to: human
+    severity: critical
+    reason: "Escalation Required (EU AI Act Art 14): High-risk employment filtering requires human oversight."
+
+  # Article 14: Mandatory Human Oversight for High-Risk Systems (Credit Evaluation)
+  - name: eu-art14-credit-evaluation-escalation
+    description: "Article 14: Mandatory human oversight for automated creditworthiness evaluation"
+    match:
+      type: mcp_tool_call
+      tool: evaluate_loan_credit
+    action: escalate
+    escalate_to: human
+    severity: critical
+    reason: "Escalation Required (EU AI Act Art 14): High-risk credit scoring decisions require human oversight."

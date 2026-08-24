@@ -59,6 +59,7 @@ It is **not** an AI gateway, model router, prompt management platform, or agent 
 | **Agent Behavioral Risk** | Stateless per request | Persistent cross-session risk scoring (0–100) & automated quarantine |
 | **Runaway Loop Breaker** | None | Real-time 3-engine detection (Fingerprint, Velocity, Stall) |
 | **Multi-Turn Drift Protection** | Stateless per request | Active containment scoring against initial session anchor ($T_1$) |
+| **Compliance Presets** | None | Out-of-the-box zero-dependency policies for OWASP LLM Top 10, NIST AI RMF 1.0, and EU AI Act |
 | **Tool Execution FSM** | None | Stateful tool sequencing (e.g. require dry run before bash execution) |
 | **Human-in-the-Loop Escalation** | None | Suspends live HTTP requests for Redis Pub/Sub approval |
 | **Zero-Storage Pass-Through** | Often caches prompts / logs payloads | Provider keys & payloads stay strictly in-memory (never persisted) |

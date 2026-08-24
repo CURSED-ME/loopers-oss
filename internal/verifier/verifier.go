@@ -159,6 +159,7 @@ func (v *Verifier) VerifyTrace(ctx context.Context, traceFile *SessionTraceFile)
 	agentCtx := policy.AgentContext{
 		Name:      "offline-verifier",
 		AgentName: "trace-auditor",
+		Owner:     "verifier-admin",
 	}
 	if traceFile.Agent != nil {
 		agentCtx = *traceFile.Agent

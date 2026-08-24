@@ -55,10 +55,15 @@ func screenPolicy() {
 	err = huh.NewForm(
 		huh.NewGroup(
 			huh.NewConfirm().Title("Enable Policy Enforcement? (Recommended: Yes)").Value(&enabled),
-			huh.NewMultiSelect[string]().Title("Enable Safety Presets (Optional)").Options(
+			huh.NewMultiSelect[string]().Title("Enable Safety & Compliance Presets (Optional)").Options(
 				huh.NewOption("Safety Guardrails (SSN, Creds, Bash injection)", "safety"),
+				huh.NewOption("Safety Drift (Multi-turn goal hijacking)", "safety_drift"),
 				huh.NewOption("PCI-DSS Compliance (Credit Cards, CVV, SQLi)", "pci"),
 				huh.NewOption("MCP Sandbox (Path traversal, FSM bash dry-run)", "mcp_sandbox"),
+				huh.NewOption("Zero Trust (Persistent behavioral risk gating)", "zero_trust"),
+				huh.NewOption("OWASP LLM Top 10 (Injection, agency, insecure output, secrets)", "owasp_llm_top10"),
+				huh.NewOption("NIST AI RMF (Identity, containment, HITL escalation, drift)", "nist_ai_rmf"),
+				huh.NewOption("EU AI Act (Prohibited practices, social scoring, biometric, oversight)", "eu_ai_act"),
 			).Value(&presets),
 			huh.NewInput().Title("Policy File (YAML Guardrails Card)").Value(&policyFile),
 			huh.NewInput().Title("Policy Directory (Rego Files)").Value(&policyDir),

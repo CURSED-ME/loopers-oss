@@ -9,7 +9,7 @@ description: Offline compliance and regression auditing of AI agent execution tr
 
 Loopers provides an offline compliance verification CLI (`loopers verify`) designed for **shift-left governance**, **CI/CD regression gates**, and **post-mortem incident analysis**. 
 
-While the Loopers proxy functions as a real-time Policy Enforcement Point (PEP) during live traffic, `loopers verify` allows developers and security teams to deterministically audit historical execution traces (`.json`) against [Declarative YAML Policy Cards](./policy-engine.md#method-a-declarative-yaml-policies--presets), built-in security presets (`safety`, `safety_drift`, `pci`, `mcp_sandbox`, `zero_trust`), or custom Open Policy Agent (OPA/Rego) rules without needing a running proxy server or active Redis instance.
+While the Loopers proxy functions as a real-time Policy Enforcement Point (PEP) during live traffic, `loopers verify` allows developers and security teams to deterministically audit historical execution traces (`.json`) against [Declarative YAML Policy Cards](./policy-engine.md#method-a-declarative-yaml-policies--presets), built-in security & compliance presets (`safety`, `safety_drift`, `pci`, `mcp_sandbox`, `zero_trust`, `owasp_llm_top10`, `nist_ai_rmf`, `eu_ai_act`), or custom Open Policy Agent (OPA/Rego) rules without needing a running proxy server or active Redis instance.
 
 ---
 
@@ -35,7 +35,7 @@ loopers verify --trace <path-to-trace.json> [flags]
 | `--trace` | `-t` | string | `""` | **Required.** Path to the session trace JSON file to audit. |
 | `--policy-file` | `-f` | string | `""` | Path to declarative YAML Policy Card file (e.g. `./policies.yaml`). |
 | `--policy-dir` | `-d` | string | `""` | Directory containing custom Rego (`.rego`) policy files. |
-| `--presets` | `-p` | string slice | `[]` | Comma-separated list of built-in presets (`safety`, `safety_drift`, `pci`, `mcp_sandbox`, `zero_trust`). |
+| `--presets` | `-p` | string slice | `[]` | Comma-separated list of built-in security & compliance presets (`safety`, `safety_drift`, `pci`, `mcp_sandbox`, `zero_trust`, `owasp_llm_top10`, `nist_ai_rmf`, `eu_ai_act`). |
 | `--default-action` | | string | `"allow"` | Default decision when no policy rule matches (`allow` or `deny`). |
 | `--format` | | string | `"pretty"` | Output format: `"pretty"` (formatted terminal report) or `"json"`. |
 | `--fail-on-violation` | | bool | `true` | Exit with non-zero status code (`1`) if any policy violation is detected. |
@@ -46,10 +46,10 @@ loopers verify --trace <path-to-trace.json> [flags]
 
 ### 1. Audit Against Out-of-the-Box Security Presets
 
-Audit an agent execution trace against standard safety and MCP sandbox guardrails:
+Audit an agent execution trace against standard safety and compliance guardrails:
 
 ```bash
-loopers verify --trace ./traces/session_01.json --presets safety,mcp_sandbox
+loopers verify --trace ./traces/session_01.json --presets owasp_llm_top10,nist_ai_rmf,eu_ai_act
 ```
 
 **Output:**

@@ -143,3 +143,12 @@ Implemented in [`internal/syntactic/`](file:///c:/Users/varad/loopers-oss/intern
 * **Payload Layer Extraction:** `ExtractAllTextLayers()` extracts printable UTF-8 strings embedded inside Base64 blocks and unescaped buffers, enabling deep inspection without corrupting raw binary data.
 * **Delimiter & Token Collapsing:** Unpacks padded token splitting (e.g. `i.g.n.o.r.e`, `i_g_n_o_r_e`, `i-g-n-o-r-e`) and folds leetspeak (`1gn0r3` -> `ignore`).
 * **Dual Policy Engine Matching:** Automatically passes `normalized_prompt` and `obfuscation.*` telemetry to OPA, ensuring standard policy cards catch obfuscated injections without duplicating rules.
+
+## 8. Compliance Policy Presets & Regulatory Governance (Layer 6)
+
+Loopers embeds deterministic, zero-dependency Policy Cards aligned with dominant international AI safety and regulatory frameworks:
+
+* **OWASP Top 10 for LLM Applications (2025):** Enforces controls across LLM01 (Prompt Injection & Multi-Turn Drift), LLM02 (Insecure Output Handling, Remote Code Execution, and Path Traversal), LLM06 (Sensitive Info Disclosure, DB connection strings, Private Keys), and LLM08 (Excessive Agency, FSM dry-run sequence gating, and Destructive tool escalation).
+* **NIST AI Risk Management Framework 1.0 (SP 1270):** Enforces GOVERN 1.1 / MAP 1.5 (Identity attribution and anonymous agent rejection), MEASURE 2.7 (Persistent behavioral risk scoring and containment), MANAGE 2.4 (Mandatory human-in-the-loop escalation for IAM and financial operations), and MANAGE 4.1 (Objective drift boundaries).
+* **European Union Artificial Intelligence Act (Regulation 2024/1689):** Prohibits Article 5 practices (subliminal cognitive manipulation, citizen social scoring, real-time remote biometric surveillance) and enforces Article 14 mandatory human oversight for high-risk employment screening and credit scoring systems.
+

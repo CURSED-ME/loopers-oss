@@ -63,6 +63,26 @@ Loopers' AI Firewall architecture natively defends against the unique vectors in
 
 ---
 
+## 3. Built-in `owasp_llm_top10` Policy Preset
+
+Loopers includes a production-ready, zero-dependency policy preset mapping directly to the OWASP Top 10 for LLM Applications:
+
+```bash
+# Enable via CLI
+loopers serve --presets owasp_llm_top10
+
+# Or offline trace verification
+loopers verify --trace ./traces/agent_run.json --presets owasp_llm_top10
+```
+
+### Controls Enforced:
+- **LLM01 (Prompt Injection & Multi-Turn Drift)**: Intercepts direct prompt injection keywords and multi-turn goal displacement (`session.drift.drift_detected == true`).
+- **LLM02 (Insecure Output Handling & RCE)**: Blocks dangerous shell execution patterns (`rm -rf`, `sudo`, `curl | sh`, reverse shells) and directory traversal (`..`) in MCP tool arguments.
+- **LLM06 (Sensitive Information Disclosure)**: Blocks database connection strings with embedded credentials (`postgres://`, `mongodb://`), cryptographic private keys (`BEGIN RSA PRIVATE KEY`), and cloud API keys.
+- **LLM08 (Excessive Agency)**: Enforces mandatory dry-run sequence checks for bash execution and human escalation for destructive tool actions (`delete_database`).
+
+---
+
 ## Example Event Payload
 
 ```json
@@ -83,4 +103,3 @@ Loopers' AI Firewall architecture natively defends against the unique vectors in
 }
 ```
 
-For full integration schemas, refer to the [event-schema.json](./event-schema.json).

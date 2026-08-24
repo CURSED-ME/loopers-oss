@@ -119,26 +119,35 @@ KEY: KEY_HASH
 
 ## serve
 ```bash
-loopers serve
+loopers serve [flags]
 ```
 
-The `serve` command does not accept any flags. Configure the server using the `loopers.yaml` configuration file, or via environment variables (e.g., `SERVER_PORT`, `REDIS_ADDR`, `LOG_LEVEL`).
+Starts the Loopers AI Firewall proxy server. You can configure the server using the `loopers.yaml` configuration file, CLI flags, or environment variables.
+
+**Flags:**
+
+| Flag | Shorthand | Type | Default | Description |
+|---|---|---|---|---|
+| `--presets` | `-p` | string slice | `[]` | Built-in security & compliance presets to enable (`safety`, `safety_drift`, `pci`, `mcp_sandbox`, `zero_trust`, `owasp_llm_top10`, `nist_ai_rmf`, `eu_ai_act`) |
+| `--policy-file` | `-f` | string | `""` | Path to declarative YAML Policy Card (e.g. `policies.yaml`) |
+| `--policy-dir` | `-d` | string | `""` | Path to directory containing custom OPA Rego (`.rego`) files |
+| `--config` | `-c` | string | `""` | Path to `loopers.yaml` configuration file |
 
 > **Note**: `loopers serve` requires a valid TLS configuration (`server.tls_cert_file` and `server.tls_key_file`) in production. For local testing without TLS:
 
 macOS / Linux:
 ```bash
-SERVER_INSECURE_DEV=true loopers serve
+SERVER_INSECURE_DEV=true loopers serve --presets owasp_llm_top10,nist_ai_rmf
 ```
 
 Windows (PowerShell):
 ```powershell
-$env:SERVER_INSECURE_DEV="true"; loopers serve
+$env:SERVER_INSECURE_DEV="true"; loopers serve --presets owasp_llm_top10,nist_ai_rmf
 ```
 
 Windows (Command Prompt):
 ```cmd
-set SERVER_INSECURE_DEV=true && loopers serve
+set SERVER_INSECURE_DEV=true && loopers serve --presets owasp_llm_top10,nist_ai_rmf
 ```
 
 To enable debug logging:
@@ -208,13 +217,13 @@ Audits and replays recorded execution traces (`.json`) against declarative YAML 
 | `--trace` | `-t` | string | `""` | **Required.** Path to session trace JSON file to verify |
 | `--policy-file` | `-f` | string | `""` | Path to declarative YAML Policy Card (e.g., `policies.yaml`) |
 | `--policy-dir` | `-d` | string | `""` | Path to directory containing custom Rego (`.rego`) policy files |
-| `--presets` | `-p` | string slice | `[]` | Comma-separated list of built-in security presets (`safety`, `safety_drift`, `pci`, `mcp_sandbox`, `zero_trust`) |
+| `--presets` | `-p` | string slice | `[]` | Comma-separated list of built-in security & compliance presets (`safety`, `safety_drift`, `pci`, `mcp_sandbox`, `zero_trust`, `owasp_llm_top10`, `nist_ai_rmf`, `eu_ai_act`) |
 | `--default-action` | | string | `"allow"` | Default decision when no policy rule matches (`allow` or `deny`) |
 | `--format` | | string | `"pretty"` | Output format: `"pretty"` (terminal table) or `"json"` |
 | `--fail-on-violation` | | bool | `true` | Exit with non-zero exit code (`1`) on detected policy violations |
 
 **Example:**
 ```bash
-loopers verify --trace ./traces/session.json --presets safety_drift,mcp_sandbox
+loopers verify --trace ./traces/session.json --presets owasp_llm_top10,nist_ai_rmf,eu_ai_act
 ```
 

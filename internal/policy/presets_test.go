@@ -7,7 +7,16 @@ import (
 )
 
 func TestGetPreset(t *testing.T) {
-	presets := []string{"safety", "pci", "mcp_sandbox", "zero_trust"}
+	presets := []string{
+		"safety",
+		"safety_drift",
+		"pci",
+		"mcp_sandbox",
+		"zero_trust",
+		"owasp_llm_top10",
+		"nist_ai_rmf",
+		"eu_ai_act",
+	}
 	for _, p := range presets {
 		data, err := GetPreset(p)
 		assert.NoError(t, err)

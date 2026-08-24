@@ -619,6 +619,30 @@ The `internal/syntactic` engine runs high-performance 5-stage de-obfuscation on 
 
 ---
 
+## Compliance Policy Presets (Layer 6)
+
+Loopers embeds production-ready compliance policy presets that map directly to global AI security and regulatory standards:
+
+### 1. OWASP Top 10 for LLM Applications (`owasp_llm_top10`)
+- **LLM01 (Prompt Injection & Multi-Turn Drift):** Blocks direct overrides (`ignore previous instructions`), jailbreaks (`DAN mode`), and multi-turn conversational objective displacement (`session.drift.drift_detected == true`).
+- **LLM02 (Insecure Output Handling & RCE):** Blocks dangerous OS shell execution (`rm -rf`, `sudo`, `curl | sh`, reverse shells) and path traversal in tool arguments (`arguments.path` matching `..`).
+- **LLM06 (Sensitive Info Disclosure):** Blocks database connection strings with credentials (`postgres://`, `mongodb://`), cryptographic private keys (`BEGIN RSA PRIVATE KEY`), and SaaS secret tokens.
+- **LLM08 (Excessive Agency):** Enforces mandatory dry-run sequence check before bash execution (`session_flow.requires: [dry_run_command]`) and human escalation for destructive actions (`delete_database`).
+
+### 2. NIST AI Risk Management Framework 1.0 (`nist_ai_rmf`)
+- **GOVERN 1.1 / MAP 1.5:** Rejects anonymous agent traffic lacking verified ownership attribution (`agent.owner == ""`).
+- **MEASURE 2.7:** Automatically quarantines agents exceeding behavioral risk thresholds (`agent_risk.risk_score > 75`) and blocks tool execution for secret-tainted agents (`secret_accessed`).
+- **MANAGE 2.4:** Suspends high-consequence IAM changes (`modify_iam_policy`) and financial asset transfers (`transfer_funds`) for human-in-the-loop sign-off.
+- **MANAGE 4.1:** Enforces conversational task boundary governance and terminates drifted dialogues.
+
+### 3. European Union Artificial Intelligence Act (`eu_ai_act`)
+- **Article 5(1)(a/b) (Prohibited AI):** Prohibits subliminal manipulation, cognitive distortion, and deceptive psychological exploitation.
+- **Article 5(1)(c) (Prohibited AI):** Prohibits social scoring and citizen trustworthiness rating.
+- **Article 5(1)(d) (Prohibited AI):** Prohibits unauthorized real-time remote biometric surveillance and workplace emotion recognition.
+- **Article 14 (Human Oversight):** Enforces mandatory human escalation on automated employment screening (`screen_job_applicant`) and creditworthiness evaluation (`evaluate_loan_credit`).
+
+---
+
 ## Supported Providers
 
 | Provider | `--provider` value |
