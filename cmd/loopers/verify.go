@@ -122,7 +122,7 @@ func init() {
 	verifyCmd.Flags().StringVarP(&verifyTracePath, "trace", "t", "", "Path to the JSON execution trace file (required)")
 	verifyCmd.Flags().StringVarP(&verifyPolicyFile, "policy-file", "f", "", "Path to declarative YAML Policy Card (e.g. policies.yaml)")
 	verifyCmd.Flags().StringVarP(&verifyPolicyDir, "policy-dir", "d", "", "Directory containing custom Rego policy files (.rego)")
-	verifyCmd.Flags().StringSliceVarP(&verifyPresets, "presets", "p", []string{}, "Comma-separated list of built-in security presets (safety, pci, mcp_sandbox)")
+	verifyCmd.Flags().StringSliceVarP(&verifyPresets, "presets", "p", []string{}, "Comma-separated list of built-in security presets (safety, safety_drift, pci, mcp_sandbox, zero_trust, owasp_llm_top10, nist_ai_rmf, eu_ai_act)")
 	verifyCmd.Flags().StringVar(&verifyDefaultAction, "default-action", "allow", "Default action when no rule matches (allow or deny)")
 	verifyCmd.Flags().StringVar(&verifyFormat, "format", "pretty", "Output format (pretty or json)")
 	verifyCmd.Flags().BoolVar(&verifyFailOnViolation, "fail-on-violation", true, "Exit with non-zero status code if policy violations are detected")

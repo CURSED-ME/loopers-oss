@@ -215,7 +215,7 @@ Flags:
 - `--trace string` (required) — path to execution trace JSON file to verify
 - `--policy-file string` — path to declarative YAML Policy Card (e.g. policies.yaml)
 - `--policy-dir string` — directory containing custom Rego files
-- `--presets strings` — built-in templates to enable (`safety`, `pci`, `mcp_sandbox`)
+- `--presets strings` — built-in templates to enable (`safety`, `safety_drift`, `pci`, `mcp_sandbox`, `zero_trust`, `owasp_llm_top10`, `nist_ai_rmf`, `eu_ai_act`)
 - `--format string` — output format: `pretty` or `json`
 - `--fail-on-violation` — exit with code 1 if violations are found (default: true)
 
@@ -475,6 +475,44 @@ rules:
     severity: critical
     reason: "Blocked: Prompt injection attempt detected (evaluated across all de-obfuscation layers)."
 ```
+
+---
+
+## 10. Compliance Policy Presets (Layer 6)
+
+Loopers embeds production-ready compliance policy presets that map directly to global AI security and regulatory standards without requiring external policy servers or commercial subscriptions.
+
+### Available Built-in Presets
+| Preset Name | Target Standard | Primary Controls Enforced |
+|---|---|---|
+| `safety` | Core Security Baseline | SSNs, AWS/OpenAI keys, and generic prompt injection regexes. |
+| `safety_drift` | Conversational Integrity | Multi-turn conversational drift and goal displacement (`session.drift.drift_detected`). |
+| `pci` | PCI-DSS v4.0 | Credit card PANs (Visa, MC, Amex, Discover), CVV/CVC codes, and SQL injection strings. |
+| `mcp_sandbox` | Tool Execution Sandboxing | Path traversal in tool arguments (`..`) and bash execution FSM dry-run sequence enforcement. |
+| `zero_trust` | Behavioral Governance | Persistent cross-session risk score gating (`agent_risk.risk_score > 75`) and tainted key escalation. |
+| `owasp_llm_top10` | OWASP LLM Top 10 (2025) | LLM01 (Prompt Injection & Drift), LLM02 (RCE commands & Path Traversal), LLM06 (DB connection strings & Private keys), LLM08 (Excessive Agency & Destructive tool escalation). |
+| `nist_ai_rmf` | NIST AI RMF 1.0 (SP 1270) | GOVERN 1.1 (Anonymous agent rejection), MEASURE 2.7 (Risk score quarantine & Taint isolation), MANAGE 2.4 (IAM & Financial transfer escalation), MANAGE 4.1 (Goal drift containment). |
+| `eu_ai_act` | EU AI Act (Reg. 2024/1689) | Art. 5(1)(a/b) Prohibited subliminal/cognitive manipulation, Art. 5(1)(c) Social scoring, Art. 5(1)(d) Remote biometric surveillance, Art. 14 Mandatory human oversight on hiring & credit scoring. |
+
+### Activation Options
+1. **Firewall CLI Flag:**
+   ```bash
+   loopers serve --presets owasp_llm_top10,nist_ai_rmf,eu_ai_act
+   ```
+2. **Configuration File (`loopers.yaml`):**
+   ```yaml
+   policy:
+     enabled: true
+     presets:
+       - "owasp_llm_top10"
+       - "nist_ai_rmf"
+       - "eu_ai_act"
+     default_action: "allow"
+   ```
+3. **Offline Trace Verification:**
+   ```bash
+   loopers verify --trace ./traces/agent_run.json --presets owasp_llm_top10,nist_ai_rmf,eu_ai_act
+   ```
 
 ---
 

@@ -40,7 +40,7 @@ policy:
   enabled: true
   policy_file: "./policies.yaml" # Path to declarative YAML Policy Card
   policy_dir: "./policies"       # Local directory containing custom Rego (.rego) files
-  presets: []                    # Safety presets to enable (safety|safety_drift|pci|mcp_sandbox|zero_trust)
+  presets: []                    # Built-in presets (safety|safety_drift|pci|mcp_sandbox|zero_trust|owasp_llm_top10|nist_ai_rmf|eu_ai_act)
   default_action: "deny"
 ```
 
@@ -49,7 +49,7 @@ policy:
 | `enabled` | `false` | Enable or disable the policy engine |
 | `policy_file` | `""` | Path to the declarative YAML Policy Card file |
 | `policy_dir` | `"./policies"` | Local directory containing custom Rego (.rego) files |
-| `presets` | `[]` | List of safety presets to enable (`"safety"`, `"safety_drift"`, `"pci"`, `"mcp_sandbox"`, `"zero_trust"`) |
+| `presets` | `[]` | List of built-in presets to enable (`"safety"`, `"safety_drift"`, `"pci"`, `"mcp_sandbox"`, `"zero_trust"`, `"owasp_llm_top10"`, `"nist_ai_rmf"`, `"eu_ai_act"`) |
 | `default_action` | `"deny"` | Default decision when no rule matches (`"allow"` or `"deny"`) |
 
 ---
@@ -142,7 +142,7 @@ rules:
 
 ## Out-of-the-Box Presets & Templates
 
-Loopers-OSS includes three built-in, out-of-the-box presets designed to address the most common LLM and agentic AI vulnerabilities (including the OWASP GenAI Top 10 2026 and MCP security risks). These are compiled directly into the binary and require no custom YAML or Rego file authoring.
+Loopers includes eight built-in, out-of-the-box presets designed to address the most critical LLM, autonomous agent, and regulatory compliance standards (including OWASP LLM Top 10, NIST AI RMF 1.0, and EU AI Act). These are compiled directly into the binary and require no custom YAML or Rego file authoring.
 
 ### 1. `safety` (Standard Safety Guardrails)
 Mitigates PII leaks, credential exfiltration, prompt injections, and dangerous command executions.
@@ -171,6 +171,27 @@ Limits file system traversal and enforces execution sequences.
 Enforces behavioral risk score limits and taint-flag gating.
 * **Elevated Risk Gate:** Denies requests from agents with a cumulative risk score above 75.
 * **Taint Flag Escalation:** Automatically escalates privileged operations (such as `send_email`) to human review if the agent holds a `secret_accessed` taint flag.
+
+### 6. `owasp_llm_top10` (OWASP LLM Top 10 2025)
+Maps directly to the OWASP Top 10 for LLM Applications:
+* **LLM01 (Prompt Injection & Drift):** Blocks direct injection overrides and multi-turn goal hijacking.
+* **LLM02 (Insecure Output / RCE):** Blocks OS shell commands (`rm -rf`, `sudo`, `curl | sh`) and relative path traversals (`..`).
+* **LLM06 (Sensitive Info Disclosure):** Blocks DB connection strings (`postgres://`, `mongodb://`), private RSA/EC keys, and SaaS secret tokens.
+* **LLM08 (Excessive Agency):** Requires FSM dry-run command validation for bash execution and human escalation for destructive actions (`delete_database`).
+
+### 7. `nist_ai_rmf` (NIST AI Risk Management Framework 1.0)
+Maps directly to NIST SP 1270 AI governance categories:
+* **GOVERN 1.1 / MAP 1.5:** Rejects anonymous agent requests without verified ownership attribution.
+* **MEASURE 2.7:** Automatically quarantines agents exceeding behavioral risk score thresholds (>75) and isolates tainted keys.
+* **MANAGE 2.4:** Suspends high-impact IAM and financial tool calls for mandatory human approval.
+* **MANAGE 4.1:** Enforces conversational task boundary governance and terminates drifted sessions.
+
+### 8. `eu_ai_act` (European Union AI Act)
+Enforces compliance with Regulation (EU) 2024/1689:
+* **Article 5(1)(a/b) (Prohibited AI):** Prohibits subliminal manipulation, cognitive distortion, and deceptive psychological exploitation.
+* **Article 5(1)(c) (Prohibited AI):** Prohibits citizen social scoring and trustworthiness ranking.
+* **Article 5(1)(d) (Prohibited AI):** Prohibits unauthorized real-time remote biometric surveillance and workplace emotion recognition.
+* **Article 14 (Human Oversight):** Enforces mandatory human escalation on automated employment screening (`screen_job_applicant`) and credit evaluation (`evaluate_loan_credit`).
 
 ---
 

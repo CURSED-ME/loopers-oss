@@ -1,0 +1,106 @@
+version: loopers.com/v1alpha1
+metadata:
+  name: owasp-llm-top10-preset
+rules:
+  # LLM01: Prompt Injection (Direct & Jailbreak)
+  - name: owasp-llm01-prompt-injection
+    description: "LLM01: Block direct prompt injections, role-disregard, and jailbreak signatures"
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)(ignore\\s+(all\\s+)?previous\\s+instructions|disregard\\s+prior\\s+rules|system\\s+prompt\\s+override|jailbreak\\s+mode|you\\s+are\\s+now\\s+unrestricted)"
+    action: deny
+    severity: critical
+    reason: "Blocked (OWASP LLM01): Prompt injection or jailbreak attempt detected."
+
+  # LLM01: Multi-Turn Goal Hijack
+  - name: owasp-llm01-multi-turn-drift
+    description: "LLM01: Block multi-turn conversation goal displacement and indirect injection drift"
+    match:
+      type: llm_call
+    conditions:
+      - field: session.drift.drift_detected
+        op: equals
+        value: true
+    action: deny
+    severity: critical
+    reason: "Blocked (OWASP LLM01): Multi-turn conversational drift threshold exceeded."
+
+  # LLM02: Insecure Output Handling & Remote Code Execution
+  - name: owasp-llm02-rce-commands
+    description: "LLM02: Block dangerous OS shell execution, privilege escalation, and reverse shell commands"
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)(rm\\s+-rf\\s+[/\\*]|sudo\\s+chmod\\s+777|curl\\s+.*\\|\\s*sh|wget\\s+.*\\|\\s*sh|powershell\\s+-[eE][nN][cC]|nc\\s+-e\\s+/bin)"
+    action: deny
+    severity: critical
+    reason: "Blocked (OWASP LLM02): Insecure system command execution pattern detected in prompt payload."
+
+  # LLM02: Path Traversal in MCP Tool Arguments
+  - name: owasp-llm02-path-traversal
+    description: "LLM02: Block relative parent path traversal in tool arguments"
+    match:
+      type: mcp_tool_call
+    conditions:
+      - field: arguments.path
+        op: matches_regex
+        value: "(\\.\\.[\\/\\\\])"
+    action: deny
+    severity: critical
+    reason: "Blocked (OWASP LLM02): Relative path traversal sequence detected in tool argument."
+
+  # LLM06: Sensitive Information Disclosure (Connection Strings & Secrets)
+  - name: owasp-llm06-connection-strings
+    description: "LLM06: Block database connection strings with embedded credentials"
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)(postgres|postgresql|mongodb|mysql|redis|amqp):\\/\\/[a-zA-Z0-9_]+:[^@\\s]+@"
+    action: deny
+    severity: critical
+    reason: "Blocked (OWASP LLM06): Database connection string containing credentials detected."
+
+  # LLM06: Private Key & API Secret Leakage
+  - name: owasp-llm06-private-keys
+    description: "LLM06: Block leakage of private RSA/EC keys and SaaS secret tokens"
+    match:
+      type: llm_call
+    conditions:
+      - field: prompt_text
+        op: matches_regex
+        value: "(?i)(-----BEGIN\\s+(RSA|EC|OPENSSH)?\\s*PRIVATE\\s+KEY-----|ghp_[A-Za-z0-9]{36}|xox[baprs]-[A-Za-z0-9-]+|AKIA[0-9A-Z]{16})"
+    action: deny
+    severity: critical
+    reason: "Blocked (OWASP LLM06): Cryptographic private key or provider API credential detected."
+
+  # LLM08: Excessive Agency (Unvalidated Bash Execution)
+  - name: owasp-llm08-bash-dryrun-required
+    description: "LLM08: Require dry-run validation before high-privilege bash execution"
+    match:
+      type: mcp_tool_call
+      tool: execute_bash
+    session_flow:
+      requires:
+        - dry_run_command
+      within_last_steps: 2
+    action: deny
+    severity: critical
+    reason: "Blocked (OWASP LLM08): Excessive agency control violated. Bash execution requires prior dry_run_command."
+
+  # LLM08: Excessive Agency (High-Risk Tool Escalation)
+  - name: owasp-llm08-destructive-tool-escalation
+    description: "LLM08: Escalate destructive resource operations for human approval"
+    match:
+      type: mcp_tool_call
+      tool: delete_database
+    action: escalate
+    escalate_to: human
+    severity: critical
+    reason: "Escalation Required (OWASP LLM08): Destructive database operation requires human authorization."

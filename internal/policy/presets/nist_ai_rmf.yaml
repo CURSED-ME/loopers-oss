@@ -1,0 +1,78 @@
+version: loopers.com/v1alpha1
+metadata:
+  name: nist-ai-rmf-preset
+rules:
+  # GOVERN 1.1 / MAP 1.5: Traceability & Identity Integrity
+  - name: nist-govern-anonymous-agent-block
+    description: "GOVERN 1.1: Reject agent traffic lacking verified owner attribution"
+    match:
+      type: llm_call
+    conditions:
+      - field: agent.owner
+        op: equals
+        value: ""
+    action: deny
+    severity: critical
+    reason: "Blocked (NIST GOVERN 1.1): Unauthenticated agent owner. Identity attribution is mandatory."
+
+  # MEASURE 2.7: Persistent Behavioral Risk Containment
+  - name: nist-measure-risk-quarantine
+    description: "MEASURE 2.7: Quarantine agents with elevated historical risk scores"
+    match:
+      type: llm_call
+    conditions:
+      - field: agent_risk.risk_score
+        op: greater_than
+        value: "75"
+    action: quarantine
+    quarantine_for: "1h"
+    severity: critical
+    reason: "Quarantined (NIST MEASURE 2.7): Agent cumulative risk score exceeds permissible threshold (>75)."
+
+  # MEASURE 2.7: Taint Flag Isolation
+  - name: nist-measure-tainted-tool-block
+    description: "MEASURE 2.7: Deny tool execution for agents with persistent secret exfiltration taint"
+    match:
+      type: mcp_tool_call
+    conditions:
+      - field: agent_risk.persistent_taint_flags
+        op: contains_element
+        value: "secret_accessed"
+    action: deny
+    severity: critical
+    reason: "Blocked (NIST MEASURE 2.7): Agent holds persistent secret_accessed taint flag."
+
+  # MANAGE 2.4: High-Consequence Operational Escalation
+  - name: nist-manage-iam-escalation
+    description: "MANAGE 2.4: Human oversight required for IAM policy and permission modifications"
+    match:
+      type: mcp_tool_call
+      tool: modify_iam_policy
+    action: escalate
+    escalate_to: human
+    severity: critical
+    reason: "Escalation Required (NIST MANAGE 2.4): IAM permission alterations require human sign-off."
+
+  # MANAGE 2.4: Financial Transaction Escalation
+  - name: nist-manage-financial-transfer-escalation
+    description: "MANAGE 2.4: Human verification required for autonomous funds transfer"
+    match:
+      type: mcp_tool_call
+      tool: transfer_funds
+    action: escalate
+    escalate_to: human
+    severity: critical
+    reason: "Escalation Required (NIST MANAGE 2.4): Financial asset transfer requires human authorization."
+
+  # MANAGE 4.1: Objective Drift Governance
+  - name: nist-manage-goal-drift
+    description: "MANAGE 4.1: Terminate sessions that drift from initialized task objectives"
+    match:
+      type: llm_call
+    conditions:
+      - field: session.drift.drift_detected
+        op: equals
+        value: true
+    action: deny
+    severity: critical
+    reason: "Blocked (NIST MANAGE 4.1): Multi-turn context divergence violates task objective bounds."

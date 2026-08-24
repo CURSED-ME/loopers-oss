@@ -877,7 +877,7 @@ var execCmd = &cobra.Command{
 
 func init() {
 	// Root flags
-	serveCmd.Flags().StringSliceVar(&servePresets, "presets", nil, "Comma-separated list of policy presets to enable (safety|pci|mcp_sandbox)")
+	serveCmd.Flags().StringSliceVar(&servePresets, "presets", nil, "Comma-separated list of policy presets to enable (safety|safety_drift|pci|mcp_sandbox|zero_trust|owasp_llm_top10|nist_ai_rmf|eu_ai_act)")
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(initCmd)
 

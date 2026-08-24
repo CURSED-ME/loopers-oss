@@ -340,6 +340,31 @@ func mapFieldToRego(field string) (string, error) {
 		}
 		return fmt.Sprintf("input.agent_risk.%s", subField), nil
 	}
+	if strings.HasPrefix(field, "agent.") {
+		subField := field[len("agent."):]
+		if subField == "" {
+			return "", fmt.Errorf("invalid agent field pattern")
+		}
+		if strings.HasPrefix(subField, "tags.") {
+			tagName := subField[len("tags."):]
+			return fmt.Sprintf("input.agent.tags.%s", tagName), nil
+		}
+		return fmt.Sprintf("input.agent.%s", subField), nil
+	}
+	if strings.HasPrefix(field, "request.") {
+		subField := field[len("request."):]
+		if subField == "" {
+			return "", fmt.Errorf("invalid request field pattern")
+		}
+		return fmt.Sprintf("input.request.%s", subField), nil
+	}
+	if strings.HasPrefix(field, "action.") {
+		subField := field[len("action."):]
+		if subField == "" {
+			return "", fmt.Errorf("invalid action field pattern")
+		}
+		return fmt.Sprintf("input.action.%s", subField), nil
+	}
 
 	return "", fmt.Errorf("unsupported field %q", field)
 }

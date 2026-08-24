@@ -29,7 +29,7 @@ Loopers is a Go binary that proxies and secures AI API calls. Requests from your
 - `loopers budget set <hash> [--minute] [--hourly] [--daily] [--weekly] [--monthly]` — sets atomic spending limits in USD
 - `loopers budget status <hash>` — shows real-time spend consumption vs limits
 - `loopers exec -- <command>` — wraps a CLI agent process, injecting proxy env vars; supports `--model-override` and `--model-map`. Auto-detects aider, openhands, pi, claude, gemini, codex, opencode, dsh, deepseek-harness, deepseek.
-- `loopers verify --trace <path>` — audits agent execution traces offline against Policy Cards, presets (`safety`, `safety_drift`, `pci`, `mcp_sandbox`, `zero_trust`), or Rego rules.
+- `loopers verify --trace <path>` — audits agent execution traces offline against Policy Cards, presets (`safety`, `safety_drift`, `pci`, `mcp_sandbox`, `zero_trust`, `owasp_llm_top10`, `nist_ai_rmf`, `eu_ai_act`), or Rego rules.
 
 **Supported providers for `--provider` flag:**
 `openai`, `anthropic`, `gemini`, `bedrock`, `azure`, `mistral`, `groq`, `cohere`, `deepseek`, `together`, `ollama`, `fireworks`, `xai`, `vllm`, `openrouter`
@@ -44,7 +44,7 @@ All custom policy files must use `package loopers.policy` and define rules evalu
 
 *Precedence Resolution:* `deny (5) > quarantine (4) > escalate (3) > transform (2) > allow (1)`. Severity (`critical > warn > info`) resolves ties. Multiple transform rules accumulate field mutations.
 
-Define these security rules in Rego or a single YAML Policy Card (`policy_file: "./policies.yaml"`), or load presets (`presets: ["safety", "safety_drift", "pci", "mcp_sandbox", "zero_trust"]`). All requests across 15+ providers (and generic OpenAI endpoints) are mapped to a unified canonical schema before evaluation. All formats support regular expressions, Deterministic FSM Gating (Trajectory Risk Modeling via `session.state` and transition triggers), Persistent Agent Risk Profiles (`input.agent_risk`), Multi-Turn Conversation Drift Context (`input.session.drift`), and hot-reloads.
+Define these security rules in Rego or a single YAML Policy Card (`policy_file: "./policies.yaml"`), or load presets (`presets: ["safety", "safety_drift", "pci", "mcp_sandbox", "zero_trust", "owasp_llm_top10", "nist_ai_rmf", "eu_ai_act"]`). All requests across 15+ providers (and generic OpenAI endpoints) are mapped to a unified canonical schema before evaluation. All formats support regular expressions, Deterministic FSM Gating (Trajectory Risk Modeling via `session.state` and transition triggers), Persistent Agent Risk Profiles (`input.agent_risk`), Multi-Turn Conversation Drift Context (`input.session.drift`), and hot-reloads.
 
 **MCP Response Inspection (Indirect Prompt Injection Wall):**
 If `mcp.inspector.enabled` is set to true in `loopers.yaml`, Loopers synchronously intercepts outbound `tools/call` response payloads. It normalizes text (stripping zero-width characters) and performs pattern scanning:
@@ -80,6 +80,12 @@ Embedded Layer 3 pipeline (`internal/syntactic`) running 5-stage de-obfuscation 
 - Multi-Layer Payload Extraction: Unpacks Base64 printable text layers to inspect embedded instructions and secret tokens without corrupting binary data.
 - Delimiter & Token Collapse: Unpacks padded token splitting (`i.g.n.o.r.e`) and leetspeak (`1gn0r3` -> `ignore`).
 - Dual Policy Matching: Exposes `input.action.normalized_prompt` and `input.action.obfuscation.*` to OPA and automatically matches prompt conditions against both raw and normalized text.
+ 
+**Compliance Policy Presets (Capability 7):**
+Embedded zero-dependency compliance policy cards loaded via `--presets` or `loopers.yaml`:
+- `owasp_llm_top10`: Direct prompt injection & drift (LLM01), RCE shell commands & path traversal (LLM02), DB credentials & private keys (LLM06), unvalidated bash execution & destructive action escalation (LLM08).
+- `nist_ai_rmf`: Mandatory agent owner attribution (GOVERN 1.1), persistent behavioral risk score quarantine (MEASURE 2.7), high-consequence IAM & financial escalation (MANAGE 2.4), objective drift boundaries (MANAGE 4.1).
+- `eu_ai_act`: Prohibited subliminal manipulation (Art. 5.1.a), citizen social scoring (Art. 5.1.c), real-time remote biometric surveillance (Art. 5.1.d), mandatory human oversight on recruitment screening & credit evaluation (Art. 14).
 
 ---
 
