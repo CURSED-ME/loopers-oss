@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.20.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.19.0...v2.20.0) (2026-08-24)
+
+
+### Features
+
+* **policy:** implement OWASP LLM Top 10, NIST AI RMF & EU AI Act compliance presets ([6429898](https://github.com/CURSED-ME/loopers-oss/commit/642989897d7c847a2f78d972f3566da0bd8e1570))
+* **policy:** implement OWASP LLM Top 10, NIST AI RMF & EU AI Act compliance presets (Layer 6) ([d00d167](https://github.com/CURSED-ME/loopers-oss/commit/d00d167641b12a6967f8acf82df4f2a8d6e50199))
+
+## [2.19.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.18.0...v2.19.0) (2026-08-23)
+
+
+### Features
+
+* **security:** implement expanded syntactic normalization and homoglyph defense ([cd73beb](https://github.com/CURSED-ME/loopers-oss/commit/cd73bebcdf4a2e613d8b8615e2aa6f6f9ccbb087))
+* **security:** implement expanded syntactic normalization and homoglyph defense (Layer 3) ([a5b9c05](https://github.com/CURSED-ME/loopers-oss/commit/a5b9c05381f526618c2cacb0ca58ce281cb2bfe3))
+
+## [2.18.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.17.0...v2.18.0) (2026-08-23)
+
+
+### Features
+
+* implement multi-turn conversation drift detection engine, safet… ([8fdb983](https://github.com/CURSED-ME/loopers-oss/commit/8fdb983835ddcdbd3d2cd09a7701dc3ca56209bd))
+* implement multi-turn conversation drift detection engine, safety_drift preset, and aligned documentation ([1d3acc7](https://github.com/CURSED-ME/loopers-oss/commit/1d3acc7deecce0d19fbf0ac3fc59c88d2cb0c940))
+
 ## [2.17.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.16.0...v2.17.0) (2026-08-20)
 
 
