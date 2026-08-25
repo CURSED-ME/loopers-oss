@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/CURSED-ME/loopers-oss/internal/a2a"
+	"github.com/CURSED-ME/loopers-oss/internal/blastradius"
 	"github.com/CURSED-ME/loopers-oss/internal/budget"
 	"github.com/CURSED-ME/loopers-oss/internal/event"
 	"github.com/CURSED-ME/loopers-oss/internal/inspector"
@@ -369,6 +370,19 @@ func (s *Server) handleProxy(c *gin.Context, providerName string) {
 		actionCtx.Provider = providerName
 		if actionCtx.Model == "" {
 			actionCtx.Model = model
+		}
+
+		if len(actionCtx.ToolCalls) > 0 {
+			var maxBR blastradius.BlastRadiusResult
+			for _, tc := range actionCtx.ToolCalls {
+				br := blastradius.Calculate(tc.Name, tc.Arguments)
+				if br.Score > maxBR.Score {
+					maxBR = br
+				}
+			}
+			actionCtx.BlastRadius = maxBR.Score
+			actionCtx.BlastRadiusTier = maxBR.Tier
+			actionCtx.BlastRadiusReasons = maxBR.Reasons
 		}
 
 		if earlySessionID != "" && session.IsValidID(earlySessionID) && s.sessionManager != nil && actionCtx.PromptText != "" {

@@ -152,3 +152,25 @@ Loopers embeds deterministic, zero-dependency Policy Cards aligned with dominant
 * **NIST AI Risk Management Framework 1.0 (SP 1270):** Enforces GOVERN 1.1 / MAP 1.5 (Identity attribution and anonymous agent rejection), MEASURE 2.7 (Persistent behavioral risk scoring and containment), MANAGE 2.4 (Mandatory human-in-the-loop escalation for IAM and financial operations), and MANAGE 4.1 (Objective drift boundaries).
 * **European Union Artificial Intelligence Act (Regulation 2024/1689):** Prohibits Article 5 practices (subliminal cognitive manipulation, citizen social scoring, real-time remote biometric surveillance) and enforces Article 14 mandatory human oversight for high-risk employment screening and credit scoring systems.
 
+## 9. Tool Blast Radius Risk Scoring (Layer 5)
+
+Implemented in [`internal/blastradius/`](file:///c:/Users/varad/loopers-oss/internal/blastradius/), Layer 5 provides pre-execution risk quantification for MCP tool calls and LLM function invocations:
+
+* **Deterministic Factor Scoring Matrix:**
+  * **Destructive Operational Verbs (+35 pts):** `delete`, `drop`, `rm`, `remove`, `purge`, `wipe`, `destroy`, `truncate`, `kill`, `terminate`, `format`, `shutdown`, `erase`, `revoke`, `clean`, `prune`.
+  * **System / OS Shell Execution (+30 pts):** `exec`, `execute`, `eval`, `bash`, `sh`, `cmd`, `terminal`, `spawn`, `sudo`, `run_script`, `run_command`, `shell`, `system`.
+  * **Mutating / Write Operations (+15 pts):** `write`, `modify`, `update`, `alter`, `patch`, `create`, `insert`, `upload`, `push`, `set`, `put`, `deploy`, `publish`, `transfer`, `send`, `post`.
+  * **IAM / Credential Access (+25 pts):** Tools or arguments matching `iam`, `policy`, `permission`, `role`, `user_admin`, `security_group`, `credential`, `auth`, `rbac`, `secret`, `vault`, `keyring`, `token`, `private_key`, `api_key`, `password`.
+  * **Critical Infrastructure & Databases (+25 pts):** Target scopes referencing `prod`, `production`, `cluster`, `k8s`, `database`, `postgres`, `mysql`, `redis`, `mongodb`, `root`, `/etc/passwd`, `/etc/shadow`, `system32`, `c:\windows`, `registry`.
+  * **Financial Transactions (+25 pts):** Tools or arguments referencing `payment`, `transfer`, `invoice`, `charge`, `billing`, `wallet`, `payout`, `refund`, `wire`, `credit`.
+  * **External Network Egress (+25 pts):** Arguments containing URLs (`http://`, `https://`, `ftp://`, `ssh://`, `sftp://`), public IP addresses, or webhook endpoints.
+  * **Bulk Wildcards & Traversals (+20 pts):** Arguments specifying broad scopes (`*`, `ALL`, `%`), recursive flags (`-rf`, `--all`, `--force`), or parent directory traversals (`..`).
+  * **Read-Only Mitigation (-10 pts):** Pure inspection and search tools without mutating markers.
+* **Normalized Risk Tiers:**
+  * `low`: 0 – 29
+  * `medium`: 30 – 59
+  * `high`: 60 – 84
+  * `critical`: 85 – 100
+* **OPA / Rego Integration:** Exposes `input.action.blast_radius`, `input.action.blast_radius_tier`, and `input.action.blast_radius_reasons` to allow declarative policies (e.g. `action.blast_radius > 60` -> `escalate`).
+
+

@@ -88,10 +88,14 @@ rules:
 *   **For `mcp_tool_call` match type**:
     *   `tool_name` — Evaluates the invoked MCP tool.
     *   `arguments.[arg_name]` — Evaluates specific argument inputs passed to the tool.
+    *   `action.blast_radius` / `blast_radius` — Evaluates computed tool blast radius score (0–100).
+    *   `action.blast_radius_tier` / `blast_radius_tier` — Evaluates computed risk tier (`"low"`, `"medium"`, `"high"`, `"critical"`).
 *   **Operators**:
     *   `contains` — Checks if string contains substring.
     *   `matches_regex` — Checks regular expression matching.
     *   `equals` / `not_equals` — Direct equality checking.
+    *   `greater_than` / `>` / `greater_than_or_equals` / `>=` — Numeric comparison.
+    *   `less_than` / `<` / `less_than_or_equals` / `<=` — Numeric comparison.
 
 ### Deterministic FSM Gating (Trajectory Risk Modeling)
 
@@ -163,9 +167,11 @@ Defends against gradual crescent context divergence and sudden goal hijacking ac
 * **Proactive Interception:** Blocks prompts locally with HTTP 403 when the weighted containment drift score exceeds the security threshold.
 
 ### 4. `mcp_sandbox` (MCP Blast Radius Prevention)
-Limits file system traversal and enforces execution sequences.
+Limits file system traversal, enforces execution sequences, and gates high blast radius operations.
 * **Path Traversal Blocking:** Blocks MCP tool call arguments (e.g., `path`, `file`) containing parent directory traversal paths (`../` or `..\`).
 * **FSM Sequence Gating:** Restricts `execute_bash` tool calls unless preceded by a `dry_run_command` in the session history within the last 2 steps.
+* **Blast Radius Escalation:** Automatically escalates tool calls with blast radius exceeding 60 (`action.blast_radius > 60`) for mandatory human verification.
+* **Critical Operation Denials:** Proactively blocks tool calls with critical blast radius (`action.blast_radius >= 85`), such as destructive database purges or recursive root deletions.
 
 ### 5. `zero_trust` (Agent Identity & Risk Management)
 Enforces behavioral risk score limits and taint-flag gating.

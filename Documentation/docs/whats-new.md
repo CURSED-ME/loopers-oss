@@ -11,6 +11,14 @@ Stay up to date with the newest capabilities we've added to the Loopers cost fir
 
 ---
 
+## Tool Blast Radius Risk Scoring (Layer 5)
+Loopers now computes an intrinsic risk score (0–100) and risk tier (`low`, `medium`, `high`, `critical`) for every MCP and LLM tool execution before passing it to policy evaluation:
+- **Deterministic Factor Engine (`internal/blastradius`)**: Evaluates destructive verbs (+35), OS shell execution (+30), IAM & secret targets (+25), production databases & cluster scopes (+25), financial transfers (+25), external egress URLs/IPs (+25), and bulk wildcards/traversals (+20) with pure read-only mitigations (-10).
+- **Sub-10µs Performance**: Zero-dependency, memory-safe execution benchmarked at <7µs per tool call.
+- **OPA & YAML Integration**: Exposes `input.action.blast_radius`, `input.action.blast_radius_tier`, and `input.action.blast_radius_reasons` for simple declarative rules (`field: action.blast_radius, op: greater_than, value: 60` -> `escalate`).
+- **Enhanced Presets**: Updates the built-in `mcp_sandbox` preset to escalate tool calls with blast radius >60 and deny critical operations (>=85).
+* **Learn More**: See the [Policy Engine Guide](/docs/guides/policy-engine#mcp_sandbox-mcp-blast-radius-prevention).
+
 ## Compliance Policy Presets: OWASP Top 10, NIST AI RMF & EU AI Act (Layer 6)
 Loopers now embeds production-ready compliance policy presets that map directly to global AI security and regulatory standards without requiring external policy servers:
 - **`owasp_llm_top10`**: Defends against LLM01 (Prompt Injection & Drift), LLM02 (Insecure Output / RCE), LLM06 (DB connection strings & Private keys), and LLM08 (Excessive Agency & Destructive tool escalation).

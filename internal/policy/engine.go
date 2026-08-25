@@ -99,17 +99,20 @@ type ObfuscationContext struct {
 }
 
 type ActionContext struct {
-	Type             string                    `json:"type"`                        // "llm_call" | "mcp_tool_call"
-	Provider         string                    `json:"provider"`                    // "openai" | "anthropic" | "gemini" | etc.
-	Model            string                    `json:"model"`                       // e.g. "gpt-4o"
-	PromptText       string                    `json:"prompt_text"`                 // Concatenated raw prompts
-	NormalizedPrompt string                    `json:"normalized_prompt,omitempty"` // Canonical de-obfuscated prompt
-	Obfuscation      ObfuscationContext        `json:"obfuscation,omitempty"`       // Obfuscation detection telemetry
-	ToolName         string                    `json:"tool_name,omitempty"`         // if tool call
-	ToolArguments    map[string]interface{}    `json:"tool_arguments,omitempty"`    // if tool call
-	Messages         []CanonicalMessage        `json:"messages,omitempty"`          // Canonical messages
-	Tools            []CanonicalToolDefinition `json:"tools,omitempty"`             // Canonical tools defined
-	ToolCalls        []CanonicalToolCall       `json:"tool_calls,omitempty"`        // Canonical tool calls requested
+	Type               string                    `json:"type"`                           // "llm_call" | "mcp_tool_call"
+	Provider           string                    `json:"provider"`                       // "openai" | "anthropic" | "gemini" | etc.
+	Model              string                    `json:"model"`                          // e.g. "gpt-4o"
+	PromptText         string                    `json:"prompt_text"`                    // Concatenated raw prompts
+	NormalizedPrompt   string                    `json:"normalized_prompt,omitempty"`    // Canonical de-obfuscated prompt
+	Obfuscation        ObfuscationContext        `json:"obfuscation,omitempty"`          // Obfuscation detection telemetry
+	ToolName           string                    `json:"tool_name,omitempty"`            // if tool call
+	ToolArguments      map[string]interface{}    `json:"tool_arguments,omitempty"`       // if tool call
+	Messages           []CanonicalMessage        `json:"messages,omitempty"`             // Canonical messages
+	Tools              []CanonicalToolDefinition `json:"tools,omitempty"`                // Canonical tools defined
+	ToolCalls          []CanonicalToolCall       `json:"tool_calls,omitempty"`           // Canonical tool calls requested
+	BlastRadius        int                       `json:"blast_radius,omitempty"`         // Computed operational risk score (0-100)
+	BlastRadiusTier    string                    `json:"blast_radius_tier,omitempty"`    // "low" | "medium" | "high" | "critical"
+	BlastRadiusReasons []string                  `json:"blast_radius_reasons,omitempty"` // Breakdown of risk factors
 }
 
 type AgentRiskContext struct {

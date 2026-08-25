@@ -87,6 +87,13 @@ Embedded zero-dependency compliance policy cards loaded via `--presets` or `loop
 - `nist_ai_rmf`: Mandatory agent owner attribution (GOVERN 1.1), persistent behavioral risk score quarantine (MEASURE 2.7), high-consequence IAM & financial escalation (MANAGE 2.4), objective drift boundaries (MANAGE 4.1).
 - `eu_ai_act`: Prohibited subliminal manipulation (Art. 5.1.a), citizen social scoring (Art. 5.1.c), real-time remote biometric surveillance (Art. 5.1.d), mandatory human oversight on recruitment screening & credit evaluation (Art. 14).
 
+**Tool Blast Radius Risk Scoring (Capability 8):**
+Embedded pre-execution risk calculation engine (`internal/blastradius`) for MCP tool calls and LLM function invocations:
+- Deterministic Factor Matrix: Destructive verbs (+35), OS shell execution (+30), IAM & secret targets (+25), production databases & cluster scopes (+25), financial transfers (+25), external network egress URLs/IPs (+25), bulk wildcards & recursive traversals (+20), read-only mitigations (-10).
+- Normalized Risk Tiers: `low` (0–29), `medium` (30–59), `high` (60–84), `critical` (85–100).
+- Policy Engine Telemetry: Exposes `input.action.blast_radius`, `input.action.blast_radius_tier`, and `input.action.blast_radius_reasons` to OPA/Rego and YAML Policy Cards (`action.blast_radius > 60` -> `escalate`).
+- Out-of-the-Box Sandbox Presets: `mcp_sandbox` automatically escalates tool calls >60 and denies critical executions (>=85).
+
 ---
 
 ## Getting Started & Core

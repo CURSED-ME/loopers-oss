@@ -516,6 +516,48 @@ Loopers embeds production-ready compliance policy presets that map directly to g
 
 ---
 
+## 11. Tool Blast Radius Risk Scoring (Layer 5)
+
+Before executing or approving any Model Context Protocol (MCP) or LLM tool call, Loopers computes a deterministic risk score ($0–100$) and risk tier (`low`, `medium`, `high`, `critical`) based on operational verbs, sensitive targets, external egress vectors, and scope multipliers:
+
+- **Destructive Verbs (+35 pts)**: `delete`, `drop`, `rm`, `purge`, `wipe`, `destroy`, `truncate`, `kill`
+- **System Execution (+30 pts)**: `exec`, `execute`, `eval`, `bash`, `sh`, `cmd`, `terminal`, `sudo`
+- **IAM & Secrets (+25 pts)**: `iam`, `policy`, `role`, `user_admin`, `secret`, `vault`, `token`, `private_key`
+- **Critical Infra & Database (+25 pts)**: `prod`, `database`, `cluster`, `root`, `/etc/passwd`
+- **Financial Operations (+25 pts)**: `payment`, `transfer`, `billing`, `payout`, `refund`
+- **External Egress (+25 pts)**: URLs (`http://`, `https://`), webhook endpoints, raw IP addresses
+- **Bulk & Traversal (+20 pts)**: `*`, `ALL`, `%`, recursive flags (`-rf`), path traversals (`..`)
+- **Read-Only Mitigation (-10 pts)**: Safe inspection tools (`get`, `read`, `list`, `search`)
+
+### Declarative Policy Usage:
+```yaml
+rules:
+  - name: escalate-high-blast-radius
+    match:
+      type: mcp_tool_call
+    conditions:
+      - field: action.blast_radius
+        op: greater_than
+        value: "60"
+    action: escalate
+    escalate_to: human
+    severity: warn
+    reason: "Tool execution exceeds blast radius threshold (>60)"
+
+  - name: block-critical-blast-radius
+    match:
+      type: mcp_tool_call
+    conditions:
+      - field: action.blast_radius_tier
+        op: equals
+        value: "critical"
+    action: deny
+    severity: critical
+    reason: "Critical blast radius operations are prohibited"
+```
+
+---
+
 ### Python SDK
 ```python
 from loopers_client import LoopersOpenAI
