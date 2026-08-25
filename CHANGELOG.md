@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.20.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.19.0...v2.20.0) (2026-08-24)
+
+
+### Features
+
+* **policy:** implement OWASP LLM Top 10, NIST AI RMF & EU AI Act compliance presets ([6429898](https://github.com/CURSED-ME/loopers-oss/commit/642989897d7c847a2f78d972f3566da0bd8e1570))
+* **policy:** implement OWASP LLM Top 10, NIST AI RMF & EU AI Act compliance presets (Layer 6) ([d00d167](https://github.com/CURSED-ME/loopers-oss/commit/d00d167641b12a6967f8acf82df4f2a8d6e50199))
+
 ## [2.19.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.18.0...v2.19.0) (2026-08-23)
 
 
