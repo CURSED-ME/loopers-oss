@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.21.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.20.0...v2.21.0) (2026-08-25)
+
+
+### Features
+
+* implement Tool Blast Radius Risk Scoring engine and policy integration ([51e216b](https://github.com/CURSED-ME/loopers-oss/commit/51e216b8bf32a314e44d3ed05a257b4c6ba1bdfc))
+* implement Tool Blast Radius Risk Scoring engine and policy integration ([eba60a2](https://github.com/CURSED-ME/loopers-oss/commit/eba60a2f343f9dc63a5226e3663a760cb99b8693))
+
 ## [2.20.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.19.0...v2.20.0) (2026-08-24)
 
 
