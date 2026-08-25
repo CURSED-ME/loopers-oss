@@ -219,7 +219,9 @@ providers:
 | Key | Default | Description |
 |---|---|---|
 | `enabled` | `false` | Enable the embedded OPA/Rego policy engine |
+| `policy_file` | `""` | Path to declarative YAML Policy Card file |
 | `policy_dir` | `"./policies"` | Local directory containing `.rego` policy files |
+| `presets` | `[]` | Built-in policy presets (`"safety"`, `"safety_drift"`, `"pci"`, `"mcp_sandbox"`, `"zero_trust"`, `"owasp_llm_top10"`, `"nist_ai_rmf"`, `"eu_ai_act"`) |
 | `default_action` | `"deny"` | Default decision when no rule matches (`"allow"` or `"deny"`) |
 | `signature.enabled` | `false` | Enable cryptographic inline signatures for outgoing request bodies |
 | `signature.type` | `"hmac"` | Signature type: `"hmac"` (HMAC-SHA256) or `"ed25519"` (Ed25519 signatures) |

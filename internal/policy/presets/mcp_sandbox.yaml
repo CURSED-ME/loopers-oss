@@ -35,3 +35,29 @@ rules:
       within_last_steps: 2
     action: deny
     reason: "Blocked: Bash execution requested without a prior dry-run validation step (dry_run_command must be executed within the last 2 steps)."
+
+  - name: blast-radius-high-escalate
+    description: Escalate tool executions with blast radius exceeding 60 for human verification
+    match:
+      type: mcp_tool_call
+    conditions:
+      - field: action.blast_radius
+        op: greater_than
+        value: "60"
+    action: escalate
+    escalate_to: human
+    severity: warn
+    reason: "Escalation required: tool call blast radius exceeds acceptable threshold (>60)."
+
+  - name: blast-radius-critical-deny
+    description: Block tool executions with critical blast radius exceeding or equal to 85
+    match:
+      type: mcp_tool_call
+    conditions:
+      - field: action.blast_radius
+        op: greater_than_or_equals
+        value: "85"
+    action: deny
+    severity: critical
+    reason: "Blocked: tool call blast radius is critical (>=85). Requires explicit operator override."
+

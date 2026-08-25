@@ -14,6 +14,7 @@ import (
 
 	"github.com/CURSED-ME/loopers-oss/internal/a2a"
 	"github.com/CURSED-ME/loopers-oss/internal/alerting"
+	"github.com/CURSED-ME/loopers-oss/internal/blastradius"
 	"github.com/CURSED-ME/loopers-oss/internal/budget"
 	"github.com/CURSED-ME/loopers-oss/internal/event"
 	"github.com/CURSED-ME/loopers-oss/internal/inspector"
@@ -102,7 +103,7 @@ func NewHandler(cfg Config, riskProfileCfg riskprofile.Config, budgetClient *bud
 
 	servers := make(map[string]string)
 	for _, srv := range cfg.Servers {
-		if netutil.IsPrivateURL(srv.URL) {
+		if netutil.IsPrivateURL(srv.URL) && !viper.GetBool("testing.allow_private_urls") {
 			logging.Logger.Fatal().Str("mcp_server", srv.Name).Str("url", srv.URL).Msg("MCP server URL points to a private/internal IP address (SSRF protection).")
 		}
 		servers[srv.Name] = srv.URL
@@ -257,7 +258,7 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("MCP server '%s' not configured", serverName)})
 		return
 	}
-	if netutil.IsPrivateURL(targetURL) {
+	if netutil.IsPrivateURL(targetURL) && !viper.GetBool("testing.allow_private_urls") {
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "MCP server URL resolves to a private IP (SSRF protection)"})
 		return
 	}
@@ -499,6 +500,8 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 			}
 		}
 
+		br := blastradius.Calculate(toolParams.Name, toolArgs)
+
 		decision, err := h.policyEngine.Evaluate(c.Request.Context(), policy.EvalInput{
 			Agent: policy.AgentContext{
 				KeyHash:   keyHash,
@@ -519,10 +522,13 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 			Session:   sessionCtx,
 			AgentRisk: agentRiskCtx,
 			Action: policy.ActionContext{
-				Type:          "mcp_tool_call",
-				Provider:      serverName,
-				ToolName:      toolParams.Name,
-				ToolArguments: toolArgs,
+				Type:               "mcp_tool_call",
+				Provider:           serverName,
+				ToolName:           toolParams.Name,
+				ToolArguments:      toolArgs,
+				BlastRadius:        br.Score,
+				BlastRadiusTier:    br.Tier,
+				BlastRadiusReasons: br.Reasons,
 			},
 		})
 		if err != nil {
@@ -563,6 +569,8 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 				Str("tool_name", toolParams.Name).
 				Str("server", serverName).
 				Str("session_id", sessionID).
+				Int("blast_radius", br.Score).
+				Str("blast_radius_tier", br.Tier).
 				Str("reason", decision.Reason).
 				Msg("mcp_policy_block_agent_friendly")
 			abortWithMCPPolicyDenied(c, req, toolParams.Name, decision.Reason)
@@ -589,6 +597,8 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 				Str("tool_name", toolParams.Name).
 				Str("server", serverName).
 				Str("session_id", sessionID).
+				Int("blast_radius", br.Score).
+				Str("blast_radius_tier", br.Tier).
 				Str("quarantine_for", decision.QuarantineFor).
 				Msg("mcp_quarantine_agent")
 			abortWithMCPPolicyDenied(c, req, toolParams.Name, "Agent quarantined: "+decision.Reason)
@@ -600,6 +610,14 @@ func (h *Handler) HandleMCP(c *gin.Context) {
 					_, _ = riskprofile.UpdateRiskScore(context.Background(), h.budgetClient.GetUnderlyingClient(), keyHash, 15, false, "escalate")
 				}()
 			}
+			logging.Logger.Warn().
+				Str("tool_name", toolParams.Name).
+				Str("server", serverName).
+				Str("session_id", sessionID).
+				Int("blast_radius", br.Score).
+				Str("blast_radius_tier", br.Tier).
+				Str("reason", decision.Reason).
+				Msg("mcp_escalate_tool_call")
 			if h.escalationBroker == nil {
 				abortWithMCPPolicyDenied(c, req, toolParams.Name, "Escalation required but broker not configured")
 				return

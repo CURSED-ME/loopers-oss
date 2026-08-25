@@ -306,6 +306,12 @@ func mapFieldToRego(field string) (string, error) {
 	if field == "provider" {
 		return "input.action.provider", nil
 	}
+	if field == "blast_radius" || field == "action.blast_radius" {
+		return "input.action.blast_radius", nil
+	}
+	if field == "blast_radius_tier" || field == "action.blast_radius_tier" {
+		return "input.action.blast_radius_tier", nil
+	}
 	if strings.HasPrefix(field, "arguments.") {
 		argName := field[len("arguments."):]
 		if argName == "" {
