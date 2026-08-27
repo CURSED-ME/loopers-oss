@@ -135,3 +135,44 @@ Implemented in `internal/riskprofile/`, the risk profile engine tracks an agent'
 * **Automated Containment Thresholds:**
   - `RiskScore > AutoQuarantineThreshold`: Triggers an automatic 1-hour quarantine in Redis.
   - `RiskScore > PermanentBlockThreshold`: Permanently rejects all requests from the agent key hash until administrative review.
+
+### 7. Syntactic Normalization & Obfuscation Defense (Layer 3)
+
+Implemented in `internal/syntactic/`, the Layer 3 normalizer defends against adversarial evasion techniques that attempt to bypass keyword and regex filters:
+
+* **Homoglyph & Confusable Resolution:** Maps Unicode lookalike characters (Cyrillic `а, е, о, р, с, і`, Greek `α, ο, ν, ρ, τ`, Mathematical Alphanumeric bold/italic `𝐢𝐠𝐧𝐨𝐫𝐞`, Fullwidth `ｉｇｎｏｒｅ`, Enclosed runes `ⓘⓖⓝⓞⓡⓔ`) to their ASCII equivalents via Unicode TR39 tables and NFKC normalization.
+* **Invisible Character Stripping:** Removes 28+ zero-width spaces, joiners, bi-directional overrides (`\u202E`, `\u200E`), soft hyphens (`\u00AD`), combining grapheme joiners (`\u034F`), and variation selectors.
+* **Recursive Multi-Layer Decoding:** Recursively unescapes double/triple URL percent-encoding (`%252e%252e` -> `..`), hex escapes (`\xHH`, `0xHH`), unicode escapes (`\uHHHH`), and HTML entities (`&#105;`, `&quot;`).
+* **Payload Layer Extraction:** `ExtractAllTextLayers()` extracts printable UTF-8 strings embedded inside Base64 blocks and unescaped buffers, enabling deep inspection without corrupting raw binary data.
+* **Delimiter & Token Collapsing:** Unpacks padded token splitting (e.g. `i.g.n.o.r.e`, `i_g_n_o_r_e`, `i-g-n-o-r-e`) and folds leetspeak (`1gn0r3` -> `ignore`).
+* **Dual Policy Engine Matching:** Automatically passes `normalized_prompt` and `obfuscation.*` telemetry to OPA, ensuring standard policy cards catch obfuscated injections without duplicating rules.
+
+### 8. Compliance Policy Presets & Regulatory Governance (Layer 6)
+
+Loopers embeds deterministic, zero-dependency Policy Cards aligned with dominant international AI safety and regulatory frameworks:
+
+* **OWASP Top 10 for LLM Applications (2025):** Enforces controls across LLM01 (Prompt Injection & Multi-Turn Drift), LLM02 (Insecure Output Handling, Remote Code Execution, and Path Traversal), LLM06 (Sensitive Info Disclosure, DB connection strings, Private Keys), and LLM08 (Excessive Agency, FSM dry-run sequence gating, and Destructive tool escalation).
+* **NIST AI Risk Management Framework 1.0 (SP 1270):** Enforces GOVERN 1.1 / MAP 1.5 (Identity attribution and anonymous agent rejection), MEASURE 2.7 (Persistent behavioral risk scoring and containment), MANAGE 2.4 (Mandatory human-in-the-loop escalation for IAM and financial operations), and MANAGE 4.1 (Objective drift boundaries).
+* **European Union Artificial Intelligence Act (Regulation 2024/1689):** Prohibits Article 5 practices (subliminal cognitive manipulation, citizen social scoring, real-time remote biometric surveillance) and enforces Article 14 mandatory human oversight for high-risk employment screening and credit scoring systems.
+
+### 9. Tool Blast Radius Risk Scoring (Layer 5)
+
+Implemented in `internal/blastradius/`, Layer 5 provides pre-execution risk quantification for MCP tool calls and LLM function invocations:
+
+* **Deterministic Factor Scoring Matrix:**
+  * **Destructive Operational Verbs (+35 pts):** `delete`, `drop`, `rm`, `remove`, `purge`, `wipe`, `destroy`, `truncate`, `kill`, `terminate`, `format`, `shutdown`, `erase`, `revoke`, `clean`, `prune`.
+  * **System / OS Shell Execution (+30 pts):** `exec`, `execute`, `eval`, `bash`, `sh`, `cmd`, `terminal`, `spawn`, `sudo`, `run_script`, `run_command`, `shell`, `system`.
+  * **Mutating / Write Operations (+15 pts):** `write`, `modify`, `update`, `alter`, `patch`, `create`, `insert`, `upload`, `push`, `set`, `put`, `deploy`, `publish`, `transfer`, `send`, `post`.
+  * **IAM / Credential Access (+25 pts):** Tools or arguments matching `iam`, `policy`, `permission`, `role`, `user_admin`, `security_group`, `credential`, `auth`, `rbac`, `secret`, `vault`, `keyring`, `token`, `private_key`, `api_key`, `password`.
+  * **Critical Infrastructure & Databases (+25 pts):** Target scopes referencing `prod`, `production`, `cluster`, `k8s`, `database`, `postgres`, `mysql`, `redis`, `mongodb`, `root`, `/etc/passwd`, `/etc/shadow`, `system32`, `c:\windows`, `registry`.
+  * **Financial Transactions (+25 pts):** Tools or arguments referencing `payment`, `transfer`, `invoice`, `charge`, `billing`, `wallet`, `payout`, `refund`, `wire`, `credit`.
+  * **External Network Egress (+25 pts):** Arguments containing URLs (`http://`, `https://`, `ftp://`, `ssh://`, `sftp://`), public IP addresses, or webhook endpoints.
+  * **Bulk Wildcards & Traversals (+20 pts):** Arguments specifying broad scopes (`*`, `ALL`, `%`), recursive flags (`-rf`, `--all`, `--force`), or parent directory traversals (`..`).
+  * **Read-Only Mitigation (-10 pts):** Pure inspection and search tools without mutating markers.
+* **Normalized Risk Tiers:**
+  * `low`: 0 – 29
+  * `medium`: 30 – 59
+  * `high`: 60 – 84
+  * `critical`: 85 – 100
+* **OPA / Rego Integration:** Exposes `input.action.blast_radius`, `input.action.blast_radius_tier`, and `input.action.blast_radius_reasons` to allow declarative policies (e.g. `action.blast_radius > 60` -> `escalate`).
+

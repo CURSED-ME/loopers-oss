@@ -314,3 +314,67 @@ func TestVerifier_CompliancePresets(t *testing.T) {
 		t.Errorf("expected clean compliance trace to pass, got status %s, count %d", cleanReport.Status, cleanReport.ViolationsCount)
 	}
 }
+
+func TestVerifier_BlastRadius(t *testing.T) {
+	ctx := context.Background()
+
+	v, err := NewVerifier(Config{
+		Presets:       []string{"mcp_sandbox"},
+		DefaultAction: "allow",
+	})
+	if err != nil {
+		t.Fatalf("Failed to initialize verifier: %v", err)
+	}
+
+	// 1. Trace with critical blast radius tool call (delete database with force)
+	violatingTrace := &SessionTraceFile{
+		SessionID: "sess-blast-radius-critical",
+		Traces: []policy.SessionTrace{
+			{
+				Timestamp: 1000,
+				Type:      "mcp_tool_call",
+				Provider:  "system-mcp",
+				ToolName:  "delete_database",
+				Arguments: map[string]interface{}{
+					"database": "prod_users",
+					"force":    true,
+				},
+			},
+		},
+	}
+
+	report, err := v.VerifyTrace(ctx, violatingTrace)
+	if err != nil {
+		t.Fatalf("VerifyTrace failed: %v", err)
+	}
+	if report.Status != "FAILED" || report.ViolationsCount < 1 {
+		t.Errorf("expected blast radius violation, got status %s, count %d", report.Status, report.ViolationsCount)
+	}
+	if report.Violations[0].Verdict != "deny" {
+		t.Errorf("expected verdict deny for critical blast radius, got %s", report.Violations[0].Verdict)
+	}
+
+	// 2. Safe read tool call trace
+	safeTrace := &SessionTraceFile{
+		SessionID: "sess-blast-radius-safe",
+		Traces: []policy.SessionTrace{
+			{
+				Timestamp: 1000,
+				Type:      "mcp_tool_call",
+				Provider:  "system-mcp",
+				ToolName:  "read_file",
+				Arguments: map[string]interface{}{
+					"path": "README.md",
+				},
+			},
+		},
+	}
+
+	safeReport, err := v.VerifyTrace(ctx, safeTrace)
+	if err != nil {
+		t.Fatalf("VerifyTrace failed: %v", err)
+	}
+	if safeReport.Status != "PASSED" || safeReport.ViolationsCount != 0 {
+		t.Errorf("expected safe trace to pass, got status %s, count %d", safeReport.Status, safeReport.ViolationsCount)
+	}
+}

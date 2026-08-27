@@ -643,6 +643,34 @@ Loopers embeds production-ready compliance policy presets that map directly to g
 
 ---
 
+## Tool Blast Radius Risk Scoring (Layer 5)
+
+Loopers embeds a deterministic, sub-10µs risk scoring engine (`internal/blastradius`) that calculates intrinsic operational danger for every MCP tool call and LLM function invocation prior to execution:
+
+### 1. Risk Factor Scoring Matrix
+- **Destructive Verbs (+35 pts):** `delete`, `drop`, `rm`, `purge`, `wipe`, `destroy`, `truncate`, `kill`, `terminate`, `format`, `shutdown`, `erase`, `revoke`, `clean`, `prune`.
+- **System Execution (+30 pts):** `exec`, `execute`, `eval`, `bash`, `sh`, `cmd`, `terminal`, `spawn`, `sudo`, `run_script`, `run_command`, `shell`, `system`.
+- **Mutating Verbs (+15 pts):** `write`, `modify`, `update`, `alter`, `patch`, `create`, `insert`, `upload`, `push`, `set`, `put`, `deploy`, `publish`, `transfer`, `send`, `post`.
+- **IAM & Secrets (+25 pts):** `iam`, `policy`, `permission`, `role`, `user_admin`, `security_group`, `credential`, `auth`, `rbac`, `secret`, `vault`, `keyring`, `token`, `private_key`, `api_key`, `password`.
+- **Critical Infrastructure & Databases (+25 pts):** `prod`, `production`, `cluster`, `k8s`, `database`, `postgres`, `mysql`, `redis`, `mongodb`, `root`, `/etc/passwd`, `/etc/shadow`, `system32`, `c:\windows`, `registry`.
+- **Financial Operations (+25 pts):** `payment`, `transfer`, `invoice`, `charge`, `billing`, `wallet`, `payout`, `refund`, `wire`, `credit`.
+- **External Network Egress (+25 pts):** URLs (`http://`, `https://`, `ftp://`, `ssh://`, `sftp://`), public IP addresses, webhook endpoints (`webhook.site`, `pastebin`, `ngrok`).
+- **Bulk Wildcards & Traversals (+20 pts):** Wildcards (`*`, `ALL`, `%`), recursive flags (`-rf`, `--all`, `--force`), parent directory traversals (`..`).
+- **Read-Only Mitigation (-10 pts):** Pure inspection and search tools without mutating markers.
+
+### 2. Risk Tiers
+- **`low` (0–29):** Safe read-only inspections, localized directory listings, documentation searches.
+- **`medium` (30–59):** Single resource write/update operations, non-destructive API mutations.
+- **`high` (60–84):** Broad file mutations, OS script execution, external egress dispatches.
+- **`critical` (85–100):** Destructive database purges, IAM role deletions, recursive root removals, financial wire transfers.
+
+### 3. Policy Plane Integration
+- Injected into OPA/Rego input as `input.action.blast_radius`, `input.action.blast_radius_tier`, and `input.action.blast_radius_reasons`.
+- Used in Declarative YAML Policy Cards via `field: action.blast_radius, op: greater_than, value: 60` or `field: action.blast_radius_tier, op: equals, value: "critical"`.
+- Built-in `mcp_sandbox` preset automatically escalates tool calls >60 and blocks critical executions (>=85).
+
+---
+
 ## Supported Providers
 
 | Provider | `--provider` value |
