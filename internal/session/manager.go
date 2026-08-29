@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/try-loopers/loopers-oss/internal/policy"
 	"github.com/redis/go-redis/v9"
+	"github.com/try-loopers/loopers-oss/internal/policy"
 )
 
 var validSessionID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)

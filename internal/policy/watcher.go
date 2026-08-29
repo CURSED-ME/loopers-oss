@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/try-loopers/loopers-oss/internal/logging"
 	"github.com/fsnotify/fsnotify"
+	"github.com/try-loopers/loopers-oss/internal/logging"
 )
 
 func (e *Engine) StartWatcher(ctx context.Context) error {

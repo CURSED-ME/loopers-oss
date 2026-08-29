@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/try-loopers/loopers-oss/internal/budget"
-	"github.com/try-loopers/loopers-oss/internal/keyring"
-	"github.com/try-loopers/loopers-oss/internal/pricing"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/try-loopers/loopers-oss/internal/budget"
+	"github.com/try-loopers/loopers-oss/internal/keyring"
+	"github.com/try-loopers/loopers-oss/internal/pricing"
 )
 
 func setupDriftTestServer(t *testing.T) (*Server, *miniredis.Miniredis, string, *httptest.Server) {

@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       
       - name: Build local image
-        run: docker build -t ghcr.io/cursed-me/loopers:latest .
+        run: docker build -t ghcr.io/try-loopers/loopers:latest .
         
       - name: Start demo stack
         run: docker compose -f docker-compose.demo.yml up -d

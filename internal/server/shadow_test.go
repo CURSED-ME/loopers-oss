@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/try-loopers/loopers-oss/internal/budget"
 	"github.com/try-loopers/loopers-oss/internal/keyring"
 	"github.com/try-loopers/loopers-oss/internal/pricing"
-	"github.com/alicebob/miniredis/v2"
-	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 type mockProvider struct {

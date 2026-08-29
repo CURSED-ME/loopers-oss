@@ -5,12 +5,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/try-loopers/loopers-oss/cmd/loopers/ui"
-	"github.com/try-loopers/loopers-oss/internal/logging"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/try-loopers/loopers-oss/cmd/loopers/ui"
+	"github.com/try-loopers/loopers-oss/internal/logging"
 )
 
 var (

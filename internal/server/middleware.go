@@ -13,11 +13,11 @@ import (
 
 	"github.com/spf13/viper"
 
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/try-loopers/loopers-oss/internal/keyring"
 	"github.com/try-loopers/loopers-oss/internal/logging"
 	"github.com/try-loopers/loopers-oss/internal/proxy"
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 const (

@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/spf13/viper"
 	"github.com/try-loopers/loopers-oss/internal/budget"
 	"github.com/try-loopers/loopers-oss/internal/keyring"
 	"github.com/try-loopers/loopers-oss/internal/pricing"
-	"github.com/alicebob/miniredis/v2"
-	"github.com/spf13/viper"
 )
 
 func setupTestServerWithGenericProviders(t *testing.T, genericProvidersCfg interface{}) (*Server, func()) {

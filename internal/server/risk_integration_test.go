@@ -10,13 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"github.com/try-loopers/loopers-oss/internal/budget"
 	"github.com/try-loopers/loopers-oss/internal/keyring"
 	"github.com/try-loopers/loopers-oss/internal/pricing"
 	"github.com/try-loopers/loopers-oss/internal/riskprofile"
-	"github.com/alicebob/miniredis/v2"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestRiskProfile_Integration(t *testing.T) {

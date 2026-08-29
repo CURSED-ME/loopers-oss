@@ -6,9 +6,9 @@ import (
 
 	"strings"
 
-	"github.com/try-loopers/loopers-oss/cmd/loopers/ui"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/viper"
+	"github.com/try-loopers/loopers-oss/cmd/loopers/ui"
 )
 
 func screenInit() {

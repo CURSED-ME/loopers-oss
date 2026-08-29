@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/charmbracelet/huh"
 	"github.com/try-loopers/loopers-oss/cmd/loopers/ui"
 	"github.com/try-loopers/loopers-oss/internal/policy"
-	"github.com/charmbracelet/huh"
 	"gopkg.in/yaml.v3"
 )
 

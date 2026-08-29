@@ -10,6 +10,9 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/spf13/viper"
 	"github.com/try-loopers/loopers-oss/internal/a2a"
 	"github.com/try-loopers/loopers-oss/internal/alerting"
 	"github.com/try-loopers/loopers-oss/internal/budget"
@@ -44,9 +47,6 @@ import (
 	"github.com/try-loopers/loopers-oss/internal/riskprofile"
 	"github.com/try-loopers/loopers-oss/internal/session"
 	"github.com/try-loopers/loopers-oss/internal/signature"
-	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/trace"
 )
 

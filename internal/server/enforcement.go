@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/try-loopers/loopers-oss/internal/a2a"
 	"github.com/try-loopers/loopers-oss/internal/budget"
 	"github.com/try-loopers/loopers-oss/internal/event"
@@ -14,7 +15,6 @@ import (
 	"github.com/try-loopers/loopers-oss/internal/logging"
 	"github.com/try-loopers/loopers-oss/internal/pricing"
 	"github.com/try-loopers/loopers-oss/pkg/api"
-	"github.com/gin-gonic/gin"
 )
 
 func (s *Server) enforceBudgetWithFallback(c *gin.Context, providerName, model string, estimatedCost, inputPrice, outputPrice float64, inputTokens, maxTokensVal int, mutatedBody []byte, providerKeyStr, keyHash string, meta *keyring.KeyMetadata, reqID string) (

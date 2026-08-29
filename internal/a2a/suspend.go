@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/try-loopers/loopers-oss/internal/policy"
-	"github.com/try-loopers/loopers-oss/internal/session"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+	"github.com/try-loopers/loopers-oss/internal/policy"
+	"github.com/try-loopers/loopers-oss/internal/session"
 )
 
 type EscalationBroker struct {

@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/pkoukk/tiktoken-go"
 	"github.com/try-loopers/loopers-oss/internal/logging"
 	"github.com/try-loopers/loopers-oss/pkg/api"
-	"github.com/pkoukk/tiktoken-go"
 )
 
 // countAnthropicRequestTokens estimates the prompt tokens for Anthropic requests.

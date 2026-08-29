@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/try-loopers/loopers-oss/internal/loop"
-	"github.com/try-loopers/loopers-oss/internal/policy"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
+	"github.com/try-loopers/loopers-oss/internal/loop"
+	"github.com/try-loopers/loopers-oss/internal/policy"
 )
 
 // anchorKey returns the Redis key storing the session's anchoring prompt bi-grams.

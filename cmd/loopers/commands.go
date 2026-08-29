@@ -15,15 +15,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/huh"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/try-loopers/loopers-oss/cmd/loopers/ui"
 	"github.com/try-loopers/loopers-oss/internal/budget"
 	"github.com/try-loopers/loopers-oss/internal/keyring"
 	"github.com/try-loopers/loopers-oss/internal/logging"
 	"github.com/try-loopers/loopers-oss/internal/pricing"
 	"github.com/try-loopers/loopers-oss/internal/server"
-	"github.com/charmbracelet/huh"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (

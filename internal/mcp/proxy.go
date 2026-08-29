@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/spf13/viper"
 	"github.com/try-loopers/loopers-oss/internal/logging"
 	"github.com/try-loopers/loopers-oss/internal/netutil"
-	"github.com/spf13/viper"
 )
 
 // Proxy handles forwarding requests to upstream MCP servers.
