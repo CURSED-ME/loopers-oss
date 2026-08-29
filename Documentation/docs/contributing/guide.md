@@ -27,7 +27,7 @@ To build and test Loopers, you will need:
 
 1. Clone the repository and navigate inside:
    ```bash
-   git clone https://github.com/CURSED-ME/loopers-oss.git
+   git clone https://github.com/try-loopers/loopers-oss.git
    cd loopers-oss
    ```
 

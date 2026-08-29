@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/try-loopers/loopers-oss/internal/logging"
 	"github.com/spf13/viper"
 )
 

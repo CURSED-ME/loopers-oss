@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/a2a"
-	"github.com/CURSED-ME/loopers-oss/internal/budget"
-	"github.com/CURSED-ME/loopers-oss/internal/event"
-	"github.com/CURSED-ME/loopers-oss/internal/keyring"
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
-	"github.com/CURSED-ME/loopers-oss/internal/pricing"
-	"github.com/CURSED-ME/loopers-oss/pkg/api"
+	"github.com/try-loopers/loopers-oss/internal/a2a"
+	"github.com/try-loopers/loopers-oss/internal/budget"
+	"github.com/try-loopers/loopers-oss/internal/event"
+	"github.com/try-loopers/loopers-oss/internal/keyring"
+	"github.com/try-loopers/loopers-oss/internal/logging"
+	"github.com/try-loopers/loopers-oss/internal/pricing"
+	"github.com/try-loopers/loopers-oss/pkg/api"
 	"github.com/gin-gonic/gin"
 )
 

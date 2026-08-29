@@ -13,9 +13,9 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/CURSED-ME/loopers-oss/internal/keyring"
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
-	"github.com/CURSED-ME/loopers-oss/internal/proxy"
+	"github.com/try-loopers/loopers-oss/internal/keyring"
+	"github.com/try-loopers/loopers-oss/internal/logging"
+	"github.com/try-loopers/loopers-oss/internal/proxy"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )

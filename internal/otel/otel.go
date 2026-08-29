@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/try-loopers/loopers-oss/internal/logging"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"

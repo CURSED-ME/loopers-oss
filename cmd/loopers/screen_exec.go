@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/CURSED-ME/loopers-oss/cmd/loopers/ui"
+	"github.com/try-loopers/loopers-oss/cmd/loopers/ui"
 	"github.com/charmbracelet/huh"
 )
 

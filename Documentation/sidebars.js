@@ -24,11 +24,6 @@ const sidebars = {
       label: 'Architecture',
     },
     {
-      type: 'doc',
-      id: 'benchmarks',
-      label: 'Benchmarks',
-    },
-    {
       type: 'category',
       label: 'Concepts',
       collapsed: false,

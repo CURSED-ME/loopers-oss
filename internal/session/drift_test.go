@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/CURSED-ME/loopers-oss/internal/policy"
+	"github.com/try-loopers/loopers-oss/internal/policy"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"

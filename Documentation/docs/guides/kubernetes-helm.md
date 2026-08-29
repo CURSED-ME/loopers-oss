@@ -36,7 +36,7 @@ helm install loopers loopers/loopers \
 replicaCount: 3
 
 image:
-  repository: ghcr.io/cursed-me/loopers
+  repository: ghcr.io/try-loopers/loopers
   tag: latest
   pullPolicy: IfNotPresent
 

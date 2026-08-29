@@ -15,12 +15,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/cmd/loopers/ui"
-	"github.com/CURSED-ME/loopers-oss/internal/budget"
-	"github.com/CURSED-ME/loopers-oss/internal/keyring"
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
-	"github.com/CURSED-ME/loopers-oss/internal/pricing"
-	"github.com/CURSED-ME/loopers-oss/internal/server"
+	"github.com/try-loopers/loopers-oss/cmd/loopers/ui"
+	"github.com/try-loopers/loopers-oss/internal/budget"
+	"github.com/try-loopers/loopers-oss/internal/keyring"
+	"github.com/try-loopers/loopers-oss/internal/logging"
+	"github.com/try-loopers/loopers-oss/internal/pricing"
+	"github.com/try-loopers/loopers-oss/internal/server"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -96,7 +96,7 @@ var serveCmd = &cobra.Command{
 		logging.InitLogger(logLevel)
 
 		logging.Logger.Info().Msg("Starting Loopers AI Firewall runtime...")
-		fmt.Println("\nIf Loopers saved your budget today, please star our repository: https://github.com/CURSED-ME/loopers-oss")
+		fmt.Println("\nIf Loopers saved your budget today, please star our repository: https://github.com/try-loopers/loopers-oss")
 
 		pricingPath := viper.GetString("pricing_path")
 		if pricingPath == "" {
@@ -338,7 +338,7 @@ var keysCreateCmd = &cobra.Command{
 		}
 
 		ui.PrintKeyCard(keyName, keyProvider, rawKey, hash)
-		fmt.Println("\nIf Loopers saved your budget today, please star our repository: https://github.com/CURSED-ME/loopers-oss")
+		fmt.Println("\nIf Loopers saved your budget today, please star our repository: https://github.com/try-loopers/loopers-oss")
 	},
 }
 
@@ -580,7 +580,7 @@ var budgetSetCmd = &cobra.Command{
 		}
 
 		ui.Success("Budget set successfully.")
-		fmt.Println("\nIf Loopers saved your budget today, please star our repository: https://github.com/CURSED-ME/loopers-oss")
+		fmt.Println("\nIf Loopers saved your budget today, please star our repository: https://github.com/try-loopers/loopers-oss")
 	},
 }
 

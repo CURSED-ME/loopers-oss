@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/CURSED-ME/loopers-oss/cmd/loopers/ui"
+	"github.com/try-loopers/loopers-oss/cmd/loopers/ui"
 	"github.com/charmbracelet/huh"
 	"gopkg.in/yaml.v3"
 )

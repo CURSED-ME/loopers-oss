@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/try-loopers/loopers-oss/internal/logging"
 )
 
 func (lm *LeaseManager) StartLeaseWorkers(ctx context.Context) {

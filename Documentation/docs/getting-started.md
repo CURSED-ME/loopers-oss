@@ -24,7 +24,7 @@ This is the fastest way to run Loopers in production or local development withou
 ### Step 1: Get the Docker Compose file
 
 ```bash
-git clone https://github.com/CURSED-ME/loopers-oss.git
+git clone https://github.com/try-loopers/loopers-oss.git
 cd loopers-oss
 ```
 
@@ -95,7 +95,7 @@ If you want to run the proxy natively on your machine or just use the CLI wrappe
 
 **macOS / Linux / Windows:**
 ```bash
-go install github.com/CURSED-ME/loopers-oss/cmd/loopers@latest
+go install github.com/try-loopers/loopers-oss/cmd/loopers@latest
 ```
 
 ### Step 2: Initialize Configuration

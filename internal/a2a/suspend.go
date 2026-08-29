@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/policy"
-	"github.com/CURSED-ME/loopers-oss/internal/session"
+	"github.com/try-loopers/loopers-oss/internal/policy"
+	"github.com/try-loopers/loopers-oss/internal/session"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )

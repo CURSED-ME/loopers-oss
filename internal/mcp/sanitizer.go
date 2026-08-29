@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/CURSED-ME/loopers-oss/internal/inspector"
+	"github.com/try-loopers/loopers-oss/internal/inspector"
 )
 
 // ListToolsResult represents the payload in the JSON-RPC result for tools/list.

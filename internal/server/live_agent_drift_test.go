@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/budget"
-	"github.com/CURSED-ME/loopers-oss/internal/keyring"
-	"github.com/CURSED-ME/loopers-oss/internal/pricing"
+	"github.com/try-loopers/loopers-oss/internal/budget"
+	"github.com/try-loopers/loopers-oss/internal/keyring"
+	"github.com/try-loopers/loopers-oss/internal/pricing"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"

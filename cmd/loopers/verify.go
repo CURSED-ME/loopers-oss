@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/CURSED-ME/loopers-oss/internal/verifier"
+	"github.com/try-loopers/loopers-oss/internal/verifier"
 	"github.com/spf13/cobra"
 )
 

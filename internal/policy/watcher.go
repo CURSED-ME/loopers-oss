@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/try-loopers/loopers-oss/internal/logging"
 	"github.com/fsnotify/fsnotify"
 )
 

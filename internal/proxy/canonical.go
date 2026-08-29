@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/CURSED-ME/loopers-oss/internal/policy"
-	"github.com/CURSED-ME/loopers-oss/internal/syntactic"
+	"github.com/try-loopers/loopers-oss/internal/policy"
+	"github.com/try-loopers/loopers-oss/internal/syntactic"
 )
 
 // MapLLMRequestToContext parses provider request bodies to extract structured ActionContext.

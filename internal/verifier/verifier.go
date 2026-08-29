@@ -8,10 +8,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/blastradius"
-	"github.com/CURSED-ME/loopers-oss/internal/policy"
-	"github.com/CURSED-ME/loopers-oss/internal/session"
-	"github.com/CURSED-ME/loopers-oss/internal/syntactic"
+	"github.com/try-loopers/loopers-oss/internal/blastradius"
+	"github.com/try-loopers/loopers-oss/internal/policy"
+	"github.com/try-loopers/loopers-oss/internal/session"
+	"github.com/try-loopers/loopers-oss/internal/syntactic"
 )
 
 // Config configures the verification engine.

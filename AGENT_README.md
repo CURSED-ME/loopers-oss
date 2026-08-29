@@ -90,7 +90,7 @@ Loopers is the bare-metal AI Firewall for the Agentic Era. It is written in Go a
 │   ├── python/                    # Python SDK (LoopersOpenAI, LoopersAnthropic, CrewAI, AutoGen, LangChain, LlamaIndex adapters)
 │   └── ts/                        # TypeScript / Node.js SDK (LoopersOpenAI, onPolicyBlock callback, vitest suite)
 ├── Documentation/                 # Docusaurus documentation website & blog
-├── docs/                          # Architectural specifications & benchmarks
+├── docs/                          # Architectural specifications
 └── examples/                      # Example policies (01_allow_admin.rego, 02_deny_destructive.rego, 03_taint_tracking.rego)
 ```
 

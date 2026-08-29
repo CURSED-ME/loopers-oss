@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/CURSED-ME/loopers-oss/internal/loop"
-	"github.com/CURSED-ME/loopers-oss/internal/policy"
+	"github.com/try-loopers/loopers-oss/internal/loop"
+	"github.com/try-loopers/loopers-oss/internal/policy"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 )

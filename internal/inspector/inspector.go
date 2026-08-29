@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/CURSED-ME/loopers-oss/internal/syntactic"
+	"github.com/try-loopers/loopers-oss/internal/syntactic"
 )
 
 // InjectionPatterns covers direct and indirect prompt injection signatures.

@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/CURSED-ME/loopers-oss/internal/provider"
-	"github.com/CURSED-ME/loopers-oss/pkg/api"
+	"github.com/try-loopers/loopers-oss/internal/provider"
+	"github.com/try-loopers/loopers-oss/pkg/api"
 )
 
 type OpenAIProvider struct{}

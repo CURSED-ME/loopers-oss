@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/CURSED-ME/loopers-oss/cmd/loopers/ui"
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/try-loopers/loopers-oss/cmd/loopers/ui"
+	"github.com/try-loopers/loopers-oss/internal/logging"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"

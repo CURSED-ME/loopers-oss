@@ -12,7 +12,7 @@ const config = {
   url: 'https://docs.tryloopers.com',
   baseUrl: '/',
 
-  organizationName: 'CURSED-ME',
+  organizationName: 'try-loopers',
   projectName: 'loopers-oss',
 
   onBrokenLinks: 'warn',
@@ -52,7 +52,7 @@ const config = {
         description: 'Baremetal, zero-delay firewall for AI agents and LLMs. Intercepts requests across 500+ AI models, stops runaway agent loops, and enforces MCP tool budgets with sub-millisecond overhead.',
         url: 'https://docs.tryloopers.com',
         sameAs: [
-          'https://github.com/CURSED-ME/loopers-oss',
+          'https://github.com/try-loopers/loopers-oss',
           'https://tryloopers.com',
         ],
         license: 'https://opensource.org/licenses/MIT',
@@ -69,7 +69,7 @@ const config = {
         name: 'Loopers',
         url: 'https://tryloopers.com',
         logo: 'https://docs.tryloopers.com/img/icon.svg',
-        sameAs: ['https://github.com/CURSED-ME/loopers-oss'],
+        sameAs: ['https://github.com/try-loopers/loopers-oss'],
       }),
     },
   ],
@@ -83,12 +83,12 @@ const config = {
       ({
         docs: {
           sidebarPath: './sidebars.js',
-          editUrl: 'https://github.com/CURSED-ME/loopers-oss/edit/main/Documentation/',
+          editUrl: 'https://github.com/try-loopers/loopers-oss/edit/main/Documentation/',
         },
         blog: {
           showReadingTime: true,
           feedOptions: { type: ['rss', 'atom'], xslt: true },
-          editUrl: 'https://github.com/CURSED-ME/loopers-oss/edit/main/Documentation/',
+          editUrl: 'https://github.com/try-loopers/loopers-oss/edit/main/Documentation/',
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
           onUntruncatedBlogPosts: 'warn',
@@ -154,7 +154,7 @@ const config = {
           { to: '/docs/reference/cli', label: 'CLI Reference', position: 'left' },
           { to: '/docs/architecture', label: 'Architecture', position: 'left' },
           {
-            href: 'https://github.com/CURSED-ME/loopers-oss',
+            href: 'https://github.com/try-loopers/loopers-oss',
             label: 'GitHub',
             position: 'right',
           },
@@ -191,7 +191,7 @@ const config = {
           {
             title: 'Community & LLMs',
             items: [
-              { label: 'GitHub', href: 'https://github.com/CURSED-ME/loopers-oss' },
+              { label: 'GitHub', href: 'https://github.com/try-loopers/loopers-oss' },
               { label: 'Loopers Cloud', href: 'https://tryloopers.com' },
               { label: 'llms.txt', href: 'https://docs.tryloopers.com/llms.txt' },
               { label: 'llms-full.txt', href: 'https://docs.tryloopers.com/llms-full.txt' },

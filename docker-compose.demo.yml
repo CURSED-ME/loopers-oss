@@ -20,7 +20,7 @@ services:
     networks: [loopers-demo]
 
   loopers:
-    image: ghcr.io/cursed-me/loopers:latest
+    image: ghcr.io/try-loopers/loopers:latest
     ports:
       - "8080:8080"
     environment:
@@ -40,7 +40,7 @@ services:
     networks: [loopers-demo]
 
   bootstrap:
-    image: ghcr.io/cursed-me/loopers:latest
+    image: ghcr.io/try-loopers/loopers:latest
     environment:
       - REDIS_ADDR=redis:6379
       - REDIS_PASSWORD=demo-pass

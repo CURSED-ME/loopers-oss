@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
-	"github.com/CURSED-ME/loopers-oss/internal/netutil"
+	"github.com/try-loopers/loopers-oss/internal/logging"
+	"github.com/try-loopers/loopers-oss/internal/netutil"
 	"github.com/spf13/viper"
 )
 

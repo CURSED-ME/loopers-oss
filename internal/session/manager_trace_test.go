@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/policy"
+	"github.com/try-loopers/loopers-oss/internal/policy"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 )
