@@ -146,7 +146,7 @@ func (p *CohereProvider) FormatBudgetExceededSSE() []byte {
 Register your provider instance in `NewServer` in [server.go](file:///c:/Users/varad/loopers-oss/internal/server/server.go):
 
 ```go
-import "github.com/CURSED-ME/loopers-oss/internal/provider/cohere"
+import "github.com/try-loopers/loopers-oss/internal/provider/cohere"
 
 // ...
 func NewServer(redisClient *budget.Client, pricingStore *pricing.Store) *Server {

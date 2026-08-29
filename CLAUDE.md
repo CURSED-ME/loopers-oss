@@ -25,7 +25,7 @@ It contains everything you need in one place: complete setup steps, full CLI ref
 ## Critical Facts (Read Before Writing Any Code)
 
 - **Binary path**: `./cmd/loopers` (not `./cmd/server`)
-- **Docker image**: `ghcr.io/cursed-me/loopers:latest`
+- **Docker image**: `ghcr.io/try-loopers/loopers:latest`
 - **Redis env var**: `REDIS_ADDR` (not `REDIS_ADDRESS`)
 - **Local dev flag**: `SERVER_INSECURE_DEV=true` — required to run without TLS
 - **Proxy key format**: `lp-xxx` — always starts with `lp-`

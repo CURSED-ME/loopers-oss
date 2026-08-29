@@ -4,7 +4,7 @@ title: Introducing Loopers — The AI Billing Circuit Breaker
 authors:
   - name: Loopers Team
     title: Core Maintainers
-    url: https://github.com/CURSED-ME
+    url: https://github.com/try-loopers
 tags: [announcement, open-source, ai-safety, billing]
 ---
 
@@ -54,9 +54,9 @@ The result: **0% budget leakage** under a 1,000 concurrent request flood.
 ## Get Started
 
 ```bash
-git clone https://github.com/CURSED-ME/loopers-oss.git
+git clone https://github.com/try-loopers/loopers-oss.git
 cd loopers-oss
 docker-compose -f docker-compose.demo.yml up
 ```
 
-Read the [full documentation](https://docs.tryloopers.com) or [star us on GitHub](https://github.com/CURSED-ME/loopers-oss).
+Read the [full documentation](https://docs.tryloopers.com) or [star us on GitHub](https://github.com/try-loopers/loopers-oss).

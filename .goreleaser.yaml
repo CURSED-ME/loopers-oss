@@ -62,7 +62,7 @@ signs:
 
 dockers:
   - image_templates:
-      - "ghcr.io/cursed-me/loopers:{{ .Tag }}-amd64"
+      - "ghcr.io/try-loopers/loopers:{{ .Tag }}-amd64"
     dockerfile: Dockerfile.goreleaser
     use: buildx
     extra_files:
@@ -73,7 +73,7 @@ dockers:
       - "--label=org.opencontainers.image.revision={{ .Commit }}"
       - "--provenance=false"
   - image_templates:
-      - "ghcr.io/cursed-me/loopers:{{ .Tag }}-arm64"
+      - "ghcr.io/try-loopers/loopers:{{ .Tag }}-arm64"
     dockerfile: Dockerfile.goreleaser
     use: buildx
     extra_files:
@@ -85,20 +85,20 @@ dockers:
       - "--provenance=false"
 
 docker_manifests:
-  - name_template: "ghcr.io/cursed-me/loopers:{{ .Tag }}"
+  - name_template: "ghcr.io/try-loopers/loopers:{{ .Tag }}"
     image_templates:
-      - "ghcr.io/cursed-me/loopers:{{ .Tag }}-amd64"
-      - "ghcr.io/cursed-me/loopers:{{ .Tag }}-arm64"
-  - name_template: "ghcr.io/cursed-me/loopers:latest"
+      - "ghcr.io/try-loopers/loopers:{{ .Tag }}-amd64"
+      - "ghcr.io/try-loopers/loopers:{{ .Tag }}-arm64"
+  - name_template: "ghcr.io/try-loopers/loopers:latest"
     image_templates:
-      - "ghcr.io/cursed-me/loopers:{{ .Tag }}-amd64"
-      - "ghcr.io/cursed-me/loopers:{{ .Tag }}-arm64"
+      - "ghcr.io/try-loopers/loopers:{{ .Tag }}-amd64"
+      - "ghcr.io/try-loopers/loopers:{{ .Tag }}-arm64"
 
 # Homebrew tap publishing is enabled.
 brews:
   - name: loopers
     repository:
-      owner: CURSED-ME
+      owner: try-loopers
       name: homebrew-tap
     directory: Formula
     homepage: "https://tryloopers.com"

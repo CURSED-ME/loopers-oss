@@ -24,7 +24,7 @@ Loopers is the open-source, bare-metal AI Firewall for the Agentic Era written i
 
 ### Step 1: Clone the repository
 ```bash
-git clone https://github.com/CURSED-ME/loopers-oss.git
+git clone https://github.com/try-loopers/loopers-oss.git
 cd loopers-oss
 ```
 
@@ -35,7 +35,7 @@ docker-compose up -d
 
 The `docker-compose.yml` in the root starts two services:
 - `redis` — Redis 8 Alpine with password auth
-- `loopers` — the firewall image (`ghcr.io/cursed-me/loopers:latest`) on port 8080
+- `loopers` — the firewall image (`ghcr.io/try-loopers/loopers:latest`) on port 8080
 
 ### Step 3: Create a proxy key
 ```bash
@@ -65,7 +65,7 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 
 macOS / Linux / Windows:
 ```bash
-go install github.com/CURSED-ME/loopers-oss/cmd/loopers@latest
+go install github.com/try-loopers/loopers-oss/cmd/loopers@latest
 ```
 
 ### Step 2: Initialize configuration

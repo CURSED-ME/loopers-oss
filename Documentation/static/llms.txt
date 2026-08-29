@@ -103,7 +103,6 @@ Embedded pre-execution risk calculation engine (`internal/blastradius`) for MCP 
 - [What's New](/docs/whats-new): Latest features, changelog, and breaking changes.
 - [FAQ](/docs/faq): Direct answers for common questions on loop detection, cost limits, MCP proxying, and key management.
 - [Security](/docs/security): Responsible disclosure, security model, and threat mitigations.
-- [Benchmarks](/docs/benchmarks): Throughput and latency benchmarks vs other proxies.
 
 ## Key Concepts
 

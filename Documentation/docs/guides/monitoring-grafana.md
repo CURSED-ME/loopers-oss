@@ -79,7 +79,7 @@ services:
       - 6379:6379
 
   loopers:
-    image: ghcr.io/cursed-me/loopers:latest
+    image: ghcr.io/try-loopers/loopers:latest
     ports:
       - 8080:8080
       - 9090:9090

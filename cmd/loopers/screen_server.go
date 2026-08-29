@@ -6,9 +6,9 @@ import (
 
 	"strings"
 
-	"github.com/CURSED-ME/loopers-oss/cmd/loopers/ui"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/viper"
+	"github.com/try-loopers/loopers-oss/cmd/loopers/ui"
 )
 
 func screenInit() {
@@ -180,7 +180,7 @@ services:
       - loopers-net
 
   loopers:
-    image: ghcr.io/cursed-me/loopers:latest
+    image: ghcr.io/try-loopers/loopers:latest
     container_name: loopers-firewall
     ports:
       - "8080:8080"

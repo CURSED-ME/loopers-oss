@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/try-loopers/loopers-oss/internal/logging"
 )
 
 type Config struct {

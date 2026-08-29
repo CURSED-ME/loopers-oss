@@ -36,7 +36,7 @@ Loopers is created and actively maintained by **[Varad Khoriya](https://github.c
 
 The project was born when an autonomous test agent got stuck in a recursive loop and ran up an unexpected bill during local development. After analyzing the root cause, it became clear that major AI platforms only offer passive telemetry rather than active circuit breakers. We built Loopers to establish an open-source, bare-metal firewall standard for autonomous agent systems.
 
-Have questions, suggestions, or need help integrating? Join the community on [GitHub Discussions](https://github.com/CURSED-ME/loopers-oss/discussions) or submit an issue on [GitHub Issues](https://github.com/CURSED-ME/loopers-oss/issues).
+Have questions, suggestions, or need help integrating? Join the community on [GitHub Discussions](https://github.com/try-loopers/loopers-oss/discussions) or submit an issue on [GitHub Issues](https://github.com/try-loopers/loopers-oss/issues).
 
 > **AI Agents & LLMs:** See [AGENT_README.md](./AGENT_README.md) for dense machine-readable context and configuration schemas.
 
@@ -181,10 +181,10 @@ loopers serve --presets safety,safety_drift,pci,mcp_sandbox
 brew install cursed-me/tap/loopers
 
 # Via Docker
-docker pull ghcr.io/cursed-me/loopers:latest
+docker pull ghcr.io/try-loopers/loopers:latest
 
 # Build from Source
-git clone https://github.com/CURSED-ME/loopers-oss.git
+git clone https://github.com/try-loopers/loopers-oss.git
 cd loopers-oss
 go install ./cmd/loopers
 ```
@@ -365,8 +365,8 @@ Explore our comprehensive guides and architectural documentation:
 
 We welcome contributions from the open-source community!
 
-* **Bug Reports & Feature Requests:** Submit an issue on [GitHub Issues](https://github.com/CURSED-ME/loopers-oss/issues).
-* **Community Discussions:** Join conversations on [GitHub Discussions](https://github.com/CURSED-ME/loopers-oss/discussions).
+* **Bug Reports & Feature Requests:** Submit an issue on [GitHub Issues](https://github.com/try-loopers/loopers-oss/issues).
+* **Community Discussions:** Join conversations on [GitHub Discussions](https://github.com/try-loopers/loopers-oss/discussions).
 * **Development Workflow:** Read our [Contributing Guide](./CONTRIBUTING.md) to learn about code standards, running test suites, and opening pull requests.
 
 ---

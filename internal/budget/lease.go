@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/try-loopers/loopers-oss/internal/logging"
 )
 
 const nanoPerUSD = 1e9

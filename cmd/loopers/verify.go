@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/CURSED-ME/loopers-oss/internal/verifier"
 	"github.com/spf13/cobra"
+	"github.com/try-loopers/loopers-oss/internal/verifier"
 )
 
 var (

@@ -30,7 +30,7 @@ jobs:
         ports:
           - 6379:6379
       loopers:
-        image: ghcr.io/cursed-me/loopers:latest
+        image: ghcr.io/try-loopers/loopers:latest
         env:
           REDIS_ADDR: redis:6379
           SERVER_PORT: 8080

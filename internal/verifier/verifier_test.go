@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/CURSED-ME/loopers-oss/internal/policy"
+	"github.com/try-loopers/loopers-oss/internal/policy"
 )
 
 func TestVerifier_CleanTrace(t *testing.T) {

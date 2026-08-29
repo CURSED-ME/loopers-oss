@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
+	"github.com/try-loopers/loopers-oss/internal/logging"
 )
 
 // ListenAndServeWithGracefulShutdown starts the HTTP server and listens for SIGTERM/SIGINT.

@@ -10,9 +10,9 @@ import (
 	"io"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/inspector"
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
-	"github.com/CURSED-ME/loopers-oss/internal/provider"
+	"github.com/try-loopers/loopers-oss/internal/inspector"
+	"github.com/try-loopers/loopers-oss/internal/logging"
+	"github.com/try-loopers/loopers-oss/internal/provider"
 )
 
 // splitSSEFrames is a bufio.SplitFunc that splits on double newlines (\n\n).

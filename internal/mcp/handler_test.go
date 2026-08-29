@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/budget"
-	proxyPkg "github.com/CURSED-ME/loopers-oss/internal/proxy"
+	"github.com/try-loopers/loopers-oss/internal/budget"
+	proxyPkg "github.com/try-loopers/loopers-oss/internal/proxy"
 )
 
 func TestModifyResponse_ToolsCall_Injection_Redacted(t *testing.T) {

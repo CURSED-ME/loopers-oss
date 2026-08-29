@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/CURSED-ME/loopers-oss/internal/logging"
-	"github.com/CURSED-ME/loopers-oss/internal/provider"
+	"github.com/try-loopers/loopers-oss/internal/logging"
+	"github.com/try-loopers/loopers-oss/internal/provider"
 )
 
 type GeminiProvider struct {

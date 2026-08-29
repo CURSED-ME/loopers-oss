@@ -13,15 +13,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/budget"
-	"github.com/CURSED-ME/loopers-oss/internal/keyring"
-	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jws"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/spf13/viper"
+	"github.com/try-loopers/loopers-oss/internal/budget"
+	"github.com/try-loopers/loopers-oss/internal/keyring"
+	"github.com/try-loopers/loopers-oss/internal/pricing"
 )
 
 func TestZSPAuthRouting(t *testing.T) {

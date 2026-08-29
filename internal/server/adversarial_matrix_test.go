@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/keyring"
 	"github.com/stretchr/testify/assert"
+	"github.com/try-loopers/loopers-oss/internal/keyring"
 )
 
 type AdversarialTestCase struct {

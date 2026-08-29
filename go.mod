@@ -1,4 +1,4 @@
-module github.com/CURSED-ME/loopers-oss
+module github.com/try-loopers/loopers-oss
 
 go 1.26.6
 

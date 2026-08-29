@@ -12,13 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CURSED-ME/loopers-oss/internal/budget"
-	"github.com/CURSED-ME/loopers-oss/internal/keyring"
-	"github.com/CURSED-ME/loopers-oss/internal/pricing"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/try-loopers/loopers-oss/internal/budget"
+	"github.com/try-loopers/loopers-oss/internal/keyring"
+	"github.com/try-loopers/loopers-oss/internal/pricing"
 )
 
 const realLiveModel = "nvidia/nemotron-3-nano-30b-a3b:free"
