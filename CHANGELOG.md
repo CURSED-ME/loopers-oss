@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.21.1](https://github.com/try-loopers/loopers-oss/compare/v2.21.0...v2.21.1) (2026-08-29)
+
+
+### Bug Fixes
+
+* format Go code and update E2E test docker build image namespace ([966fd10](https://github.com/try-loopers/loopers-oss/commit/966fd10bba9c0bf6aedff45588cac0fde3aad5d5))
+
 ## [2.21.0](https://github.com/CURSED-ME/loopers-oss/compare/v2.20.0...v2.21.0) (2026-08-25)
 
 
