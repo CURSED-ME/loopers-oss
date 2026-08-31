@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.21.2](https://github.com/try-loopers/loopers-oss/compare/v2.21.1...v2.21.2) (2026-08-31)
+
+
+### Bug Fixes
+
+* upgrade golang.org/x/crypto to v0.55.0 to resolve GO-2026-6303 ([213ab02](https://github.com/try-loopers/loopers-oss/commit/213ab028dd1ae627cf504c6ff0867240ada40e95))
+* upgrade golang.org/x/crypto to v0.55.0 to resolve GO-2026-6303 ([3d5a80f](https://github.com/try-loopers/loopers-oss/commit/3d5a80f6dc06f771a9779bd75637293689a548ec))
+
 ## [2.21.1](https://github.com/try-loopers/loopers-oss/compare/v2.21.0...v2.21.1) (2026-08-29)
 
 
